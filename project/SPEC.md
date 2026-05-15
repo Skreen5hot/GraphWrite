@@ -1,12 +1,35 @@
-# Engineering-Ready Specification v0.3.1
-
 # GraphWrite
 
 **Strategic program:** Edge Canonical Modeling
-**Specification version:** v0.3.1 Engineering-Ready
+**Specification version:** v0.4 Engineering-Ready
 **Status:** Ready for implementation planning
 **Canonical execution model:** Browser or local Node.js runtime
 **Canonical representation:** JSON-LD 1.1, Visual Modeler Profile (defined in §5)
+
+---
+
+## Revision Notes (v0.3.1 → v0.4)
+
+Material reframing. Adopts a **realist anchoring** of project documents in the Common Core Ontologies (CCO) and the Information Artifact tradition.
+
+Every project document is now typed as `iao:OntologyDesignPattern`, declared in the project TBox as a subclass of `cco:InformationContentEntity` (CCO IRI `https://www.commoncoreontologies.org/ont00000958`). Each generated serialization is itself an Information Content Entity, related to the project by `ecm:isSerializationOf`. The project document becomes a node in its own Semantic Layer: it is no longer editor metadata about a graph, but an ICE that the graph is part of and that is *about* a declared portion of reality.
+
+Changes:
+
+- §1 — Executive Summary states the realist orientation.
+- §5.2 — Normative `@context` adds `iao:` and `cco:` namespaces.
+- §5.4 — Project metadata adds required `iao:isAbout` and types the project as `["ecm:Project", "iao:OntologyDesignPattern"]`.
+- §5.14 (new) — **Project TBox**. Declares `iao:OntologyDesignPattern rdfs:subClassOf cco:ont00000958` and `ecm:Project rdfs:subClassOf iao:OntologyDesignPattern`. Declares `ecm:Serialization rdfs:subClassOf cco:ont00000958`. Declares `ecm:isSerializationOf` as an object property.
+- §6.1 — Semantic Layer allowlist expanded: project root, serializations, `iao:isAbout`, `ecm:isSerializationOf` are now semantic.
+- §6.3 — Semantic projection retains the project root as a node typed `iao:OntologyDesignPattern` with its `iao:isAbout` declarations.
+- §17 — New hard error `MISSING_REALIST_ANCHOR`; new info `LEGACY_REALIST_ANCHOR_PLACEHOLDER` for migrated v0.3 documents.
+- §18.2 — New FR-U031: declare and edit `iao:isAbout` on the project.
+- §19 — Export manifest now lists each serialization as a typed ICE with `ecm:isSerializationOf` linkage.
+- §20 — New NFR-014: realist-anchored project model.
+- §22 (MVP) and §31 (DoD) — updated to require realist anchoring.
+- §10.4 — Legacy v0.3 migration adds the realist anchor with a placeholder and emits a warning.
+
+Conformance: v0.4 implementations must reject v0.5+ documents and must migrate v0.3 documents on load. v0.3 golden files are not byte-compatible with v0.4 and are superseded.
 
 ---
 
@@ -97,17 +120,20 @@ If the answer is no, the design violates this specification.
 
 The Visual RDF / Knowledge Graph Modeler is a deterministic, local-first, JSON-LD-native semantic modeling tool with browser and Node.js execution surfaces. Its purpose is to let users create, understand, persist, export, and share RDF-style knowledge graph models without requiring a server, triple store, SPARQL endpoint, database, or enterprise semantic platform.
 
+The tool is **realist-anchored**: every project document is an Information Content Entity, typed as `iao:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity` per CCO `https://www.commoncoreontologies.org/ont00000958`), about a declared portion of reality. Each generated serialization is itself an Information Content Entity related to the project by `ecm:isSerializationOf`. A project is not merely a working container; it is a model of a portion of reality, encoded in a repeatable machine-interpretable format using elements from one or more ontologies. The tool enforces this commitment in the canonical project document.
+
 **Edge Canonical Modeling** is the program of which this tool is the first deliverable. The program treats local-first ("edge") execution as the canonical computation site, in contrast to cloud-hosted enterprise modeling platforms. The intent is that a single user with a browser and a project file can complete a meaningful modeling task end to end.
 
 The system shall help users:
 
+- declare what their project is *about* — the portion of reality being modeled;
 - define or import classes, object properties, and datatype properties;
 - create individual instances on a canvas;
 - assign classes to instances;
 - connect instances using object properties;
 - attach literal values to instances using datatype properties;
 - inspect the resulting subject-predicate-object assertions;
-- generate Turtle, N-Triples, JSON-LD, Mermaid, and Markdown artifacts;
+- generate Turtle, N-Triples, JSON-LD, Mermaid, and Markdown artifacts, each typed as an ICE in the project's export manifest;
 - save, reopen, export, and share projects;
 - control IRI generation;
 - distinguish imported terms from project-created terms;
@@ -120,6 +146,8 @@ The product narrative is:
 > Visible → Disciplined → Reusable → Canonical
 
 First make RDF visible. Then make modeling disciplined. Then make patterns reusable. Then make community canonicality possible.
+
+The realist anchoring in v0.4 is what lets the **Reusable** and **Canonical** stages have real semantic weight: a pattern is not just a reusable diagram, it is an ICE about a portion of reality, citable and typeable in a pattern catalog.
 
 ---
 
@@ -266,6 +294,8 @@ Every project document must include this `@context` (or one semantically equival
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "owl": "http://www.w3.org/2002/07/owl#",
     "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "iao": "http://purl.obolibrary.org/obo/iao#",
+    "cco": "https://www.commoncoreontologies.org/",
     "id": "@id",
     "type": "@type",
     "ecm:terms":            { "@container": "@set" },
@@ -275,10 +305,13 @@ Every project document must include this `@context` (or one semantically equival
     "ecm:ontologies":       { "@container": "@set" },
     "ecm:layouts":          { "@container": "@set" },
     "ecm:snapshots":        { "@container": "@set" },
+    "ecm:serializations":   { "@container": "@set" },
     "ecm:classIris":        { "@type": "@id", "@container": "@set" },
     "ecm:subjectIri":       { "@type": "@id" },
     "ecm:predicateIri":     { "@type": "@id" },
     "ecm:objectIri":        { "@type": "@id" },
+    "ecm:isSerializationOf":{ "@type": "@id" },
+    "iao:isAbout":          { "@type": "@id", "@container": "@set" },
     "rdfs:subClassOf":      { "@type": "@id", "@container": "@set" },
     "rdfs:subPropertyOf":   { "@type": "@id", "@container": "@set" }
   }
@@ -287,6 +320,8 @@ Every project document must include this `@context` (or one semantically equival
 
 The aliases `id` → `@id` and `type` → `@type` are mandatory. Implementations must not emit `@id` or `@type` directly in the compact form.
 
+The `cco:` prefix resolves CCO IRIs of the form `cco:ont00000958` to `https://www.commoncoreontologies.org/ont00000958`, which is `cco:InformationContentEntity`. The `iao:` prefix is used for the project-introduced term `iao:OntologyDesignPattern` (see §5.14 — the term is shipped by this spec's TBox; core IAO does not currently define it).
+
 ### 5.3 Canonical Serialization
 
 The VMP canonical form is the compact JSON-LD document produced by the following normative serializer:
@@ -294,8 +329,8 @@ The VMP canonical form is the compact JSON-LD document produced by the following
 1. Apply the normative `@context` (§5.2).
 2. Order top-level keys: `@context`, `id`, `type`, `ecm:specVersion`, then all other keys alphabetically.
 3. Order keys within nested objects alphabetically.
-4. Order array elements of `ecm:terms`, `ecm:instances`, `ecm:relations`, `ecm:literalAssertions`, `ecm:ontologies`, `ecm:layouts`, `ecm:snapshots` by their `id` (lexicographically).
-5. Order IRI arrays (`ecm:classIris`, `rdfs:subClassOf`, `rdfs:subPropertyOf`) lexicographically.
+4. Order array elements of `ecm:terms`, `ecm:instances`, `ecm:relations`, `ecm:literalAssertions`, `ecm:ontologies`, `ecm:layouts`, `ecm:snapshots`, `ecm:serializations` by their `id` (lexicographically).
+5. Order IRI arrays (`ecm:classIris`, `iao:isAbout`, `rdfs:subClassOf`, `rdfs:subPropertyOf`) lexicographically.
 6. Use two-space JSON indentation, LF line endings, no trailing whitespace, terminating newline.
 7. Use UTF-8 encoding without BOM.
 8. Use canonical ISO 8601 UTC timestamps (`2026-05-14T12:00:00Z`, no offsets, no fractional seconds in v0.3).
@@ -306,16 +341,57 @@ A "lossless round-trip" means: `serialize(parse(file)) == file` bytewise, where 
 
 Required top-level fields:
 
-- `id` — project IRI, must be a `urn:uuid:` URN in v0.3;
-- `type: "ecm:Project"`;
-- `ecm:specVersion` — string, must be `"0.3"` for documents conforming to this spec;
+- `id` — project IRI, must be a `urn:uuid:` URN in v0.4;
+- `type` — an array containing **both** `"ecm:Project"` **and** `"iao:OntologyDesignPattern"`. The canonical serializer emits this as a JSON array sorted lexicographically: `["ecm:Project", "iao:OntologyDesignPattern"]`;
+- `ecm:specVersion` — string, must be `"0.4"` for documents conforming to this spec;
 - `ecm:name`;
 - `ecm:createdAt`;
-- `ecm:updatedAt`.
+- `ecm:updatedAt`;
+- `iao:isAbout` — array of one or more IRIs declaring what portion of reality the project models. See §5.4.1.
 
 Optional:
 
 - `ecm:description`, `ecm:author`, `ecm:version`, `ecm:license`, `ecm:notes`.
+
+Example project root:
+
+```json
+{
+  "@context": { /* §5.2 */ },
+  "id": "urn:uuid:PROJECT_UUID",
+  "type": ["ecm:Project", "iao:OntologyDesignPattern"],
+  "ecm:specVersion": "0.4",
+  "ecm:name": "Customer Orders",
+  "ecm:description": "A model of customers placing orders.",
+  "ecm:createdAt": "2026-05-14T12:00:00Z",
+  "ecm:updatedAt": "2026-05-14T12:30:00Z",
+  "iao:isAbout": [
+    "https://example.org/subjects/CustomerOrderDomain"
+  ],
+  "ecm:settings": { /* §5.5 */ },
+  "ecm:ontologies": [],
+  "ecm:terms": [],
+  "ecm:instances": [],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:layouts": [],
+  "ecm:snapshots": [],
+  "ecm:serializations": [],
+  "ecm:validationReports": []
+}
+```
+
+#### 5.4.1 The `iao:isAbout` Field
+
+`iao:isAbout` declares the portion of reality the project models. Each value is an IRI, which may be:
+
+- a class IRI from an imported ontology (`cco:Person`, `https://example.org/onto/Vehicle`);
+- a project-declared subject IRI (e.g., `ecm:CustomerOrderDomain`) for which the project itself defines the subject as a topical anchor;
+- a CCO or BFO universal denoting a portion of reality (e.g., `cco:CommercialActivity`).
+
+`iao:isAbout` is required and must have at least one entry. If the user has not yet declared a subject, the system fills `iao:isAbout` with the placeholder `["ecm:UnspecifiedSubjectMatter"]` and emits validation finding `MISSING_REALIST_ANCHOR` (an error) or `LEGACY_REALIST_ANCHOR_PLACEHOLDER` (info, after v0.3 migration). The placeholder is treated as an editor-acknowledged "I will fill this in soon" marker but blocks export by default.
+
+`ecm:UnspecifiedSubjectMatter` is declared in the project TBox (§5.14) as an `owl:Class` for use as a placeholder.
 
 ### 5.5 Settings Object
 
@@ -516,30 +592,125 @@ Snapshots store a full embedded copy of the project document at snapshot time, i
 
 `ecm:severity` is one of `ecm:error`, `ecm:warning`, `ecm:info`. `ecm:acknowledged` lets a user dismiss a warning without resolving it; see §17.5.
 
+### 5.14 Project TBox
+
+The Visual Modeler Profile ships a small project-level TBox that declares the realist anchoring. This TBox is bundled with every implementation and is logically present in every project document; it does not need to be repeated in each `project.jsonld`. Implementations may emit it implicitly on semantic export, or include it inline at the user's request.
+
+The TBox declares:
+
+```turtle
+@prefix ecm:  <https://edgecanonical.org/ns/modeler#> .
+@prefix iao:  <http://purl.obolibrary.org/obo/iao#> .
+@prefix cco:  <https://www.commoncoreontologies.org/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Realist anchoring of the Ontology Design Pattern concept
+iao:OntologyDesignPattern  a            owl:Class ;
+                           rdfs:label   "Ontology Design Pattern" ;
+                           rdfs:comment "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology." ;
+                           rdfs:subClassOf cco:ont00000958 .
+
+# Every project is an Ontology Design Pattern
+ecm:Project                a            owl:Class ;
+                           rdfs:label   "Visual Modeler Project" ;
+                           rdfs:subClassOf iao:OntologyDesignPattern .
+
+# Serializations are concrete ICEs of a project
+ecm:Serialization          a            owl:Class ;
+                           rdfs:label   "Project Serialization" ;
+                           rdfs:comment "An Information Content Entity that is a concrete encoding of a project (Ontology Design Pattern) in a specific representational format." ;
+                           rdfs:subClassOf cco:ont00000958 .
+
+# Object property linking serializations to their source project
+ecm:isSerializationOf      a            owl:ObjectProperty ;
+                           rdfs:label   "is serialization of" ;
+                           rdfs:domain  ecm:Serialization ;
+                           rdfs:range   iao:OntologyDesignPattern .
+
+# Placeholder subject class used during onboarding
+ecm:UnspecifiedSubjectMatter a          owl:Class ;
+                             rdfs:label "Unspecified Subject Matter" ;
+                             rdfs:comment "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence in iao:isAbout produces a MISSING_REALIST_ANCHOR validation finding." .
+```
+
+**Notes on the TBox.**
+
+- `cco:ont00000958` is `cco:InformationContentEntity` (verified against CCO ≥ v1.7, 2024-11-03).
+- `iao:OntologyDesignPattern` is **introduced by this spec**. Core IAO does not currently define an Ontology Design Pattern class. The spec uses the `iao:` prefix because the term is conceptually in the Information Artifact family; if a future IAO release adds this term natively, the spec will align rather than re-namespace.
+- The TBox is included with every full semantic export. The Turtle and N-Triples exports prepend the TBox declarations so the resulting RDF graph is self-contained.
+
+### 5.15 Serialization Object
+
+A serialization is a concrete information artifact produced from the project (a Turtle file, a Mermaid diagram, a Markdown summary). Each export entry is recorded as a `Serialization` ICE in the project's `ecm:serializations` array. This is the data behind the export manifest in §19.
+
+```json
+{
+  "id": "urn:uuid:SER_UUID",
+  "type": "ecm:Serialization",
+  "ecm:format": "text/turtle",
+  "ecm:filename": "graph.ttl",
+  "ecm:contentHash": "sha256-...",
+  "ecm:byteLength": 4321,
+  "ecm:generatedAt": "2026-05-14T12:30:00Z",
+  "ecm:isSerializationOf": "urn:uuid:PROJECT_UUID"
+}
+```
+
+Required: `id`, `type`, `ecm:format`, `ecm:filename`, `ecm:contentHash`, `ecm:generatedAt`, `ecm:isSerializationOf`.
+
+`ecm:isSerializationOf` must reference the project root `id`. The system maintains this array as a record of generated artifacts; it is rebuilt on each export rather than treated as long-lived user state. Serialization entries do not persist across exports unless the user explicitly snapshots them.
+
+`ecm:format` uses standard MIME types: `text/turtle`, `application/n-triples`, `application/ld+json`, `text/x-mermaid` (or `text/plain` if no registered type), `text/markdown`.
+
+The semantic-export representation of a serialization is the triple set:
+
+```turtle
+<urn:uuid:SER_UUID> a cco:ont00000958 , ecm:Serialization ;
+                    ecm:format "text/turtle" ;
+                    ecm:filename "graph.ttl" ;
+                    ecm:contentHash "sha256-..." ;
+                    ecm:generatedAt "2026-05-14T12:30:00Z"^^xsd:dateTime ;
+                    ecm:isSerializationOf <urn:uuid:PROJECT_UUID> .
+```
+
+This is what makes the realist anchoring real: the export manifest is not just a list of files, it is a small RDF graph in its own right, declaring that these ICEs exist, what format they are in, and which ODP they encode.
+
 ---
 
 ## 6. Semantic Layer and Editor Layer
 
-The project document is conceptually partitioned into two layers. The layers share one JSON-LD document but are distinguishable by type.
+The project document is conceptually partitioned into two layers. The layers share one JSON-LD document but are distinguishable by type. In v0.4, the project root itself participates in the Semantic Layer: a project is an Information Content Entity, not editor metadata about a graph.
 
 ### 6.1 Semantic Layer
 
 The Semantic Layer is the set of project entities whose `type` is in the **semantic type allowlist**:
 
+- `ecm:Project` / `iao:OntologyDesignPattern` (the project root)
 - `owl:Class`
 - `owl:ObjectProperty`
 - `owl:DatatypeProperty`
 - `ecm:Instance`
 - `ecm:RelationAssertion`
 - `ecm:LiteralAssertion`
+- `ecm:Serialization`
 
-Together with the relevant predicates from these entities (`rdfs:label`, `rdfs:comment`, `rdfs:subClassOf`, `rdfs:subPropertyOf`, `ecm:classIris`, `ecm:subjectIri`, `ecm:predicateIri`, `ecm:objectIri`, `ecm:value`, `ecm:datatype`, `ecm:language`), the Semantic Layer is the data that will be projected to RDF.
+The semantic predicate allowlist:
+
+- `id`, `type`, `rdfs:label`, `rdfs:comment`;
+- `rdfs:subClassOf`, `rdfs:subPropertyOf`;
+- `ecm:classIris`, `ecm:subjectIri`, `ecm:predicateIri`, `ecm:objectIri`;
+- `ecm:value`, `ecm:datatype`, `ecm:language`;
+- `iao:isAbout`;
+- `ecm:isSerializationOf`, `ecm:format`, `ecm:filename`, `ecm:contentHash`, `ecm:byteLength`, `ecm:generatedAt`.
+
+Together, these constitute the data that will be projected to RDF.
 
 ### 6.2 Editor Layer
 
 The Editor Layer is everything else in the project document:
 
-- `ecm:Project` root metadata that is editor-internal (`ecm:createdAt`, `ecm:updatedAt`, `ecm:specVersion`);
+- `ecm:specVersion`, `ecm:createdAt`, `ecm:updatedAt` on the project root (editor bookkeeping);
 - `ecm:ProjectSettings`;
 - `ecm:ImportedOntology`;
 - `ecm:CanvasLayout`, `ecm:CanvasNode`, `ecm:CanvasEdge`;
@@ -548,21 +719,27 @@ The Editor Layer is everything else in the project document:
 - `ecm:source`, `ecm:ontologyId`, `ecm:acknowledged`, and other `ecm:`-prefixed editor predicates on semantic entities;
 - the relation `id` (because it is editor-internal — see §8).
 
+Note that the project root carries both Semantic Layer fields (`type`, `iao:isAbout`, `ecm:name`, `rdfs:comment` via `ecm:description`) and Editor Layer fields (`ecm:specVersion`, timestamps). On semantic projection, the project root is retained but its Editor Layer fields are stripped.
+
 ### 6.3 Semantic JSON-LD Export
 
 The semantic JSON-LD export is the project document with the Editor Layer projected out. The projection algorithm is:
 
 1. Start from the canonical project document.
-2. Retain only entities whose `type` is in the semantic type allowlist (§6.1).
-3. On each retained entity, retain only predicates in the semantic predicate allowlist:
-   - `id`, `type`, `rdfs:label`, `rdfs:comment`;
-   - `rdfs:subClassOf` (on classes), `rdfs:subPropertyOf` (on properties);
-   - `ecm:classIris`, `ecm:subjectIri`, `ecm:predicateIri`, `ecm:objectIri` (rewritten — see step 4);
-   - `ecm:value`, `ecm:datatype`, `ecm:language`.
-4. Rewrite reified assertions into their RDF triples (§8.3).
-5. Apply the canonical serializer (§5.3) to the resulting document.
+2. Retain only entities whose `type` is in the semantic type allowlist (§6.1). This includes the project root itself.
+3. On each retained entity, retain only predicates in the semantic predicate allowlist (§6.1).
+4. Rewrite reified relation assertions into their RDF triples (§8.3).
+5. Prepend the Project TBox declarations from §5.14 to the resulting RDF graph.
+6. Apply the canonical serializer (§5.3) to the resulting document.
 
-The semantic JSON-LD export, when expanded, yields the RDF graph the project models. The Turtle and N-Triples exports are produced from this same projection.
+The semantic JSON-LD export, when expanded, yields the RDF graph the project models, including:
+
+- the project as an `iao:OntologyDesignPattern` (and therefore an `cco:InformationContentEntity`) about the IRIs in `iao:isAbout`;
+- the TBox of project-introduced terms (`iao:OntologyDesignPattern`, `ecm:Project`, `ecm:Serialization`, `ecm:isSerializationOf`, and their CCO anchoring);
+- the user's modeled classes, properties, instances, and assertions;
+- the serializations of this export, each typed as an ICE and linked back to the project by `ecm:isSerializationOf`.
+
+The Turtle and N-Triples exports are produced from this same projection. The Mermaid and Markdown exports use a simpler view (instances and relations only) and do not include the TBox.
 
 ### 6.4 Round-Trip Equivalences
 
@@ -707,12 +884,22 @@ Migration is non-destructive: the original document is preserved on disk under `
 
 ### 10.4 Legacy Documents
 
-v0.2 documents (missing `ecm:specVersion`, missing `ecm:literalAssertions`, missing `rdfs:subClassOf` / `rdfs:subPropertyOf` on terms) are loaded as legacy v0.2 and migrated to v0.3 on load. The migration:
+**v0.2 documents** (missing `ecm:specVersion`, missing `ecm:literalAssertions`, missing `rdfs:subClassOf` / `rdfs:subPropertyOf` on terms) are loaded as legacy v0.2 and migrated through v0.3 to v0.4 on load.
 
-- adds `ecm:specVersion: "0.3"`;
-- initializes `ecm:literalAssertions` to `[]`;
-- preserves all existing entities;
-- if `ecm:determinism` is missing, initializes to `ecm:interactive`.
+**v0.3 / v0.3.1 documents** (have `ecm:specVersion: "0.3"`, no `iao:` or `cco:` in context, no `iao:OntologyDesignPattern` type, no `iao:isAbout` field) are migrated to v0.4 on load.
+
+The v0.3 → v0.4 migration:
+
+- updates `ecm:specVersion` to `"0.4"`;
+- expands the `@context` to include `iao:` and `cco:` prefixes per §5.2;
+- updates the project root's `type` from `"ecm:Project"` to `["ecm:Project", "iao:OntologyDesignPattern"]`;
+- initializes `iao:isAbout` to `["ecm:UnspecifiedSubjectMatter"]` (the placeholder);
+- emits a `LEGACY_REALIST_ANCHOR_PLACEHOLDER` info finding (§17.4) that persists until the user replaces the placeholder with a real subject IRI;
+- initializes `ecm:serializations` to `[]`.
+
+The migration is non-destructive (§10.3). The placeholder does **not** block save of the migrated file, but it does block export until the user declares a real `iao:isAbout`. This avoids stranding existing users while still enforcing the realist anchoring for any new artifacts produced from a migrated project.
+
+The v0.2 → v0.3 portion of the migration (adding `ecm:specVersion`, initializing `ecm:literalAssertions`, etc.) is applied first; the v0.3 → v0.4 portion runs on top of the result.
 
 ### 10.5 Snapshot Migration
 
@@ -1061,6 +1248,8 @@ Three severities: **error**, **warning**, **info**.
 | `MALFORMED_INSTANCE` | An instance lacks `id` or has malformed `ecm:classIris`. |
 | `MALFORMED_RELATION` | A relation lacks `id`, `ecm:subjectIri`, `ecm:predicateIri`, or `ecm:objectIri`. |
 | `MALFORMED_LITERAL_ASSERTION` | A literal assertion lacks required fields. |
+| `MISSING_REALIST_ANCHOR` | The project's `iao:isAbout` is empty or contains only the `ecm:UnspecifiedSubjectMatter` placeholder. Blocks export. |
+| `MALFORMED_SERIALIZATION_ENTRY` | A `ecm:Serialization` entry lacks required fields or fails to reference a valid project IRI via `ecm:isSerializationOf`. |
 | `DUPLICATE_IRI` | Two distinct entities share an `id` and represent different resources (e.g., a term and an instance, or two terms of different types). |
 | `DANGLING_INSTANCE_CLASS_REF` | An instance's `ecm:classIris` references an IRI with no corresponding term in the project or imported ontologies. |
 | `DANGLING_RELATION_SUBJECT_REF` | A relation's `ecm:subjectIri` references no known instance. |
@@ -1086,6 +1275,7 @@ Three severities: **error**, **warning**, **info**.
 | Code | Description |
 |------|-------------|
 | `LEGACY_DOCUMENT_MIGRATED` | The project was loaded as legacy and migrated. |
+| `LEGACY_REALIST_ANCHOR_PLACEHOLDER` | The project's `iao:isAbout` is the v0.3 → v0.4 migration placeholder. Persists until the user declares a real subject; does not block save but does block export. |
 | `NORMALIZED_ON_SAVE` | The loaded project was not in canonical form; it was normalized on save. |
 
 ### 17.5 Suppression
@@ -1157,6 +1347,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-U028 | Display the validation report and allow acknowledgement of warnings (§17.5). |
 | FR-U029 | Show "Project was migrated from v0.X" notice on legacy load (§10.4). |
 | FR-U030 | Show stale-save warning when the on-disk file has been updated since load (§11.2). |
+| FR-U031 | Declare and edit the project's `iao:isAbout` (one or more subject IRIs). The UI must surface `MISSING_REALIST_ANCHOR` and `LEGACY_REALIST_ANCHOR_PLACEHOLDER` findings prominently and provide an obvious affordance to resolve them. |
 
 ### 18.3 State Adapters
 
@@ -1189,6 +1380,7 @@ The project document is structurally validated against the VMP profile on load a
 ```
 /project.jsonld
 /contexts/project-context.jsonld
+/tbox/project-tbox.ttl
 /ontologies/<imported-ontology-files>
 /rdf/graph.ttl
 /rdf/graph.nt
@@ -1199,7 +1391,15 @@ The project document is structurally validated against the VMP profile on load a
 /manifest.jsonld
 ```
 
-The `manifest.jsonld` lists each artifact with its filename, MIME type, and SHA-256 content hash.
+`/tbox/project-tbox.ttl` is the Project TBox from §5.14, included so the package is self-contained and the realist anchoring is auditable without resolving external resources.
+
+The `manifest.jsonld` is itself an RDF document. It contains:
+
+- the project IRI typed as `["ecm:Project", "iao:OntologyDesignPattern"]`, with its `iao:isAbout` declarations and `ecm:name`;
+- one `ecm:Serialization` entry per artifact in the ZIP, each with `ecm:filename`, MIME `ecm:format`, SHA-256 `ecm:contentHash`, `ecm:byteLength`, `ecm:generatedAt`, and `ecm:isSerializationOf` pointing back to the project IRI;
+- the Project TBox declarations (or a reference to `/tbox/project-tbox.ttl`).
+
+A consumer who reads `manifest.jsonld` alone learns, in RDF: what this package is, what it is about, what files it contains, what format each file is in, and that each file is an ICE of the same ODP. The manifest is the realist anchoring made operational at the package boundary.
 
 ---
 
@@ -1220,6 +1420,7 @@ The `manifest.jsonld` lists each artifact with its filename, MIME type, and SHA-
 | NFR-011 | Performance bounds per §14.2 and §14.3. |
 | NFR-012 | Lossless canonical round-trip per §5.3 and §6.4. |
 | NFR-013 | Two compliant implementations produce byte-identical canonical and derived artifacts per §9.1. |
+| NFR-014 | Every project document is realist-anchored: the project is typed as `iao:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity`), declares one or more `iao:isAbout` subjects, and every generated serialization is recorded as an `ecm:Serialization` linked to the project by `ecm:isSerializationOf`. The Project TBox (§5.14) is shipped with every implementation. |
 
 ---
 
@@ -1285,29 +1486,31 @@ A user must be able to:
 
 1. Open the browser app.
 2. Create a new project.
-3. Save the project as `project.jsonld` in canonical form.
-4. Reopen the project from `project.jsonld`.
-5. Import a Turtle ontology file.
-6. Extract explicit classes, object properties, and datatype properties.
-7. Add a project-created class.
-8. Add a project-created object property.
-9. Add a project-created datatype property.
-10. Configure IRI generation.
-11. Create instances with generated or manual IRIs.
-12. Assign classes to instances.
-13. Draw directed object-property relations between instances.
-14. Add literal-property assertions to instances.
-15. Select object properties for relations; reverse or delete relations.
-16. See plain-language and RDF-like triple previews.
-17. Generate Turtle.
-18. Generate Mermaid.
-19. Render Mermaid in the browser.
-20. Copy/download Mermaid; download Turtle.
-21. Generate a Markdown summary.
-22. Validate duplicate IRIs, missing references, and dangling references.
-23. Perform cascading IRI updates with collision detection.
-24. Acknowledge warnings.
-25. Load at least three starter examples.
+3. **Declare what the project is about — set `iao:isAbout` to one or more subject IRIs.**
+4. Save the project as `project.jsonld` in canonical form.
+5. Reopen the project from `project.jsonld`.
+6. Import a Turtle ontology file.
+7. Extract explicit classes, object properties, and datatype properties.
+8. Add a project-created class.
+9. Add a project-created object property.
+10. Add a project-created datatype property.
+11. Configure IRI generation.
+12. Create instances with generated or manual IRIs.
+13. Assign classes to instances.
+14. Draw directed object-property relations between instances.
+15. Add literal-property assertions to instances.
+16. Select object properties for relations; reverse or delete relations.
+17. See plain-language and RDF-like triple previews.
+18. Generate Turtle (which includes the Project TBox and the project root as an ICE).
+19. Generate Mermaid.
+20. Render Mermaid in the browser.
+21. Copy/download Mermaid; download Turtle.
+22. Generate a Markdown summary.
+23. **Generate the ZIP export with manifest, where each serialization is recorded as an `ecm:Serialization` linked to the project.**
+24. Validate duplicate IRIs, missing references, dangling references, **and missing realist anchor**.
+25. Perform cascading IRI updates with collision detection.
+26. Acknowledge warnings.
+27. Load at least three starter examples (each with its own declared `iao:isAbout`).
 
 A developer must be able to:
 
@@ -1556,31 +1759,35 @@ These genuinely remain open and should be resolved during early implementation.
 
 ---
 
-## 31. Definition of Done for v0.3 Engineering Baseline
+## 31. Definition of Done for v0.4 Engineering Baseline
 
-The v0.3 engineering baseline is complete when:
+The v0.4 engineering baseline is complete when:
 
-1. A canonical project JSON-LD file in the VMP can represent terms (classes, object properties, datatype properties), instances, relations, literal assertions, settings, layouts, and snapshots.
-2. Core computation can validate that file in Node.js.
-3. Core computation can generate Turtle, N-Triples, semantic JSON-LD, Mermaid, and Markdown in Node.js.
-4. The browser UI can open, edit, and save the same JSON-LD file losslessly under canonical serialization.
-5. The browser UI can create instances, draw relations, add literal assertions, and generate all exports.
-6. IRI generation works in both interactive and deterministic modes.
-7. Duplicate IRIs are detected; cascading IRI updates preserve project integrity, including collision handling.
-8. Imported terms and project-created terms are distinguished, with imported terms immutable.
-9. Subclass and subproperty are preserved on import and export.
-10. The system functions offline.
-11. No server, database, broker, or cloud service is required.
-12. Two compliant implementations produce byte-identical canonical and derived artifacts for the conformance fixtures.
-13. Legacy v0.2 documents migrate to v0.3 cleanly with a migration report.
-14. The full test strategy (§21) is implemented; golden-file conformance suite passes.
-15. Contextual help content (§25) is written and bundled.
+1. A canonical project JSON-LD file in the VMP can represent the project as an `iao:OntologyDesignPattern` (with `iao:isAbout`), terms (classes, object properties, datatype properties), instances, relations, literal assertions, serializations, settings, layouts, and snapshots.
+2. The Project TBox (§5.14) is bundled with the implementation and prepended to all semantic exports.
+3. Core computation can validate a project file in Node.js, including the realist-anchor checks.
+4. Core computation can generate Turtle, N-Triples, semantic JSON-LD, Mermaid, and Markdown in Node.js. Turtle and N-Triples include the Project TBox; semantic JSON-LD retains the project root as a typed ICE.
+5. The browser UI can open, edit, and save the same JSON-LD file losslessly under canonical serialization.
+6. The browser UI can declare and edit `iao:isAbout`, create instances, draw relations, add literal assertions, and generate all exports.
+7. IRI generation works in both interactive and deterministic modes.
+8. Duplicate IRIs are detected; cascading IRI updates preserve project integrity, including collision handling.
+9. Imported terms and project-created terms are distinguished, with imported terms immutable.
+10. Subclass and subproperty are preserved on import and export.
+11. The export manifest is itself an RDF document listing each serialization as an `ecm:Serialization` linked to the project by `ecm:isSerializationOf`.
+12. The system functions offline.
+13. No server, database, broker, or cloud service is required.
+14. Two compliant implementations produce byte-identical canonical and derived artifacts for the conformance fixtures.
+15. Legacy v0.2 and v0.3 documents migrate to v0.4 cleanly with a migration report. The v0.3 → v0.4 placeholder warning is surfaced to the user.
+16. The full test strategy (§21) is implemented; golden-file conformance suite passes, including TBox prepending and manifest realist-typing.
+17. Contextual help content (§25) is written and bundled, including help for the realist anchoring concepts.
 
 ---
 
 ## 32. Summary
 
-v0.3 makes the Visual RDF / Knowledge Graph Modeler engineering-ready by resolving foundational decisions that v0.2 deferred. It defines a normative JSON-LD profile (the VMP) with a canonical serializer; partitions the project document into a Semantic Layer and an Editor Layer with a precise semantic projection; admits datatype properties and literal assertions; specifies the relation model and argues for its design; commits the system to honest, layered determinism guarantees; adds versioning, concurrency, and security policies; reorganizes validation into hard errors and soft warnings; and binds the spec to a test strategy that two implementations could conform to.
+v0.4 reframes the Visual RDF / Knowledge Graph Modeler as a **realist-anchored** modeling tool. Every project is an Information Content Entity — typed as `iao:OntologyDesignPattern`, a subclass of `cco:InformationContentEntity` (CCO `ont00000958`) — that declares what portion of reality it is about. Every generated serialization is itself an ICE recorded in the project's `ecm:serializations` array and exported as part of an RDF-typed manifest. The project document is no longer editor metadata about a graph; it is a node in its own modeled graph.
+
+The architecture is unchanged: a deterministic JSON-LD transformation engine with browser and Node execution surfaces, a normative profile (VMP), a layered Semantic / Editor partition, an explicit determinism model, an explicit concurrency model, an explicit security model, and a conformance test strategy. What v0.4 adds is the ontological honesty about what the tool's own data is.
 
 The product narrative is unchanged:
 
@@ -1590,4 +1797,4 @@ The architectural discipline is unchanged:
 
 > Browser or Node. JSON-LD as canonical. Deterministic core. Everything else is an adapter.
 
-What is new in v0.3 is that an engineer reading this document can begin writing code without having to invent the parts that v0.2 left underspecified.
+What is new in v0.4 is the realist commitment that gives the *Reusable* and *Canonical* stages of the narrative real semantic weight. A reusable pattern is not just a saved diagram; it is an ICE about a portion of reality, with a declared aboutness, citable and typeable in a pattern catalog. A canonical pattern is a community-recognized ODP, not just a starred file. The tool now models its own outputs the way it asks its users to model theirs.
