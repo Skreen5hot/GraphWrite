@@ -1,6 +1,6 @@
 # Engineering-Ready Specification v0.3
 
-# Visual RDF / Knowledge Graph Modeler
+# Graphwright
 
 **Strategic program:** Edge Canonical Modeling
 **Specification version:** v0.3 Engineering-Ready
