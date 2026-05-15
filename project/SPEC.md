@@ -1,12 +1,23 @@
-# Engineering-Ready Specification v0.3
+# Engineering-Ready Specification v0.3.1
 
-# Graphwright
+# GraphWrite
 
 **Strategic program:** Edge Canonical Modeling
-**Specification version:** v0.3 Engineering-Ready
+**Specification version:** v0.3.1 Engineering-Ready
 **Status:** Ready for implementation planning
 **Canonical execution model:** Browser or local Node.js runtime
 **Canonical representation:** JSON-LD 1.1, Visual Modeler Profile (defined in §5)
+
+---
+
+## Revision Notes (v0.3 → v0.3.1)
+
+Patch-level addition. No normative changes to the VMP or to any FR/NFR. Adds:
+
+- §15.9 — non-normative implementation guidance for browser-PWA persistent local storage via the File System Access API. References the external implementation guide *Persistent Local Storage for Progressive Web Apps* (v1.3.1).
+- Cross-references in FR-S006 and §29 Phase 5 to §15.9.
+
+The v0.3 conformance suite, golden files, and Definition of Done are unchanged.
 
 ---
 
@@ -931,6 +942,78 @@ JSZip or equivalent.
 
 Canonical project state is managed as immutable updates to the project document. UI framework state is derived. Reducer / command-pattern dispatch is recommended. Library choices: Zustand, Redux Toolkit, XState, or custom reducer architecture. The state library is not core; core transformations are callable independently.
 
+### 15.9 Persistent Local Storage (Browser PWA)
+
+Users need their project files to be durable, user-owned, inspectable, and not at the mercy of a cache wipe. The browser's File System Access API (FSA) gives the user a real folder on disk that they can see, back up, copy to a USB drive, or open with any text editor. A project is a JSON-LD file the user should always be able to find and grab without the app's help.
+
+#### 15.9.1 Three-Tier Hybrid
+
+A production browser deployment uses three storage tiers, each for what it is good at:
+
+- **File System Access API (FSA)** — system of record. Holds the canonical project files (`project.jsonld`), imported ontology source files, and exported artifacts. The user picks the folder once; the app remembers the directory handle and reconnects on subsequent visits. The user can move the folder, back it up, or open the files in any other tool.
+- **Origin Private File System (OPFS)** — derived caches. Holds parsed-ontology caches, term-index lookups, and other state the app can rebuild from FSA content. Sandboxed and faster than FSA for high-frequency access. Survives session but not "Clear site data."
+- **IndexedDB** — indexes and the FSA directory handle. Holds the recent-projects list, last-active-project pointer, UI state, and the persisted FSA `FileSystemDirectoryHandle` itself.
+
+The FSA folder is the truth. OPFS and IndexedDB are accelerators that can be wiped without losing the user's work.
+
+#### 15.9.2 Recommended On-Disk Layout
+
+Inside the user-picked folder:
+
+```
+<user-picked-folder>/
+  .app/
+    version              # marker for adoption / version detection
+    audit.log            # rolling log of writes, renames, removes
+    audit-001.log        # rotated audit logs (retention bounded)
+  projects/
+    <project-name>/
+      project.jsonld
+      ontologies/
+        <imported-ontology-files>
+      snapshots/
+        <snapshot-id>.jsonld   # optional, if snapshots are externalized
+      exports/
+        graph.ttl              # most recent export
+        graph.nt
+        graph.jsonld
+        diagram.mmd
+        model-summary.md
+```
+
+The `.app/` namespace is reserved for app-internal metadata. The public storage API refuses to write or mutate under `.app/`; reads under `.app/` (e.g., showing the audit log to the user in Settings) are permitted. This guarantees the audit log cannot be corrupted by misuse of the public write API.
+
+Snapshots may be inlined in `project.jsonld` (per §5.12) or externalized as separate JSON-LD files under `snapshots/`. Externalization is recommended once snapshot history exceeds a configurable size threshold.
+
+#### 15.9.3 Properties Required of the Storage Layer
+
+The FSA implementation must provide:
+
+- **Atomic writes** by default. A `writeBytes("project.jsonld", …)` either fully replaces the file or leaves the previous content intact; no partial-write windows where the project is corrupted. Where atomicity cannot be guaranteed (legacy browsers without `FileSystemWritableFileStream` or `handle.move()`), the fallback is documented and surfaced in the audit log as `atomic: false`.
+- **Path sanitization at the boundary.** Filenames coming from project names or user-typed slugs are NFC-normalized, rejected if they contain control characters, path separators, reserved Windows device names (`CON`, `PRN`, `NUL`, `COM1`, etc.), or trailing dots/spaces, and capped at 200 characters per segment and ~380 characters total path length.
+- **Permission lifecycle management.** The app handles `granted` / `prompt` / `denied` states, persistent permissions where the browser supports them, and a "Reconnect" UX for the case where the browser drops the permission between sessions. The folder picker is invoked exactly once at first run, and an `AbortError` from user cancellation is handled silently.
+- **Adoption semantics.** If the user picks a folder that already contains an app directory from another installation, the app does not silently claim it. The user is asked to adopt with acknowledgment, pick a different folder, or cancel.
+- **Audit log.** Every write, rename, remove, and `mkdir` emits a structured audit line with timestamp, action, and details. The log rotates at a configurable size with bounded retention. The user can view the log in Settings.
+- **Lock-ordered concurrency.** Writes to a given path acquire a per-path lock. Multi-tab coordination (per §11.4) uses `BroadcastChannel` so a save in one tab invalidates stale state in others.
+
+These properties complement and operationalize §11 (Concurrency) and §12 (Security) for the browser case.
+
+#### 15.9.4 Implementation Reference
+
+The full implementation pattern — capability module, atomic write protocol, sanitization rules, permission lifecycle, audit log, threat model, testing checklist, and a self-contained working example — is documented in:
+
+> **Persistent Local Storage for Progressive Web Apps — A Practical Implementation Guide for the File System Access API**, v1.3.1.
+
+The guide is self-contained: an engineering team can implement the browser storage layer for this tool against the guide alone. Implementations of FR-S002 (file save/load) and FR-S006 (local folder sync) should follow the guide's pattern. The guide's Appendix B (threat model) complements §12 of this spec; its Appendix C (`sanitizeName` test corpus) is the recommended sanitization test fixture.
+
+#### 15.9.5 Browser Support and Fallbacks
+
+- **Primary target:** Chromium-based browsers (Edge, Chrome, Brave, Opera, Arc) at version ≥ 110, where FSA is fully supported.
+- **Safari / Firefox fallback:** these browsers do not support `showDirectoryPicker()`, or support only a partial subset. The app falls back to per-file `<input type="file">` for open and explicit Save As downloads for save. IndexedDB is the local persistence layer in these browsers. The user can still produce and consume the canonical JSON-LD project format; only the "live folder on disk" UX degrades to per-file open/save.
+- **Feature detection at runtime** decides which path to use. The fallback is surfaced to the user, not silent.
+
+The spec does not require FSA for compliance — the canonical project format is a single JSON-LD file that any open/save mechanism can handle. FSA is the recommended *UX* for the browser PWA case.
+
 ---
 
 ## 16. Offline and Degraded Behavior
@@ -1084,7 +1167,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-S003 | IndexedDB adapter (optional). Stores canonical project documents losslessly. |
 | FR-S004 | Project picker, if IndexedDB is implemented. |
 | FR-S005 | ZIP packaging adapter (export only in v0.3). |
-| FR-S006 | Local folder sync via File System Access API where available (optional). |
+| FR-S006 | Local folder sync via File System Access API where available (optional). Implementation follows §15.9. |
 | FR-S007 | BroadcastChannel coordination across browser tabs sharing IndexedDB (optional but recommended; §11.4). |
 
 ### 18.4 Export
@@ -1421,7 +1504,7 @@ These genuinely remain open and should be resolved during early implementation.
 - snapshots;
 - stale-save detection;
 - BroadcastChannel tab coordination;
-- File System Access API spike.
+- File System Access API integration per §15.9.
 
 ### Phase 6: Edge Canonical Bridge
 
