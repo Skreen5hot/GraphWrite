@@ -50,6 +50,7 @@ Two kinds of agents:
 | [applier](.claude/agents/applier.md) | Applies a developer / planner agent's `changes[]` to the filesystem with strict `before`-snippet matching, multi-change atomic apply, and UTF-8 BOM on new files |
 | [mojibake-repair](.claude/agents/mojibake-repair.md) | Cleans known cp1252-UTF8 mojibake patterns from upstream `changes[]` before they reach the applier |
 | [question-resolver](.claude/agents/question-resolver.md) | Takes synthesist `outstanding_questions` + operator structured answers, drafts ADR entries (matching ADR-001 format) for DECISIONS.md |
+| [verification-ritual](.claude/agents/verification-ritual.md) | v2.8.0 Checkpoint 1. Orchestrates the verification ritual per FNSR Spec 02. Loads category specs from `surfaces/verification/categories/` at dispatch time; runs deterministic Cat 1–7 predicates against the path-fence-authored artifact. Cat 8 hybrid + Cat 10 hook land in CP2; Cat 9 LLM judge in CP3. |
 
 Shared agent contract:
 - Output envelope: `{"outputs": {...}}`. No prose outside the JSON.

@@ -988,10 +988,621 @@ def _question_resolver(task: dict[str, Any],
     }, "", "")
 
 
+# ---------- Verification ritual (FNSR Spec 02, v2.8.0 Checkpoint 1) ------
+#
+# The verification ritual catches references that drift from canonical
+# sources at machine speed. This implementation provides the
+# deterministic Cat 1-7 predicates plus the orchestrator. Cat 8/9/10
+# (hybrid / LLM / TypeScript-parser) land in Checkpoints 2-3.
+
+SURFACES_DIR = Path(os.environ.get("FNSR_SURFACES_DIR", "./surfaces"))
+
+
+def _parse_category_frontmatter(text: str) -> Optional[dict]:
+    """Parse a category spec's YAML-ish frontmatter (stdlib-only).
+
+    Supports flat key: value and key: [a, b, c] list syntax. Multi-line
+    nested values are not supported; category specs use flat fields.
+    """
+    if not text.startswith("---"):
+        return None
+    end = text.find("---", 3)
+    if end < 0:
+        return None
+    frontmatter = text[3:end]
+    out: dict[str, Any] = {}
+    for line in frontmatter.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if ":" not in stripped:
+            continue
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        value = value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            inner = value[1:-1]
+            out[key] = [
+                s.strip().strip('"').strip("'")
+                for s in inner.split(",")
+                if s.strip()
+            ]
+        else:
+            out[key] = value.strip('"').strip("'")
+    return out
+
+
+def _load_category_specs(surface: str = "verification") -> list[dict]:
+    """Load every cat-*.md under surfaces/<surface>/categories/.
+
+    Returns category-spec dicts (frontmatter fields populated, plus
+    `_path`). Files without frontmatter or with no `category_id` are
+    skipped. Order is sorted by filename (cat-01-... before cat-02-...).
+    """
+    categories_dir = SURFACES_DIR / surface / "categories"
+    if not categories_dir.exists():
+        return []
+    specs = []
+    for path in sorted(categories_dir.glob("cat-*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        fm = _parse_category_frontmatter(text)
+        if not fm or "category_id" not in fm:
+            continue
+        fm["_path"] = str(path)
+        specs.append(fm)
+    return specs
+
+
+def _resolve_predicate(qualified_name: str):
+    """Resolve a 'fnsr_daemon.cat_NN_xxx' style reference to a callable.
+
+    Only looks up names within this module's globals — category specs
+    declaring predicates in other modules are intentionally not
+    supported in v2.8.0 (subject-project hook predicates land in
+    Checkpoint 2 with Cat 10).
+    """
+    if not isinstance(qualified_name, str) or "." not in qualified_name:
+        return None
+    module_part, attr = qualified_name.rsplit(".", 1)
+    if module_part not in ("fnsr_daemon", "__main__"):
+        return None
+    return globals().get(attr)
+
+
+def _read_canonical_source(value: Any) -> Any:
+    """Resolve a canonical-source value: file path -> file content,
+    inline string -> as-is, dict -> recursively resolve each value."""
+    if isinstance(value, dict):
+        return {k: _read_canonical_source(v) for k, v in value.items()}
+    if isinstance(value, str):
+        # Treat as file path only when it looks pathlike AND the file
+        # exists. Inline strings (with newlines, or non-existent paths)
+        # are passed through.
+        if value and "\n" not in value and len(value) < 500:
+            try:
+                p = Path(value)
+                if p.exists() and p.is_file():
+                    return p.read_text(encoding="utf-8")
+            except (OSError, ValueError):
+                pass
+        return value
+    return value
+
+
+# ---- Category predicates (Cat 1-7) --------------------------------------
+
+_SECTION_NUMBER_RE = re.compile(r"\b(\d+(?:\.\d+){1,3})\b")
+_SECTION_CITATION_RE = re.compile(r"§\s*(\d+(?:\.\d+)+)")
+
+
+def _extract_spec_sections(spec_text: str) -> set:
+    """Extract section numbers from markdown headers in a spec document.
+    Recognizes patterns like `## 3.4.1 Title`, `### §3.4.1: Title`,
+    `## 3.4.1.2 Sub-title`, etc.
+    """
+    sections = set()
+    for line in spec_text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("#"):
+            continue
+        for m in _SECTION_NUMBER_RE.finditer(stripped):
+            sections.add(m.group(1))
+    return sections
+
+
+def cat_01_spec_section_existence(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 1: §N.M citations exist as section headers in the spec.
+
+    STRUCTURAL only. Does not check cited content matches the citing
+    framing — that boundary is Cat 9 candidacy.
+    """
+    spec = canonical_sources.get("spec")
+    if not isinstance(spec, str):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'spec' missing"}}
+    cited = sorted(set(m.group(1) for m in _SECTION_CITATION_RE.finditer(artifact)))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_sections": [], "note": "no §N.M citations in artifact"}}
+    spec_sections = _extract_spec_sections(spec)
+    unmatched = [s for s in cited if s not in spec_sections]
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cited_sections": cited,
+                              "unmatched": unmatched,
+                              "spec_section_count": len(spec_sections)}}
+    return {"status": "pass", "evidence": {"cited_sections": cited}}
+
+
+def cat_02_adr_cross_reference(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 2: ADR-NNN citations exist as `## ADR-NNN:` headers in the
+    canonical decisions registry. Same registry parser as v2.6.0's
+    `_check_adr_citations`; the verification-ritual variant runs
+    against arbitrary artifact text.
+    """
+    decisions = canonical_sources.get("decisions")
+    if not isinstance(decisions, str):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'decisions' missing"}}
+    cited = sorted(set(_ADR_CITATION_RE.findall(artifact)))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_adrs": [], "note": "no ADR-NNN citations in artifact"}}
+    registered = set(_ADR_HEADER_RE.findall(decisions))
+    unmatched = [c for c in cited if c not in registered]
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cited_adrs": cited, "unmatched": unmatched,
+                              "registered_count": len(registered)}}
+    return {"status": "pass", "evidence": {"cited_adrs": cited}}
+
+
+_Q_RULING_RE = re.compile(r"\bQ-\d+(?:-Step\d+)?-[A-Z](?:\.\d+)?\b")
+
+
+def cat_03_q_ruling_cross_reference(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 3: Q-N-X / Q-N-StepM-X citations resolve to identifiers in
+    a prior cycle artifact.
+
+    canonical_sources['prior_cycle_artifacts'] is a {path: text} dict.
+    A Q-ruling is found if any prior artifact contains it as a header
+    anchor OR (weaker) as an inline reference.
+    """
+    prior = canonical_sources.get("prior_cycle_artifacts")
+    if not isinstance(prior, dict):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'prior_cycle_artifacts' "
+                                        "missing or not a dict"}}
+    cited = sorted(set(_Q_RULING_RE.findall(artifact)))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_q_rulings": [], "note": "no Q-ruling citations"}}
+    found = {}
+    for q in cited:
+        for path, text in prior.items():
+            if not isinstance(text, str):
+                continue
+            header_pattern = re.compile(
+                rf"^#{{1,6}}.*?\b{re.escape(q)}\b", re.MULTILINE)
+            if header_pattern.search(text):
+                found[q] = {"path": path, "match": "header"}
+                break
+            if re.search(rf"\b{re.escape(q)}\b", text):
+                found[q] = {"path": path, "match": "inline"}
+                break
+    unmatched = [q for q in cited if q not in found]
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cited_q_rulings": cited, "unmatched": unmatched,
+                              "matched": found}}
+    return {"status": "pass",
+            "evidence": {"cited_q_rulings": cited, "matched": found}}
+
+
+_REASON_CITATION_RE = re.compile(r'"expectedReason"\s*:\s*"([^"]+)"')
+# Object.freeze([...]) — body capture must tolerate `] as const)` suffix
+# (TypeScript `as const` assertion between the array close and the call
+# close).
+_FROZEN_ENUM_BODY_RE = re.compile(
+    r"Object\.freeze\s*\(\s*\[([\s\S]*?)\][^)]*\)", re.MULTILINE
+)
+_TS_STRING_LITERAL_RE = re.compile(r'"([^"]+)"')
+
+
+def cat_04_reason_code_frozen_enum(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 4: `expectedReason: "X"` citations are members of the frozen
+    Object.freeze'd enum in the canonical reason-codes source.
+
+    Logic Team instance: src/kernel/reason-codes.ts. Subject projects
+    with different conventions override the predicate via the category
+    spec's python_predicate field.
+    """
+    text = canonical_sources.get("reason_codes")
+    if not isinstance(text, str):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'reason_codes' missing"}}
+    cited = sorted(set(_REASON_CITATION_RE.findall(artifact)))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_reasons": [],
+                              "note": "no expectedReason citations in artifact"}}
+    members = set()
+    for m in _FROZEN_ENUM_BODY_RE.finditer(text):
+        body = m.group(1)
+        for sm in _TS_STRING_LITERAL_RE.finditer(body):
+            members.add(sm.group(1))
+    if not members:
+        return {"status": "miss",
+                "evidence": {"reason": "no Object.freeze([...]) block found in "
+                                        "canonical reason_codes source; cannot "
+                                        "extract the frozen enum"}}
+    unmatched = [c for c in cited if c not in members]
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cited_reasons": cited, "unmatched": unmatched,
+                              "frozen_enum_size": len(members)}}
+    return {"status": "pass",
+            "evidence": {"cited_reasons": cited, "frozen_enum_size": len(members)}}
+
+
+_TYPE_CITATION_RE = re.compile(r'"@type"\s*:\s*"([^"]+)"')
+# Match `type X = "a" | "b" | "c"` or pipe-prefixed multi-line form
+# `type X =\n  | "a"\n  | "b"`. The body capture is permissive: optional
+# leading pipe per string member.
+_TS_UNION_RE = re.compile(
+    r"(?:type\s+\w+\s*=|export\s+type\s+\w+\s*=)\s*"
+    r"((?:\s*\|?\s*\"[^\"]+\"\s*)+)",
+    re.MULTILINE,
+)
+
+
+def cat_05_fol_owl_type_discriminator(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 5: `@type: "X"` citations are members of the union of FOL and
+    OWL canonical type sets.
+
+    Cat 5 covers @type STRING existence. Field-shape consistency for the
+    object carrying @type is Cat 10 candidacy.
+    """
+    fol = canonical_sources.get("fol_types")
+    owl = canonical_sources.get("owl_types")
+    if not isinstance(fol, str) or not isinstance(owl, str):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'fol_types' or 'owl_types' missing"}}
+    cited = sorted(set(_TYPE_CITATION_RE.findall(artifact)))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_types": [],
+                              "note": "no @type citations in artifact"}}
+    canonical = set()
+    for source_text in (fol, owl):
+        for m in _TS_UNION_RE.finditer(source_text):
+            for sm in _TS_STRING_LITERAL_RE.finditer(m.group(1)):
+                canonical.add(sm.group(1))
+    if not canonical:
+        return {"status": "miss",
+                "evidence": {"reason": "no `type X = '...' | '...'` union literal "
+                                        "found in fol_types or owl_types canonical "
+                                        "sources"}}
+    unmatched = [c for c in cited if c not in canonical]
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cited_types": cited, "unmatched": unmatched,
+                              "canonical_type_count": len(canonical)}}
+    return {"status": "pass",
+            "evidence": {"cited_types": cited, "canonical_type_count": len(canonical)}}
+
+
+_FIXTURE_FIELD_VALUE_RE = re.compile(
+    r'"{field}"\s*:\s*("[^"]*"|true|false|null|-?\d+(?:\.\d+)?)'
+)
+
+
+def cat_06_manifest_mirror_consistency(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 6: manifest entries mirror their fixture's expectedOutcome.
+
+    canonical_sources['manifest'] is the manifest text (JSON).
+    canonical_sources['fixtures'] is a {path: text} dict of fixture
+    contents. For each manifest entry, compare the declared-mirror
+    fields against the fixture's values.
+    """
+    manifest_text = canonical_sources.get("manifest")
+    fixtures = canonical_sources.get("fixtures")
+    if not isinstance(manifest_text, str) or not isinstance(fixtures, dict):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'manifest' or 'fixtures' missing"}}
+    try:
+        manifest = json.loads(manifest_text)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {"status": "miss",
+                "evidence": {"reason": f"manifest is not valid JSON: {e}"}}
+    entries = manifest
+    if isinstance(manifest, dict):
+        entries = manifest.get("entries") or manifest.get("manifest") or []
+    if not isinstance(entries, list):
+        return {"status": "miss",
+                "evidence": {"reason": "manifest is not a list of entries"}}
+    mirror_fields = (
+        "expectedOutcome",
+        "expectedConsistencyResult",
+        "canaryRole",
+        "expectedRequiredPatternsCount",
+    )
+    divergences = []
+    matched = []
+    skipped_no_fixture = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        fixture_path = entry.get("fixture") or entry.get("path") or entry.get("file")
+        if not fixture_path or fixture_path not in fixtures:
+            skipped_no_fixture.append(fixture_path)
+            continue
+        fixture_text = fixtures[fixture_path]
+        if not isinstance(fixture_text, str):
+            continue
+        for field in mirror_fields:
+            if field not in entry:
+                continue
+            pat = re.compile(_FIXTURE_FIELD_VALUE_RE.pattern.replace(
+                "{field}", re.escape(field)))
+            m = pat.search(fixture_text)
+            if not m:
+                divergences.append({"fixture": fixture_path, "field": field,
+                                     "reason": "field not found in fixture"})
+                continue
+            try:
+                fixture_val = json.loads(m.group(1))
+            except (json.JSONDecodeError, ValueError):
+                fixture_val = m.group(1).strip('"')
+            entry_val = entry[field]
+            if fixture_val != entry_val:
+                divergences.append({
+                    "fixture": fixture_path, "field": field,
+                    "manifest_value": entry_val, "fixture_value": fixture_val,
+                })
+            else:
+                matched.append({"fixture": fixture_path, "field": field})
+    if divergences:
+        return {"status": "veto",
+                "evidence": {"divergences": divergences, "matched": matched,
+                              "skipped_no_fixture": skipped_no_fixture}}
+    return {"status": "pass",
+            "evidence": {"matched": matched,
+                          "skipped_no_fixture": skipped_no_fixture}}
+
+
+_MD_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
+_PATHLIKE_REF_RE = re.compile(r"\b([\w./-]+\.md)\b")
+_RECIPROCAL_HINTS = (
+    "see also", "referenced from", "captured in", "cross-referenced from",
+)
+
+
+def cat_07_cross_phase_cross_reference(
+    artifact: str, canonical_sources: dict
+) -> dict:
+    """Cat 7: cross-references to prior cycle artifacts exist and (when
+    citing context implies reciprocity) are symmetric.
+
+    canonical_sources['cycle_artifacts'] is a {path: text} dict. The
+    artifact's own self-path can be passed via canonical_sources
+    ['_artifact_self_path'] to enable reciprocity detection.
+    """
+    cycle_artifacts = canonical_sources.get("cycle_artifacts")
+    if not isinstance(cycle_artifacts, dict):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'cycle_artifacts' missing"}}
+    cited = set()
+    for m in _MD_LINK_RE.finditer(artifact):
+        cited.add(m.group(1))
+    for m in _PATHLIKE_REF_RE.finditer(artifact):
+        cited.add(m.group(1))
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_paths": [],
+                              "note": "no .md path references in artifact"}}
+    self_path = canonical_sources.get("_artifact_self_path")
+    has_reciprocal_hint = any(h in artifact.lower() for h in _RECIPROCAL_HINTS)
+    dangling = []
+    asymmetric = []
+    matched = []
+    for cited_path in sorted(cited):
+        if cited_path == self_path:
+            continue  # don't flag self-references
+        if cited_path not in cycle_artifacts:
+            dangling.append(cited_path)
+            continue
+        target_text = cycle_artifacts.get(cited_path)
+        if not isinstance(target_text, str):
+            dangling.append(cited_path)
+            continue
+        if self_path and has_reciprocal_hint:
+            self_tail = self_path.rsplit("/", 1)[-1]
+            reciprocal = self_path in target_text or self_tail in target_text
+            if not reciprocal:
+                asymmetric.append({"cited": cited_path,
+                                    "reason": "no reciprocal back-reference"})
+                continue
+        matched.append(cited_path)
+    if dangling or asymmetric:
+        return {"status": "veto",
+                "evidence": {"dangling": dangling, "asymmetric": asymmetric,
+                              "matched": matched}}
+    return {"status": "pass",
+            "evidence": {"matched": matched,
+                          "reciprocity_checked": bool(self_path and has_reciprocal_hint)}}
+
+
+# ---- verification-ritual orchestrator ----------------------------------
+
+def _verification_ritual(task: dict[str, Any],
+                          upstream: dict[str, Any]) -> "WorkerResult":
+    """Run the verification ritual against an artifact per FNSR Spec 02.
+
+    See `.claude/agents/verification-ritual.md` for the input/output
+    contract.
+
+    This system agent runs the deterministic categories (Cat 1-7 in
+    Checkpoint 1; Cat 8-pre-routing + Cat 10 in Checkpoint 2). LLM-
+    required categories emit `overall_status: needs_llm_judgment` so
+    the operator can queue a follow-up `verification-ritual-llm`
+    worker agent task (Checkpoint 3).
+    """
+    inputs = task.get("inputs") or {}
+    artifact = inputs.get("artifact_text")
+    artifact_path = inputs.get("artifact_path")
+    if artifact is None and artifact_path:
+        try:
+            artifact = Path(artifact_path).read_text(encoding="utf-8")
+        except OSError as e:
+            return WorkerResult(True, {
+                "error": "artifact_unreadable",
+                "path": artifact_path,
+                "details": str(e),
+            }, "", "")
+    if not isinstance(artifact, str):
+        return WorkerResult(True, {
+            "error": "artifact_missing",
+            "hint": "provide artifact_text or artifact_path in inputs",
+        }, "", "")
+    canonical_inputs = inputs.get("canonical_sources") or {}
+    canonical_sources = {
+        k: _read_canonical_source(v) for k, v in canonical_inputs.items()
+    }
+    self_path = inputs.get("artifact_self_path") or artifact_path
+    if self_path:
+        canonical_sources["_artifact_self_path"] = self_path
+    cadence = inputs.get("cadence") or "pre-routing"
+    surface = inputs.get("surface") or "verification"
+    specs = _load_category_specs(surface)
+    if not specs:
+        return WorkerResult(True, {
+            "error": "no_category_specs_found",
+            "surface": surface,
+            "hint": (f"expected category files under "
+                     f"{SURFACES_DIR}/{surface}/categories/"),
+        }, "", "")
+    per_category_result: list[dict] = []
+    veto_count = 0
+    miss_count = 0
+    pass_count = 0
+    deferred_llm_count = 0
+    for spec in specs:
+        cat_id = spec.get("category_id", "?")
+        spec_cadence = spec.get("cadence", "pre-routing")
+        if cadence == "pre-routing":
+            applicable = spec_cadence in (
+                "pre-routing", "single-pre-routing", "two-cadence",
+            )
+        elif cadence == "activation-time":
+            applicable = spec_cadence in ("activation-time", "two-cadence")
+        else:
+            applicable = False
+        if not applicable:
+            continue
+        # LLM-only categories defer to verification-ritual-llm (CP3)
+        if spec.get("implementation_mode") == "llm":
+            per_category_result.append({
+                "category_id": cat_id,
+                "name": spec.get("name", cat_id),
+                "status": "deferred_llm",
+                "evidence": {"reason": "LLM-only categories run via "
+                                        "verification-ritual-llm in CP3+; "
+                                        "this run is deterministic-only"},
+            })
+            deferred_llm_count += 1
+            continue
+        required_keys = spec.get("canonical_source_keys") or []
+        missing_keys = [k for k in required_keys
+                        if k not in canonical_sources]
+        if missing_keys:
+            per_category_result.append({
+                "category_id": cat_id,
+                "name": spec.get("name", cat_id),
+                "status": "miss",
+                "evidence": {
+                    "reason": "required canonical source(s) missing",
+                    "missing_canonical_source_keys": missing_keys,
+                },
+            })
+            miss_count += 1
+            continue
+        pred_name = spec.get("python_predicate")
+        predicate = _resolve_predicate(pred_name) if pred_name else None
+        if predicate is None:
+            per_category_result.append({
+                "category_id": cat_id,
+                "name": spec.get("name", cat_id),
+                "status": "miss",
+                "evidence": {"reason": "predicate not resolvable",
+                              "declared": pred_name or "(none)"},
+            })
+            miss_count += 1
+            continue
+        try:
+            result = predicate(artifact, canonical_sources)
+        except Exception as e:
+            per_category_result.append({
+                "category_id": cat_id,
+                "name": spec.get("name", cat_id),
+                "status": "miss",
+                "evidence": {"reason": "predicate raised exception",
+                              "exception_type": type(e).__name__,
+                              "exception": str(e)},
+            })
+            miss_count += 1
+            continue
+        per_category_result.append({
+            "category_id": cat_id,
+            "name": spec.get("name", cat_id),
+            **result,
+        })
+        status = result.get("status")
+        if status == "veto":
+            veto_count += 1
+        elif status == "miss":
+            miss_count += 1
+        elif status == "pass":
+            pass_count += 1
+    if veto_count > 0:
+        overall_status = "veto"
+    elif deferred_llm_count > 0:
+        overall_status = "needs_llm_judgment"
+    else:
+        overall_status = "pass"
+    summary = (
+        f"verification ritual ({cadence}): {pass_count} pass, "
+        f"{veto_count} veto, {miss_count} miss"
+        + (f", {deferred_llm_count} deferred-llm" if deferred_llm_count else "")
+    )
+    return WorkerResult(True, {
+        "per_category_result": per_category_result,
+        "overall_status": overall_status,
+        "new_candidacies": [],  # populated in CP3+ when patterns no category covers surface
+        "summary": summary,
+    }, "", "")
+
+
 SYSTEM_AGENTS = {
     "applier": _apply_changes,
     "mojibake-repair": _mojibake_repair,
     "question-resolver": _question_resolver,
+    "verification-ritual": _verification_ritual,
 }
 
 
