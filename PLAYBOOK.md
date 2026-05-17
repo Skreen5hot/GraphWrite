@@ -1,0 +1,358 @@
+# Barcode Operator Playbook
+
+Failure-mode recognition and recovery patterns for the Barcode orchestrator. Written from real-world experience running the kickoff ritual against a 95KB SPEC on Windows. Each section follows the same shape: **what you see**, **what it means**, **how to recover**.
+
+This document complements [CLAUDE.md](CLAUDE.md) (the formal contract) and [README.md](README.md) (the quick-start). It exists because most failures aren't bugs in the orchestrator — they're patterns at the boundary between the deterministic daemon and the non-deterministic LLM workers. Recognizing them quickly saves hours.
+
+---
+
+## 1. Recognizing failure modes from the daemon log
+
+### `before_not_found`
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN-apply blocked by CPS: agent reported structured error: 'apply_partial_failure'
+```
+And inspecting state.jsonld history shows `reason: before_not_found` for one or more changes.
+
+**What it means:** The applier searched the target file for the developer/planner agent's `before` snippet and found zero matches. The agent's view of the file diverges from the file's actual content.
+
+**Common causes:**
+
+| Cause | Diagnostic |
+|---|---|
+| **Mojibake in agent output OR on disk** | Compare the change's `before` bytes against the file's bytes at the expected location. Look for `Â§` vs `§`, `â€"` vs `—`, `â†'` vs `→` — see § 6. |
+| **Line endings (CRLF vs LF)** | File has `\r\n`, agent emitted `\n`. Run `sed -i 's/\r$//' file.md` to normalize, or BOM the file. |
+| **Earlier change in same chain shifted the content** | The cascade pattern that v2.3.0 fixed. Should not occur post-v2.3.0; if it does, file a bug. |
+| **Whitespace differences** | Tabs vs spaces, trailing space, or BOM presence. Compare bytes directly. |
+
+**Recovery:**
+1. Inspect the on-disk content and the agent's `before` byte-by-byte. The `_repair_mojibake` helper in `fnsr_daemon` can repair both directions.
+2. If the issue is on-disk mojibake (created by a pre-v2.3.1 applier write), run `_repair_mojibake` over the whole file via a one-off operator script (see [§ 6](#6-mojibake-cleanup-patterns)).
+3. Reset the apply task: `python tools/state_admin.py reset urn:fnsr:task:NNN-apply --reason "..."`.
+4. Re-run the daemon; the existing developer outputs are reused with the now-clean file.
+
+---
+
+### `before_not_unique`
+
+**Example log:** same as above; history shows `reason: before_not_unique, count: N`.
+
+**What it means:** The `before` snippet appears more than once in the file. The applier refuses to guess which one to replace.
+
+**Recovery:** The agent's `before` is too short. Operator options:
+- **Reject as agent error.** Re-run with a tighter instruction asking for a more specific `before` (include more surrounding context).
+- **Pick the intended occurrence manually.** Edit the file in place, mark the task as done with operator audit.
+
+---
+
+### `overlaps_other_change`
+
+**What it means:** Two changes in the same task target overlapping regions of the same file. The applier (v2.3.0+) detects this and keeps only the earliest-position one; the rest are rejected.
+
+**Recovery:** The agent proposed conflicting edits. Usually means the task scope was too broad. Split the task into smaller chunks; see [§ 4](#4-operator-task-splitting).
+
+---
+
+### `missing required output keys`
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN-edit blocked by CPS: agent 'developer' missing required output keys: ['changes', 'summary', 'self_assessment']
+```
+
+**What it means:** The agent's output didn't include keys declared in its `required_outputs:` frontmatter. Almost always the LLM dropped the envelope wrapper.
+
+**Pre-v2.4.2:** Operator had to retry or split.
+
+**Post-v2.4.2:** The daemon auto-coerces bare change-shape dicts via `_coerce_developer_envelope`. If you still see this error AFTER v2.4.2, the agent's output is not even recognizable as a change-shape dict — something more fundamental is wrong.
+
+**Recovery if still failing post-v2.4.2:**
+1. Inspect the rejected_outputs in audit history — what shape did the agent return?
+2. If it returned prose or an unknown structure: tighten the agent's contract docs and retry, OR split task to reduce scope.
+3. Hit by 3 attempts: abandon + split per [§ 4](#4-operator-task-splitting).
+
+---
+
+### `agent reported structured error`
+
+**Example log:** `agent reported structured error: 'insufficient_inputs'` or similar slug.
+
+**What it means:** The agent returned `{"outputs": {"error": "<slug>", ...}}` — a structured failure per its contract. The agent is telling you it can't do the task with the inputs given.
+
+**Recovery:**
+- Read the full rejected_outputs in audit history. The agent's `needed` / `hint` fields usually say what's missing.
+- Provide the missing inputs, reset the task, retry.
+- If `error: task_too_broad` (post-v2.5.0): the agent suggests splitting; see [§ 4](#4-operator-task-splitting).
+
+---
+
+### API 5xx errors (post-v2.4.2 backoff)
+
+**Example log:**
+```
+WARNING fnsr-daemon api transient error for task=urn:fnsr:task:NNN; sleeping 60s before returning failure
+```
+
+**What it means:** Anthropic's API returned a 5xx error. The daemon detects it and sleeps 60s before letting the next retry fire, giving the service room to recover instead of burning all attempts in a 15-second window.
+
+**Recovery:** Usually self-heals. If 3 attempts all fail with API 5xx, the task hard-fails. Wait ~10 min, reset, retry. Check [status.claude.com](https://status.claude.com) if persistent.
+
+---
+
+### `task vanished during dispatch`
+
+**Example log:** `ERROR fnsr-daemon task vanished during dispatch: urn:fnsr:task:NNN`
+
+**What it means:** Between the daemon's two state-locks (one to claim the task, one to commit the result), the task disappeared from `state.jsonld`. Almost always an operator action — manually deleting a task while the daemon is running.
+
+**Recovery:** Don't manually edit state.jsonld while the daemon is running. If you need to surgically modify state, stop the daemon first (`Ctrl-C`), edit, then restart.
+
+---
+
+### `PermissionError` on `state.jsonld` (Windows)
+
+**Example log:**
+```
+ERROR fnsr-daemon uncaught error in cycle; backing off
+Traceback (most recent call last):
+  ...
+PermissionError: [WinError 5] Access is denied: 'state.jsonld.tmp' -> 'state.jsonld'
+```
+
+**What it means:** `os.replace` couldn't atomically rename the temp file. Usually OneDrive sync, antivirus, or Windows Search indexer holding a transient lock.
+
+**Recovery:** v2.2.1's atomic_write retry handles transient cases (up to 6 retries over ~4 seconds). If you still see this regularly:
+- Move the project out of OneDrive / iCloud / Dropbox synced folders.
+- Add `state.jsonld` to your antivirus exclusion list.
+- Pause Windows Search indexing for the project directory.
+
+---
+
+### Daemon refuses to start: `could not acquire daemon lock`
+
+**Example log:**
+```
+ERROR fnsr-daemon could not acquire daemon lock at fnsr.pid; another fnsr-daemon appears to be running. Refusing to start.
+```
+
+**What it means:** v2.2.x's startup PID lock detected another live daemon on the same `state.jsonld`. Single-worker by design.
+
+**Recovery:**
+- Find the existing daemon: `Get-Process python` on Windows, `ps aux | grep fnsr` on POSIX.
+- If it's intentional: leave it alone, your second launch attempt was redundant.
+- If it's stale (orphan from a crashed terminal): kill the process. The OS releases the lock on process death; the new daemon will start clean.
+
+---
+
+## 2. Recognizing failure modes from agent outputs
+
+### `_auto_coerced: True` in outputs
+
+**What it means:** The daemon's v2.4.2 envelope-coerce detected that the LLM returned a single change-shape dict instead of the full envelope and auto-wrapped it.
+
+**What you should do:** Treat `self_assessment: needs_review` literally — the agent didn't follow contract, the auto-wrap got you a usable result, but the agent's intent may not match operator intent. Inspect before letting downstream tasks consume.
+
+---
+
+### `summary` says "repaired N mojibake instances"
+
+**What it means:** mojibake-repair found and cleaned mojibake patterns in upstream output. Working as designed.
+
+**No action needed** unless N is surprisingly large (e.g., >50 in a file you'd expect to be clean), in which case check for upstream encoding issues that need a system-level fix.
+
+---
+
+### Developer's `self_assessment: needs_review`
+
+**What it means:** The developer agent thinks its proposal is uncertain. Operator should inspect before letting it land.
+
+**Recovery:** Stop the chain at the upcoming applier task. Inspect the developer's `changes[]` manually. Decide whether to:
+- Mark the apply task done with synthetic outputs (skip)
+- Let it proceed (accept the dev's uncertainty)
+- Reset developer task with a more specific instruction
+
+---
+
+## 3. Recognizing failure modes during dispatch
+
+### Dispatch takes 30+ minutes then times out
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN requeued (attempt 1/3)
+...
+ERROR fnsr-daemon task urn:fnsr:task:NNN failed after 3 attempts
+```
+
+**What it means:** Each attempt hit `TASK_TIMEOUT_S` (default 1800s = 30 min). The LLM took too long to produce output.
+
+**Common causes:**
+- Task scope too large (model generating very long output)
+- Model stuck in a reasoning loop
+- API degraded performance
+
+**Recovery:**
+- Bump `FNSR_TASK_TIMEOUT_S=3600` (or higher) for the next run if the scope is genuinely large
+- Split the task into smaller chunks per [§ 4](#4-operator-task-splitting)
+
+---
+
+### Multiple fast failures in 15-second window (pre-v2.4.2)
+
+**What it means:** API was returning instant 500s. The daemon's retry loop fires immediately, burning all 3 attempts.
+
+**Post-v2.4.2:** The `_is_api_transient_error` check inserts a 60s sleep. Pre-v2.4.2, you'd hit this.
+
+---
+
+## 4. Operator task-splitting
+
+When a task fails repeatedly due to scope-too-broad (timeout, shape contract violation, mojibake from large output), the operator splits it into smaller sub-tasks. This is the most common recovery action.
+
+### Pattern
+
+1. **Abandon the failing chain** (so the daemon doesn't keep retrying):
+   ```
+   python tools/state_admin.py abandon urn:fnsr:task:NNN --reason "split: scope too broad" \
+       --replaced-by urn:fnsr:task:AAA,urn:fnsr:task:BBB,urn:fnsr:task:CCC
+   ```
+   This sets status=blocked and adds an `operator_reset` audit entry naming the replacement tasks.
+
+2. **Queue the smaller sub-tasks**. Each sub-task should be:
+   - One decision per developer task
+   - One file per developer task
+   - Each task: `developer` → `mojibake-repair` → `applier` chain
+   - Independent (no `depends_on` between sub-groups so failures don't block successes)
+
+3. **Run the daemon.** Sub-groups proceed in lex order; partial success is possible.
+
+### When to split
+
+| Signal | Suggested split |
+|---|---|
+| Task instruction has >3 logical decisions | One sub-task per decision |
+| Task touches >2 distinct files | One sub-task per file |
+| Task involves a "move section" operation | One sub-task to delete, one to add |
+| Task involves >5 logically independent before/after edits | One sub-task per edit, OR one sub-task per coherent region |
+| LLM consistently returns wrong-shape output | Scope is too broad; split until shape comes out right |
+
+---
+
+## 5. Mojibake cleanup patterns
+
+The Barcode template handles mojibake at three layers (v2.3.1 + v2.4.0 + v2.4.1 + v2.4.2). But sometimes mojibake gets baked into project files BEFORE those defenses were in place — particularly if the file was created by an old daemon or by hand.
+
+### Symptom
+
+Agent output contains `Â§`, `â€"`, `â†'`, or similar visual mojibake. Or the applier reports `before_not_found` even though the snippet "looks right."
+
+### One-off operator sweep across project files
+
+```powershell
+python -c "
+import sys, codecs
+from pathlib import Path
+sys.path.insert(0, '.')
+import fnsr_daemon as d
+
+for fn in Path('project').glob('*.md'):
+    raw = fn.read_bytes()
+    had_bom = raw.startswith(codecs.BOM_UTF8)
+    text = raw[3:].decode('utf-8') if had_bom else raw.decode('utf-8')
+    repaired = d._repair_mojibake(text)
+    if repaired != text:
+        fn.write_bytes(codecs.BOM_UTF8 + repaired.encode('utf-8'))
+        print(f'{fn}: repaired')
+    else:
+        print(f'{fn}: clean')
+"
+```
+
+This cleans every `.md` under `project/` using the v2.4+ pattern set. Add a UTF-8 BOM on write so future Claude Code Read tool invocations decode correctly.
+
+### Long-term
+
+Once a file has been BOM'd and cleaned, v2.3.1's applier preserves the BOM on subsequent edits and v2.4.0's mojibake-repair catches agent-output mojibake before it lands.
+
+---
+
+## 6. Inspecting the audit trail
+
+### Find a task's history
+
+```powershell
+python -c "
+import json, sys
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+s = json.load(open('state.jsonld', encoding='utf-8'))
+for t in s['tasks']:
+    if t['@id'] == 'urn:fnsr:task:NNN-name':
+        for h in t['history']:
+            print(h['ts'], h['event'])
+            if 'reason' in h.get('payload', {}):
+                print('  ', h['payload']['reason'])
+"
+```
+
+### Verify chain integrity
+
+```powershell
+python tools/state_admin.py verify
+```
+
+Walks every task's history, re-derives `chain_hash` from `prev_hash + event + payload`, reports any mismatch. Should print `PASS` for a healthy state.jsonld.
+
+### Find all blocked tasks
+
+```powershell
+python -c "
+import json
+s = json.load(open('state.jsonld', encoding='utf-8'))
+for t in s['tasks']:
+    if t['status'] == 'blocked':
+        last = t['history'][-1] if t['history'] else {}
+        print(t['@id'], '-', last.get('payload', {}).get('reason', 'no reason'))
+"
+```
+
+---
+
+## 7. When to manually edit state.jsonld
+
+The state.jsonld is operator-mutable. Sometimes the right move is to surgically modify it directly. Conventions:
+
+- **Always stop the daemon first** (`Ctrl-C`) to avoid race conditions. The daemon's lock is on `state.jsonld.lock`, not the data file.
+- **Use `tools/state_admin.py` for routine operations** (reset, abandon). It preserves the audit chain.
+- **For exotic changes, write a one-off Python script** that uses `fnsr_daemon._record` and `fnsr_daemon.hiri_sign` so audit entries chain correctly.
+- **Never delete history entries.** The chain is append-only by contract. To "undo" a state change, append an `operator_reset` event documenting the intent.
+- **After any manual edit, run `state_admin.py verify`** to confirm chain integrity.
+
+---
+
+## 8. Cross-platform gotchas
+
+### Windows + OneDrive
+
+- Move project out of OneDrive-synced folders if you can. atomic_write retries (v2.2.1) handle transient cases but persistent sync conflicts will still cause failures.
+- Add `state.jsonld`, `fnsr.pid`, project files to OneDrive's "Always keep on this device" if you must stay in OneDrive.
+
+### Claude Code Read tool encoding
+
+- Project files without UTF-8 BOM may be decoded as cp1252 on Windows, producing mojibake in agent outputs.
+- v2.3.1 makes applier write BOM by default. Manually BOM pre-existing files (see [§ 5](#5-mojibake-cleanup-patterns)).
+
+### Windows `cmd.exe` 8191-char arg limit
+
+- v2.2.2 routes prompts via stdin instead of CLI args, sidestepping the limit. No operator action needed.
+
+---
+
+## 9. When in doubt
+
+- **Inspect first, mutate second.** state.jsonld is the truth; everything in the agents' history is auditable.
+- **Stop the daemon before manual edits** to avoid races.
+- **The 4-eyes principle is built in:** every state transition is hash-chained. If something looks wrong in the current state, walk the history backward to see when it diverged.
+- **Don't fight the contracts.** If CPS is vetoing, it's vetoing for a reason. Splitting / providing more inputs is almost always the right answer.
+- **File a bug** if a daemon error message isn't covered by this playbook. Future operators benefit.

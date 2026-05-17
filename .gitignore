@@ -6,3 +6,15 @@ unit-test-results.json
 .env
 .DS_Store
 Thumbs.db
+
+# Barcode orchestrator runtime artifacts
+state.jsonld.lock
+fnsr.pid
+fnsr_test.pid
+
+# Per-user Claude Code preferences (allowlist; not portable)
+.claude/settings.json
+
+# Python bytecode
+__pycache__/
+*.pyc
