@@ -1,4 +1,4 @@
-# Your Implementation
+﻿# Your Implementation
 
 This directory is **your implementation space**. It is separate from the template's architecture documentation in `docs/`.
 

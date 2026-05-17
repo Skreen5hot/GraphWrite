@@ -1,4 +1,4 @@
-# Persistent Local Storage for Progressive Web Apps
+﻿# Persistent Local Storage for Progressive Web Apps
 
 **A Practical Implementation Guide for the File System Access API — v1.3.1**
 

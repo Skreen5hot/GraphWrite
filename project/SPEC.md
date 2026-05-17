@@ -1,4 +1,4 @@
-# GraphWrite
+﻿# GraphWrite
 
 **Strategic program:** Edge Canonical Modeling
 **Specification version:** v0.4 Engineering-Ready
@@ -1776,10 +1776,9 @@ The v0.4 engineering baseline is complete when:
 11. The export manifest is itself an RDF document listing each serialization as an `ecm:Serialization` linked to the project by `ecm:isSerializationOf`.
 12. The system functions offline.
 13. No server, database, broker, or cloud service is required.
-14. Two compliant implementations produce byte-identical canonical and derived artifacts for the conformance fixtures.
-15. Legacy v0.2 and v0.3 documents migrate to v0.4 cleanly with a migration report. The v0.3 → v0.4 placeholder warning is surfaced to the user.
-16. The full test strategy (§21) is implemented; golden-file conformance suite passes, including TBox prepending and manifest realist-typing.
-17. Contextual help content (§25) is written and bundled, including help for the realist anchoring concepts.
+14. Legacy v0.2 and v0.3 documents migrate to v0.4 cleanly with a migration report. The v0.3 → v0.4 placeholder warning is surfaced to the user.
+15. The full test strategy (§21) is implemented; golden-file conformance suite passes, including TBox prepending and manifest realist-typing.
+16. Contextual help content (§25) is written and bundled, including help for the realist anchoring concepts.
 
 ---
 
