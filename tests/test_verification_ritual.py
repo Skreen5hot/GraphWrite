@@ -126,12 +126,15 @@ class TestCategoryFrontmatterParser(unittest.TestCase):
 
 
 class TestCategoryLoader(unittest.TestCase):
-    def test_loads_seven_cat_specs(self):
+    def test_loads_all_cat_specs(self):
+        # CP1 shipped cat-01..07. CP2 adds cat-08 (hybrid two-cadence)
+        # and cat-10 (subject-project-hook candidacy stub).
         specs = d._load_category_specs()
-        self.assertEqual(len(specs), 7)
-        ids = [s["category_id"] for s in specs]
+        ids = sorted({s["category_id"]
+                       for s in specs if not s.get("_malformed")})
         self.assertEqual(ids, ["cat-01", "cat-02", "cat-03", "cat-04",
-                                "cat-05", "cat-06", "cat-07"])
+                                "cat-05", "cat-06", "cat-07", "cat-08",
+                                "cat-10"])
 
     def test_each_spec_has_required_fields(self):
         specs = d._load_category_specs()
@@ -386,16 +389,15 @@ class TestCat07CrossPhaseCrossReference(unittest.TestCase):
         self.assertIn("phase-99/missing.md", result["evidence"]["dangling"])
 
     def test_veto_on_asymmetric_when_reciprocity_implied(self):
-        # phase-4/Q-4-B.md does NOT exist; phase-3/Q-3-A.md does exist
-        # but doesn't reference back to a hypothetical "phase-4/Q-4-B.md"
+        # phase-4/Q-4-B.md is the self_path; phase-3/Q-3-A.md exists but
+        # doesn't reference back. Pass self_path via PredicateMetadata
+        # (Gap H v2.8.0-alpha.2 signature).
         cycle = dict(self.cycle_artifacts)
         artifact = ("From phase-4/Q-4-B.md: see also phase-3/Q-3-A.md "
                     "for context.")
+        metadata = d.PredicateMetadata(self_path="phase-4/Q-4-B.md")
         result = d.cat_07_cross_phase_cross_reference(
-            artifact, {
-                "cycle_artifacts": cycle,
-                "_artifact_self_path": "phase-4/Q-4-B.md",
-            })
+            artifact, {"cycle_artifacts": cycle}, metadata)
         self.assertEqual(result["status"], "veto")
         self.assertTrue(len(result["evidence"]["asymmetric"]) > 0)
 
@@ -407,11 +409,9 @@ class TestCat07CrossPhaseCrossReference(unittest.TestCase):
     def test_self_reference_not_flagged(self):
         # The artifact's own path shouldn't count as a dangling reference
         artifact = "this is phase-4/Q-4-A.md content"
+        metadata = d.PredicateMetadata(self_path="phase-4/Q-4-A.md")
         result = d.cat_07_cross_phase_cross_reference(
-            artifact, {
-                "cycle_artifacts": self.cycle_artifacts,
-                "_artifact_self_path": "phase-4/Q-4-A.md",
-            })
+            artifact, {"cycle_artifacts": self.cycle_artifacts}, metadata)
         self.assertEqual(result["status"], "pass")
 
 
@@ -471,8 +471,10 @@ class TestVerificationRitualOrchestrator(unittest.TestCase):
             "canonical_sources": {},
             "cadence": "pre-routing",
         })
-        # All 7 cats run on pre-routing cadence
-        self.assertEqual(len(result.outputs["per_category_result"]), 7)
+        # CP2: Cat 1-7, Cat 8 (two-cadence applies in pre-routing), and
+        # Cat 10 all run; cat-10 is a candidacy with subject-project
+        # hook stub. Cat 9 (LLM-only) is not yet shipped in CP2.
+        self.assertEqual(len(result.outputs["per_category_result"]), 9)
 
     def test_summary_string_format(self):
         result = self._run({
@@ -530,6 +532,405 @@ class TestVerificationRitualOrchestrator(unittest.TestCase):
         result = d.invoke_agent("verification-ritual", task, {})
         self.assertTrue(result.ok)
         self.assertEqual(result.outputs["overall_status"], "pass")
+
+
+class TestPredicateMetadata(unittest.TestCase):
+    """Gap H v2.8.0-alpha.2: typed metadata structure for substrate-
+    supplied predicate context (self_path, task_id, cycle_id,
+    phase_context, cadence)."""
+
+    def test_default_construction(self):
+        meta = d.PredicateMetadata()
+        self.assertIsNone(meta.self_path)
+        self.assertIsNone(meta.task_id)
+        self.assertEqual(meta.cadence, "pre-routing")
+
+    def test_named_fields(self):
+        meta = d.PredicateMetadata(
+            self_path="x/y.md",
+            task_id="urn:fnsr:task:t1",
+            cycle_id="phase-4-entry",
+            phase_context="phase-4",
+            cadence="activation-time",
+        )
+        self.assertEqual(meta.self_path, "x/y.md")
+        self.assertEqual(meta.task_id, "urn:fnsr:task:t1")
+        self.assertEqual(meta.cycle_id, "phase-4-entry")
+        self.assertEqual(meta.phase_context, "phase-4")
+        self.assertEqual(meta.cadence, "activation-time")
+
+    def test_metadata_threaded_to_cat_07(self):
+        # Confirm the orchestrator builds PredicateMetadata correctly
+        # for Cat 7's self_path lookup.
+        task = {
+            "@id": "urn:fnsr:task:verify",
+            "agent": "verification-ritual",
+            "inputs": {
+                "artifact_text": "see [other](other.md) — see also other.md",
+                "artifact_self_path": "self.md",
+                "canonical_sources": {
+                    "cycle_artifacts": {"other.md": "body without back-ref"},
+                },
+            },
+        }
+        result = d._verification_ritual(task, {})
+        cat_results = {r["category_id"]: r
+                       for r in result.outputs["per_category_result"]}
+        # Cat 7 should run with self_path set; with reciprocity hint
+        # ("see also") and no back-ref in other.md, it vetoes asymmetric.
+        self.assertEqual(cat_results["cat-07"]["status"], "veto")
+
+
+class TestMissTaxonomy(unittest.TestCase):
+    """Gap G v2.8.0-alpha.2: per_category_result misses carry an
+    evidence.miss_class field discriminating substrate-fixable from
+    evidence-grounded-extension cases.
+    """
+
+    def test_unresolved_predicate_for_missing_canonical_source(self):
+        task = {
+            "@id": "urn:fnsr:task:verify",
+            "agent": "verification-ritual",
+            "inputs": {
+                "artifact_text": "see §1.1",
+                "canonical_sources": {},  # spec missing
+            },
+        }
+        result = d._verification_ritual(task, {})
+        cat01 = next(r for r in result.outputs["per_category_result"]
+                     if r["category_id"] == "cat-01")
+        self.assertEqual(cat01["status"], "miss")
+        self.assertEqual(cat01["evidence"]["miss_class"],
+                         d.MISS_UNRESOLVED_PREDICATE)
+        self.assertEqual(cat01["evidence"]["reason"],
+                         "missing_canonical_source")
+
+    def test_categorical_coverage_miss_from_predicate(self):
+        # Cat 10's stub returns miss with miss_class set by the predicate
+        # itself (categorical_coverage_miss). The orchestrator preserves
+        # the predicate-set miss_class.
+        task = {
+            "@id": "urn:fnsr:task:verify",
+            "agent": "verification-ritual",
+            "inputs": {
+                "artifact_text": "x",
+                "canonical_sources": {"interface_declarations": "stub"},
+            },
+        }
+        result = d._verification_ritual(task, {})
+        cat10 = next(r for r in result.outputs["per_category_result"]
+                     if r["category_id"] == "cat-10")
+        self.assertEqual(cat10["status"], "miss")
+        self.assertEqual(cat10["evidence"]["miss_class"],
+                         d.MISS_CATEGORICAL_COVERAGE)
+        self.assertEqual(cat10["evidence"]["reason"],
+                         "not_implemented_for_this_subject_project")
+
+
+class TestMalformedSpecHandling(unittest.TestCase):
+    """Gap G refinement: malformed category specs emit
+    miss_class=malformed_spec entries rather than being silently
+    skipped. Tested by writing a malformed file into a temp surfaces dir.
+    """
+
+    def setUp(self):
+        import tempfile
+        self.tmpdir = tempfile.mkdtemp(prefix="fnsr-malformed-spec-test-")
+        self.categories_dir = (
+            os.path.join(self.tmpdir, "verification", "categories")
+        )
+        os.makedirs(self.categories_dir, exist_ok=True)
+        # One valid file (cat-99) so the loader has something well-formed
+        # alongside the malformed file.
+        with open(os.path.join(self.categories_dir, "cat-99-valid.md"),
+                  "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "category_id: cat-99\n"
+                "name: Valid Spec\n"
+                "implementation_mode: deterministic\n"
+                "cadence: pre-routing\n"
+                "python_predicate: fnsr_daemon.cat_01_spec_section_existence\n"
+                "canonical_source_keys: [spec]\n"
+                "---\n\nbody"
+            )
+        # Malformed file: no frontmatter
+        with open(os.path.join(self.categories_dir, "cat-malformed-1.md"),
+                  "w", encoding="utf-8") as f:
+            f.write("# Just a body, no frontmatter\n")
+        # Malformed file: frontmatter present but no category_id
+        with open(os.path.join(self.categories_dir, "cat-malformed-2.md"),
+                  "w", encoding="utf-8") as f:
+            f.write("---\nname: No category_id\n---\nbody")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _with_surfaces_dir(self):
+        """Run the loader with a temp surfaces dir."""
+        from pathlib import Path
+        from unittest.mock import patch
+        return patch.object(d, "SURFACES_DIR", Path(self.tmpdir))
+
+    def test_loader_returns_malformed_sentinels(self):
+        with self._with_surfaces_dir():
+            specs = d._load_category_specs()
+        # 1 valid + 2 malformed = 3 entries
+        self.assertEqual(len(specs), 3)
+        malformed = [s for s in specs if s.get("_malformed")]
+        self.assertEqual(len(malformed), 2)
+        valid = [s for s in specs if not s.get("_malformed")]
+        self.assertEqual(len(valid), 1)
+        self.assertEqual(valid[0]["category_id"], "cat-99")
+
+    def test_orchestrator_emits_malformed_spec_misses(self):
+        with self._with_surfaces_dir():
+            task = {
+                "@id": "urn:fnsr:task:verify",
+                "agent": "verification-ritual",
+                "inputs": {
+                    "artifact_text": "x",
+                    "canonical_sources": {"spec": "# 1.1 Section\n"},
+                },
+            }
+            result = d._verification_ritual(task, {})
+        per_cat = result.outputs["per_category_result"]
+        malformed_entries = [
+            r for r in per_cat
+            if r.get("evidence", {}).get("miss_class") == d.MISS_MALFORMED_SPEC
+        ]
+        self.assertEqual(len(malformed_entries), 2)
+        for entry in malformed_entries:
+            self.assertEqual(entry["status"], "miss")
+            self.assertIn("reason", entry["evidence"])
+            self.assertIn("spec_path", entry["evidence"])
+
+
+class TestSubjectHookLoader(unittest.TestCase):
+    """Gap F v2.8.0-alpha.2: sibling .py files alongside category specs
+    are auto-imported into a per-surface sandbox namespace at
+    subject.<surface>.<module>. Defensive: ImportError records the
+    failure; subsequent _resolve_predicate emits unresolved_predicate
+    miss with details.import_error.
+    """
+
+    def test_cat_10_resolves_to_stub(self):
+        # The shipped cat-10 .py stub should resolve through the
+        # subject.verification.cat_10_type_field_structure path.
+        pred = d._resolve_predicate(
+            "subject.verification.cat_10_type_field_structure")
+        self.assertTrue(callable(pred))
+
+    def test_cat_10_stub_returns_not_implemented(self):
+        pred = d._resolve_predicate(
+            "subject.verification.cat_10_type_field_structure")
+        result = pred("artifact", {"interface_declarations": "stub"},
+                       d.PredicateMetadata())
+        self.assertEqual(result["status"], "miss")
+        self.assertEqual(result["evidence"]["miss_class"],
+                         d.MISS_CATEGORICAL_COVERAGE)
+        self.assertEqual(result["evidence"]["reason"],
+                         "not_implemented_for_this_subject_project")
+
+    def test_subject_hook_failure_surfaces_as_unresolved_predicate(self):
+        # Inject a broken .py file into a temp surfaces dir; the loader
+        # records the failure; the orchestrator emits unresolved_predicate
+        # with details.import_error.
+        import tempfile
+        import shutil
+        from pathlib import Path
+        from unittest.mock import patch
+        tmpdir = tempfile.mkdtemp(prefix="fnsr-broken-hook-test-")
+        try:
+            cat_dir = Path(tmpdir) / "verification" / "categories"
+            cat_dir.mkdir(parents=True)
+            # Spec referencing a subject-hook .py that has a syntax error
+            (cat_dir / "cat-99-broken.md").write_text(
+                "---\n"
+                "category_id: cat-99\n"
+                "name: Broken Hook Spec\n"
+                "implementation_mode: deterministic\n"
+                "cadence: pre-routing\n"
+                "python_predicate: subject.verification.cat_99_broken\n"
+                "canonical_source_keys: []\n"
+                "---\n", encoding="utf-8")
+            (cat_dir / "cat-99-broken.py").write_text(
+                "this is not valid python !!\n", encoding="utf-8")
+            with patch.object(d, "SURFACES_DIR", Path(tmpdir)):
+                # Reset sandbox load cache so the temp dir actually loads
+                d._SUBJECT_HOOKS_LOADED.discard("verification")
+                d._SUBJECT_SANDBOXES.setdefault("verification", {}).clear()
+                d._SUBJECT_HOOK_FAILURES.setdefault("verification", {}).clear()
+                task = {
+                    "@id": "urn:fnsr:task:verify",
+                    "agent": "verification-ritual",
+                    "inputs": {
+                        "artifact_text": "x",
+                        "canonical_sources": {},
+                    },
+                }
+                result = d._verification_ritual(task, {})
+            cat99 = next(r for r in result.outputs["per_category_result"]
+                         if r["category_id"] == "cat-99")
+            self.assertEqual(cat99["status"], "miss")
+            self.assertEqual(cat99["evidence"]["miss_class"],
+                             d.MISS_UNRESOLVED_PREDICATE)
+            self.assertIn("import_error", cat99["evidence"])
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+            # Reset cache for subsequent tests so the GraphWrite-shipped
+            # subject hooks reload cleanly.
+            d._SUBJECT_HOOKS_LOADED.discard("verification")
+            d._SUBJECT_SANDBOXES.setdefault("verification", {}).clear()
+            d._SUBJECT_HOOK_FAILURES.setdefault("verification", {}).clear()
+
+    def test_resolve_subject_predicate_unknown_surface(self):
+        # Wrong surface in the qualified name returns None.
+        self.assertIsNone(
+            d._resolve_predicate("subject.wrongsurface.cat_10_type_field_structure"))
+
+    def test_resolve_predicate_explicit_function_name(self):
+        # subject.verification.<module>.<func> form
+        pred = d._resolve_predicate(
+            "subject.verification.cat_10_type_field_structure."
+            "cat_10_type_field_structure")
+        self.assertTrue(callable(pred))
+
+
+class TestCat08MultiCanonicalSource(unittest.TestCase):
+    """Cat 8 v2.8.0-alpha.2 — hybrid two-cadence."""
+
+    def setUp(self):
+        self.registries = {
+            "bfo": "http://purl.obolibrary.org/obo/BFO_0000001\n"
+                    "http://purl.obolibrary.org/obo/BFO_0000003\n",
+            "cco": "bfo:Process\nbfo:Continuant\ncco:Agent\n",
+        }
+
+    def test_pre_routing_pass_with_known_iri(self):
+        artifact = "see http://purl.obolibrary.org/obo/BFO_0000001 for context"
+        result = d.cat_08_multi_canonical_source(
+            artifact, {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="pre-routing"))
+        self.assertEqual(result["status"], "pass")
+
+    def test_pre_routing_veto_on_unknown_iri(self):
+        artifact = "see http://example.com/unknown/IRI_xyz"
+        result = d.cat_08_multi_canonical_source(
+            artifact, {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="pre-routing"))
+        self.assertEqual(result["status"], "veto")
+        self.assertTrue(len(result["evidence"]["unmatched"]) > 0)
+
+    def test_curie_recognition(self):
+        artifact = "uses bfo:Process and cco:Agent"
+        result = d.cat_08_multi_canonical_source(
+            artifact, {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="pre-routing"))
+        self.assertEqual(result["status"], "pass")
+
+    def test_activation_time_veto_without_se_flag(self):
+        artifact = "see http://example.com/unknown/IRI_xyz"
+        result = d.cat_08_multi_canonical_source(
+            artifact, {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="activation-time"))
+        self.assertEqual(result["status"], "veto")
+        self.assertEqual(result["evidence"]["cadence"], "activation-time")
+
+    def test_activation_time_needs_llm_judgment_with_se_flag(self):
+        artifact = (
+            "see http://example.com/unknown/IRI_xyz\n\n"
+            "semantic_equivalence_acceptable: {reason: \"BFO IRI with "
+            "explicit equivalentClass declaration\", scope: cat-8-only}"
+        )
+        result = d.cat_08_multi_canonical_source(
+            artifact, {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="activation-time"))
+        self.assertEqual(result["status"], "needs_llm_judgment")
+        self.assertIn("semantic_equivalence_acceptable", result["evidence"])
+        se = result["evidence"]["semantic_equivalence_acceptable"]
+        self.assertEqual(se["scope"], "cat-8-only")
+        self.assertIn("BFO", se["reason"])
+
+    def test_miss_when_no_registries(self):
+        result = d.cat_08_multi_canonical_source(
+            "iri http://x", {}, d.PredicateMetadata())
+        self.assertEqual(result["status"], "miss")
+
+    def test_pass_no_iri_citations(self):
+        result = d.cat_08_multi_canonical_source(
+            "no IRIs here", {"iri_registries": self.registries},
+            d.PredicateMetadata(cadence="pre-routing"))
+        self.assertEqual(result["status"], "pass")
+
+
+class TestTwoCadenceOrchestration(unittest.TestCase):
+    """v2.8.0-alpha.2 two-cadence dispatch: activation-time runs ONLY
+    two-cadence categories (per Aaron's Gap D implementation note —
+    don't re-execute Cat 1-7 + Cat 10 at activation-time)."""
+
+    def _run(self, cadence):
+        task = {
+            "@id": "urn:fnsr:task:verify",
+            "agent": "verification-ritual",
+            "inputs": {
+                "artifact_text": "see ADR-001 and bfo:Process",
+                "canonical_sources": {
+                    "decisions": SAMPLE_DECISIONS,
+                    "spec": SAMPLE_SPEC,
+                    "iri_registries": {"bfo": "bfo:Process\n"},
+                    "interface_declarations": "stub",
+                    "fol_types": SAMPLE_FOL_TYPES_TS,
+                    "owl_types": SAMPLE_OWL_TYPES_TS,
+                },
+                "cadence": cadence,
+            },
+        }
+        return d._verification_ritual(task, {})
+
+    def test_pre_routing_runs_all_applicable(self):
+        result = self._run("pre-routing")
+        cats_run = {r["category_id"]
+                    for r in result.outputs["per_category_result"]}
+        # Cat 1-7 + Cat 8 (two-cadence in pre-routing) + Cat 10 (candidacy)
+        self.assertIn("cat-01", cats_run)
+        self.assertIn("cat-02", cats_run)
+        self.assertIn("cat-08", cats_run)
+        self.assertIn("cat-10", cats_run)
+
+    def test_activation_time_runs_only_two_cadence_categories(self):
+        result = self._run("activation-time")
+        cats_run = {r["category_id"]
+                    for r in result.outputs["per_category_result"]}
+        # Only Cat 8 (cadence: two-cadence) should appear; Cat 1-7
+        # (cadence: pre-routing) and Cat 10 (cadence: pre-routing) are
+        # filtered out at activation-time.
+        self.assertIn("cat-08", cats_run)
+        self.assertNotIn("cat-01", cats_run)
+        self.assertNotIn("cat-02", cats_run)
+        self.assertNotIn("cat-07", cats_run)
+        self.assertNotIn("cat-10", cats_run)
+
+
+class TestParseSeAcceptable(unittest.TestCase):
+    """v2.8.0-alpha.2 — _parse_se_acceptable handles both JSON-object
+    inline and YAML-frontmatter-style form."""
+
+    def test_json_object_form(self):
+        text = ('semantic_equivalence_acceptable: '
+                '{reason: "BFO equivalentClass declaration", '
+                'scope: "cat-8-only"}')
+        result = d._parse_se_acceptable(text)
+        self.assertEqual(result["reason"], "BFO equivalentClass declaration")
+        self.assertEqual(result["scope"], "cat-8-only")
+
+    def test_absent_returns_none(self):
+        self.assertIsNone(d._parse_se_acceptable("no flag here"))
+
+    def test_malformed_missing_field_returns_none(self):
+        text = 'semantic_equivalence_acceptable: {reason: "x"}'
+        self.assertIsNone(d._parse_se_acceptable(text))
 
 
 if __name__ == "__main__":

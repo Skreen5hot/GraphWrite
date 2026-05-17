@@ -998,6 +998,34 @@ def _question_resolver(task: dict[str, Any],
 SURFACES_DIR = Path(os.environ.get("FNSR_SURFACES_DIR", "./surfaces"))
 
 
+# ---- Miss taxonomy (Gap G v2.8.0-alpha.2) -----------------------------
+#
+# Per Aaron's adjudication: per_category_result entries with status=miss
+# carry an evidence.miss_class field discriminating substrate-fixable
+# vs evidence-grounded-extension cases.
+MISS_MALFORMED_SPEC = "malformed_spec"
+MISS_UNRESOLVED_PREDICATE = "unresolved_predicate"
+MISS_CATEGORICAL_COVERAGE = "categorical_coverage_miss"
+# Note: missing canonical sources are bucketed under unresolved_predicate
+# with details.reason=missing_canonical_source in v2.8.0-alpha.2.
+# Surfaces as Gap I post-CP2 if it warrants a fourth class.
+
+
+@dataclass
+class PredicateMetadata:
+    """Substrate-supplied context for verification-ritual predicates.
+
+    All fields optional; predicates that don't need a field ignore it.
+    Shape grows additively across releases — new fields don't break old
+    predicates.
+    """
+    self_path: Optional[str] = None
+    task_id: Optional[str] = None
+    cycle_id: Optional[str] = None
+    phase_context: Optional[str] = None
+    cadence: str = "pre-routing"
+
+
 def _parse_category_frontmatter(text: str) -> Optional[dict]:
     """Parse a category spec's YAML-ish frontmatter (stdlib-only).
 
@@ -1035,41 +1063,137 @@ def _parse_category_frontmatter(text: str) -> Optional[dict]:
 def _load_category_specs(surface: str = "verification") -> list[dict]:
     """Load every cat-*.md under surfaces/<surface>/categories/.
 
-    Returns category-spec dicts (frontmatter fields populated, plus
-    `_path`). Files without frontmatter or with no `category_id` are
-    skipped. Order is sorted by filename (cat-01-... before cat-02-...).
+    v2.8.0-alpha.2 (Gap G): files that exist but fail to parse return a
+    sentinel spec dict with `_malformed: True` so the orchestrator can
+    emit a malformed_spec miss entry rather than silently skipping the
+    gap. The substrate prefers audit-trail honesty over operator
+    vigilance.
     """
     categories_dir = SURFACES_DIR / surface / "categories"
     if not categories_dir.exists():
         return []
     specs = []
     for path in sorted(categories_dir.glob("cat-*.md")):
+        sentinel = {
+            "_path": str(path),
+            "_filename": path.name,
+        }
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
+        except OSError as e:
+            specs.append({**sentinel, "_malformed": True,
+                          "_malformed_reason": f"read failed: {e}"})
             continue
         fm = _parse_category_frontmatter(text)
-        if not fm or "category_id" not in fm:
+        if not fm:
+            specs.append({**sentinel, "_malformed": True,
+                          "_malformed_reason": "no frontmatter found"})
+            continue
+        if "category_id" not in fm:
+            specs.append({**sentinel, "_malformed": True,
+                          "_malformed_reason": "missing required field 'category_id'"})
             continue
         fm["_path"] = str(path)
         specs.append(fm)
     return specs
 
 
-def _resolve_predicate(qualified_name: str):
-    """Resolve a 'fnsr_daemon.cat_NN_xxx' style reference to a callable.
+# Subject-project hook sandbox (Gap F v2.8.0-alpha.2).
+#
+# Per-surface namespace: _SUBJECT_SANDBOXES[surface][module_name] is the
+# imported module. _SUBJECT_HOOK_FAILURES[surface][module_name] is the
+# error string when the .py file failed to import (defensive handling).
+# Lazy-loaded on first call to _ensure_subject_hooks_loaded(surface).
+_SUBJECT_SANDBOXES: dict[str, dict[str, Any]] = {}
+_SUBJECT_HOOK_FAILURES: dict[str, dict[str, str]] = {}
+_SUBJECT_HOOKS_LOADED: set[str] = set()
 
-    Only looks up names within this module's globals — category specs
-    declaring predicates in other modules are intentionally not
-    supported in v2.8.0 (subject-project hook predicates land in
-    Checkpoint 2 with Cat 10).
+
+def _ensure_subject_hooks_loaded(surface: str) -> None:
+    """Load all sibling .py files under surfaces/<surface>/categories/.
+
+    Each `cat-NN-*.py` is imported into the per-surface sandbox
+    namespace at `subject.<surface>.<module-name>` (filename with
+    hyphens replaced by underscores). Failed imports are recorded in
+    _SUBJECT_HOOK_FAILURES and surface as `unresolved_predicate` misses
+    when predicates referencing them are dispatched.
+    """
+    if surface in _SUBJECT_HOOKS_LOADED:
+        return
+    _SUBJECT_HOOKS_LOADED.add(surface)
+    _SUBJECT_SANDBOXES.setdefault(surface, {})
+    _SUBJECT_HOOK_FAILURES.setdefault(surface, {})
+    categories_dir = SURFACES_DIR / surface / "categories"
+    if not categories_dir.exists():
+        return
+    import importlib.util
+    for py_path in sorted(categories_dir.glob("cat-*.py")):
+        module_name = py_path.stem.replace("-", "_")
+        try:
+            spec = importlib.util.spec_from_file_location(
+                f"subject.{surface}.{module_name}", py_path
+            )
+            if spec is None or spec.loader is None:
+                _SUBJECT_HOOK_FAILURES[surface][module_name] = (
+                    "importlib.util.spec_from_file_location returned None"
+                )
+                continue
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            _SUBJECT_SANDBOXES[surface][module_name] = module
+        except Exception as e:
+            _SUBJECT_HOOK_FAILURES[surface][module_name] = (
+                f"{type(e).__name__}: {e}"
+            )
+
+
+def _resolve_predicate(qualified_name: str, surface: str = "verification"):
+    """Resolve a predicate's qualified name to a callable.
+
+    Supported shapes:
+      fnsr_daemon.<func>            substrate-default; this module's globals
+      subject.<surface>.<module>    co-located .py file; function name
+                                    derived from module (kebab->snake) and
+                                    expected to match the module name
+      subject.<surface>.<module>.<func>   explicit function name
+
+    Returns None on any failure to resolve; the caller is responsible
+    for emitting an `unresolved_predicate` miss with details.
     """
     if not isinstance(qualified_name, str) or "." not in qualified_name:
         return None
-    module_part, attr = qualified_name.rsplit(".", 1)
-    if module_part not in ("fnsr_daemon", "__main__"):
+    parts = qualified_name.split(".")
+    if parts[0] in ("fnsr_daemon", "__main__"):
+        attr = parts[-1]
+        return globals().get(attr)
+    if parts[0] == "subject":
+        if len(parts) < 3 or parts[1] != surface:
+            return None
+        _ensure_subject_hooks_loaded(surface)
+        module_name = parts[2]
+        sandbox = _SUBJECT_SANDBOXES.get(surface, {})
+        module = sandbox.get(module_name)
+        if module is None:
+            return None
+        func_name = parts[3] if len(parts) > 3 else module_name
+        return getattr(module, func_name, None)
+    return None
+
+
+def _subject_hook_failure_detail(qualified_name: str,
+                                   surface: str = "verification") \
+                                   -> Optional[str]:
+    """If a subject-project hook failed to import, return the error
+    message recorded for it. Used by the orchestrator to populate the
+    `details.import_error` field on unresolved_predicate misses.
+    """
+    if not isinstance(qualified_name, str):
         return None
-    return globals().get(attr)
+    parts = qualified_name.split(".")
+    if len(parts) < 3 or parts[0] != "subject" or parts[1] != surface:
+        return None
+    module_name = parts[2]
+    return _SUBJECT_HOOK_FAILURES.get(surface, {}).get(module_name)
 
 
 def _read_canonical_source(value: Any) -> Any:
@@ -1114,7 +1238,8 @@ def _extract_spec_sections(spec_text: str) -> set:
 
 
 def cat_01_spec_section_existence(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 1: §N.M citations exist as section headers in the spec.
 
@@ -1140,7 +1265,8 @@ def cat_01_spec_section_existence(
 
 
 def cat_02_adr_cross_reference(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 2: ADR-NNN citations exist as `## ADR-NNN:` headers in the
     canonical decisions registry. Same registry parser as v2.6.0's
@@ -1168,7 +1294,8 @@ _Q_RULING_RE = re.compile(r"\bQ-\d+(?:-Step\d+)?-[A-Z](?:\.\d+)?\b")
 
 
 def cat_03_q_ruling_cross_reference(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 3: Q-N-X / Q-N-StepM-X citations resolve to identifiers in
     a prior cycle artifact.
@@ -1219,7 +1346,8 @@ _TS_STRING_LITERAL_RE = re.compile(r'"([^"]+)"')
 
 
 def cat_04_reason_code_frozen_enum(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 4: `expectedReason: "X"` citations are members of the frozen
     Object.freeze'd enum in the canonical reason-codes source.
@@ -1268,7 +1396,8 @@ _TS_UNION_RE = re.compile(
 
 
 def cat_05_fol_owl_type_discriminator(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 5: `@type: "X"` citations are members of the union of FOL and
     OWL canonical type sets.
@@ -1311,7 +1440,8 @@ _FIXTURE_FIELD_VALUE_RE = re.compile(
 
 
 def cat_06_manifest_mirror_consistency(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 6: manifest entries mirror their fixture's expectedOutcome.
 
@@ -1394,14 +1524,16 @@ _RECIPROCAL_HINTS = (
 
 
 def cat_07_cross_phase_cross_reference(
-    artifact: str, canonical_sources: dict
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
 ) -> dict:
     """Cat 7: cross-references to prior cycle artifacts exist and (when
     citing context implies reciprocity) are symmetric.
 
     canonical_sources['cycle_artifacts'] is a {path: text} dict. The
-    artifact's own self-path can be passed via canonical_sources
-    ['_artifact_self_path'] to enable reciprocity detection.
+    artifact's own self-path comes from metadata.self_path (v2.8.0-
+    alpha.2+); previously was canonical_sources['_artifact_self_path']
+    in CP1, moved to metadata in CP2 per Gap H.
     """
     cycle_artifacts = canonical_sources.get("cycle_artifacts")
     if not isinstance(cycle_artifacts, dict):
@@ -1416,7 +1548,7 @@ def cat_07_cross_phase_cross_reference(
         return {"status": "pass",
                 "evidence": {"cited_paths": [],
                               "note": "no .md path references in artifact"}}
-    self_path = canonical_sources.get("_artifact_self_path")
+    self_path = metadata.self_path if metadata is not None else None
     has_reciprocal_hint = any(h in artifact.lower() for h in _RECIPROCAL_HINTS)
     dangling = []
     asymmetric = []
@@ -1446,6 +1578,145 @@ def cat_07_cross_phase_cross_reference(
     return {"status": "pass",
             "evidence": {"matched": matched,
                           "reciprocity_checked": bool(self_path and has_reciprocal_hint)}}
+
+
+# ---- Cat 8 hybrid two-cadence -------------------------------------------
+
+_IRI_CITATION_RE = re.compile(
+    r"\bhttps?://[^\s\"'<>(){}\[\],]+|"
+    r"\b[A-Z][\w-]+:[A-Z][\w_-]+\b"  # CURIE-style: bfo:Process, cco:Agent
+)
+# Structured SE-acceptable flag detection: looks for the {reason, scope}
+# object inside the artifact. Markdown frontmatter or inline JSON both work.
+_SE_ACCEPTABLE_RE = re.compile(
+    r"semantic_equivalence_acceptable\s*:\s*"
+    r"(?:\{[^}]*\}|"
+    r"(?:\n\s+reason\s*:\s*[^\n]+\n\s+scope\s*:\s*[^\n]+))",
+    re.IGNORECASE,
+)
+
+
+def _parse_se_acceptable(artifact: str) -> Optional[dict]:
+    """Extract the semantic_equivalence_acceptable structured flag from
+    the artifact. Returns a dict with 'reason' and 'scope' keys, or None
+    if the flag is absent or malformed.
+    """
+    m = _SE_ACCEPTABLE_RE.search(artifact)
+    if not m:
+        return None
+    block = m.group(0)
+    # Try JSON-object form first
+    obj_match = re.search(r"\{([^}]*)\}", block)
+    if obj_match:
+        body = obj_match.group(1)
+        out: dict[str, str] = {}
+        for kv in re.finditer(
+            r'(?:"|\')?(reason|scope)(?:"|\')?\s*:\s*'
+            r'(?:"([^"]*)"|\'([^\']*)\'|([^,\n}]+))',
+            body,
+        ):
+            key = kv.group(1)
+            val = kv.group(2) or kv.group(3) or (kv.group(4) or "").strip()
+            out[key] = val.strip()
+        if "reason" in out and "scope" in out:
+            return out
+        return None
+    # YAML-frontmatter-style form
+    reason_m = re.search(r"reason\s*:\s*([^\n]+)", block)
+    scope_m = re.search(r"scope\s*:\s*([^\n]+)", block)
+    if reason_m and scope_m:
+        return {
+            "reason": reason_m.group(1).strip().strip("\"'"),
+            "scope": scope_m.group(1).strip().strip("\"'"),
+        }
+    return None
+
+
+def cat_08_multi_canonical_source(
+    artifact: str, canonical_sources: dict,
+    metadata: Optional[PredicateMetadata] = None,
+) -> dict:
+    """Cat 8 hybrid two-cadence (FNSR Spec 02 §"Cat 8").
+
+    Pre-routing cadence (deterministic): each cited IRI/CURIE in the
+    artifact resolves in at least one canonical IRI registry.
+
+    Activation-time cadence (deterministic + LLM-deferred):
+    - For each cited IRI, look up the canonical content (registry entry)
+    - Strict-equality compare to the citing artifact's claims about it
+    - If strict equality fails AND artifact has a well-formed
+      semantic_equivalence_acceptable flag, emit status=needs_llm_judgment
+      with the deferred-case payload for verification-ritual-llm (CP3).
+    - Else: veto.
+
+    canonical_sources['iri_registries'] is a {registry_name: text} dict
+    of vendored IRI registries. The text format is open — IRIs are
+    detected by line-anchored or whitespace-anchored matching.
+    """
+    cadence = metadata.cadence if metadata is not None else "pre-routing"
+    registries = canonical_sources.get("iri_registries")
+    if not isinstance(registries, dict):
+        return {"status": "miss",
+                "evidence": {"reason": "canonical source 'iri_registries' missing"}}
+    cited = sorted({m.group(0) for m in _IRI_CITATION_RE.finditer(artifact)})
+    if not cited:
+        return {"status": "pass",
+                "evidence": {"cited_iris": [], "cadence": cadence,
+                              "note": "no IRI / CURIE citations in artifact"}}
+    matched: dict[str, str] = {}
+    unmatched: list[str] = []
+    for iri in cited:
+        found_in = None
+        for reg_name, reg_text in registries.items():
+            if not isinstance(reg_text, str):
+                continue
+            if iri in reg_text:
+                found_in = reg_name
+                break
+        if found_in is None:
+            unmatched.append(iri)
+        else:
+            matched[iri] = found_in
+    if cadence == "pre-routing":
+        # Structural-existence-only check.
+        if unmatched:
+            return {"status": "veto",
+                    "evidence": {"cadence": "pre-routing",
+                                  "cited_iris": cited,
+                                  "unmatched": unmatched,
+                                  "matched": matched}}
+        return {"status": "pass",
+                "evidence": {"cadence": "pre-routing",
+                              "cited_iris": cited,
+                              "matched": matched}}
+    # activation-time cadence: strict-equality content match.
+    # In v2.8.0-alpha.2 the substrate doesn't yet compare cited content
+    # against the registry entry's canonical text; that needs structured
+    # citing-content extraction. The pre-routing existence check still
+    # gates here. If a citing artifact carries the SE-acceptable flag
+    # AND there are unmatched IRIs (which is the closest CP2 analog to
+    # "strict equality failed"), defer to LLM judgment per Gap B.
+    se_acceptable = _parse_se_acceptable(artifact)
+    if unmatched and se_acceptable is not None:
+        return {"status": "needs_llm_judgment",
+                "evidence": {"cadence": "activation-time",
+                              "cited_iris": cited,
+                              "unmatched_under_strict_equality": unmatched,
+                              "matched": matched,
+                              "semantic_equivalence_acceptable": se_acceptable,
+                              "defer_to": "verification-ritual-llm (CP3)"}}
+    if unmatched:
+        return {"status": "veto",
+                "evidence": {"cadence": "activation-time",
+                              "cited_iris": cited,
+                              "unmatched": unmatched,
+                              "matched": matched,
+                              "note": "no semantic_equivalence_acceptable flag "
+                                      "present; strict-equality veto stands"}}
+    return {"status": "pass",
+            "evidence": {"cadence": "activation-time",
+                          "cited_iris": cited,
+                          "matched": matched}}
 
 
 # ---- verification-ritual orchestrator ----------------------------------
@@ -1484,11 +1755,15 @@ def _verification_ritual(task: dict[str, Any],
     canonical_sources = {
         k: _read_canonical_source(v) for k, v in canonical_inputs.items()
     }
-    self_path = inputs.get("artifact_self_path") or artifact_path
-    if self_path:
-        canonical_sources["_artifact_self_path"] = self_path
     cadence = inputs.get("cadence") or "pre-routing"
     surface = inputs.get("surface") or "verification"
+    metadata = PredicateMetadata(
+        self_path=inputs.get("artifact_self_path") or artifact_path,
+        task_id=task.get("@id"),
+        cycle_id=inputs.get("cycle_id"),
+        phase_context=inputs.get("phase_context"),
+        cadence=cadence,
+    )
     specs = _load_category_specs(surface)
     if not specs:
         return WorkerResult(True, {
@@ -1502,7 +1777,24 @@ def _verification_ritual(task: dict[str, Any],
     miss_count = 0
     pass_count = 0
     deferred_llm_count = 0
+    needs_llm_judgment_count = 0
     for spec in specs:
+        # Gap G: malformed-spec entries emit a structural miss so the
+        # gap surfaces in audit output rather than being silently skipped.
+        if spec.get("_malformed"):
+            per_category_result.append({
+                "category_id": spec.get("_filename", "<malformed>"),
+                "name": spec.get("_filename", "<malformed>"),
+                "status": "miss",
+                "evidence": {
+                    "miss_class": MISS_MALFORMED_SPEC,
+                    "spec_path": spec.get("_path"),
+                    "reason": spec.get("_malformed_reason",
+                                        "spec failed to parse"),
+                },
+            })
+            miss_count += 1
+            continue
         cat_id = spec.get("category_id", "?")
         spec_cadence = spec.get("cadence", "pre-routing")
         if cadence == "pre-routing":
@@ -1531,42 +1823,79 @@ def _verification_ritual(task: dict[str, Any],
         missing_keys = [k for k in required_keys
                         if k not in canonical_sources]
         if missing_keys:
+            # v2.8.0-alpha.2: bucketed under unresolved_predicate per
+            # Aaron's three-class taxonomy; details.reason disambiguates
+            # the missing-canonical-source case.
             per_category_result.append({
                 "category_id": cat_id,
                 "name": spec.get("name", cat_id),
                 "status": "miss",
                 "evidence": {
-                    "reason": "required canonical source(s) missing",
+                    "miss_class": MISS_UNRESOLVED_PREDICATE,
+                    "reason": "missing_canonical_source",
                     "missing_canonical_source_keys": missing_keys,
                 },
             })
             miss_count += 1
             continue
         pred_name = spec.get("python_predicate")
-        predicate = _resolve_predicate(pred_name) if pred_name else None
+        predicate = _resolve_predicate(pred_name, surface) if pred_name else None
         if predicate is None:
+            details: dict[str, Any] = {
+                "miss_class": MISS_UNRESOLVED_PREDICATE,
+                "reason": "predicate not resolvable",
+                "declared": pred_name or "(none)",
+            }
+            hook_err = _subject_hook_failure_detail(pred_name, surface)
+            if hook_err:
+                details["import_error"] = hook_err
             per_category_result.append({
                 "category_id": cat_id,
                 "name": spec.get("name", cat_id),
                 "status": "miss",
-                "evidence": {"reason": "predicate not resolvable",
-                              "declared": pred_name or "(none)"},
+                "evidence": details,
             })
             miss_count += 1
             continue
         try:
-            result = predicate(artifact, canonical_sources)
+            result = predicate(artifact, canonical_sources, metadata)
+        except TypeError:
+            # Predicate may be a legacy 2-arg signature; try without metadata
+            # for backward-compatibility within v2.8.0 alpha series. This
+            # branch will be removed at v2.8.0 final.
+            try:
+                result = predicate(artifact, canonical_sources)
+            except Exception as e:
+                per_category_result.append({
+                    "category_id": cat_id,
+                    "name": spec.get("name", cat_id),
+                    "status": "miss",
+                    "evidence": {"miss_class": MISS_UNRESOLVED_PREDICATE,
+                                  "reason": "predicate raised exception",
+                                  "exception_type": type(e).__name__,
+                                  "exception": str(e)},
+                })
+                miss_count += 1
+                continue
         except Exception as e:
             per_category_result.append({
                 "category_id": cat_id,
                 "name": spec.get("name", cat_id),
                 "status": "miss",
-                "evidence": {"reason": "predicate raised exception",
+                "evidence": {"miss_class": MISS_UNRESOLVED_PREDICATE,
+                              "reason": "predicate raised exception",
                               "exception_type": type(e).__name__,
                               "exception": str(e)},
             })
             miss_count += 1
             continue
+        # Tag predicate-returned misses as categorical-coverage misses
+        # so they're distinguishable from substrate-side misses.
+        if result.get("status") == "miss":
+            evidence = result.get("evidence") or {}
+            if "miss_class" not in evidence:
+                evidence["miss_class"] = MISS_CATEGORICAL_COVERAGE
+            result = {**result, "evidence": evidence}
         per_category_result.append({
             "category_id": cat_id,
             "name": spec.get("name", cat_id),
@@ -1579,17 +1908,25 @@ def _verification_ritual(task: dict[str, Any],
             miss_count += 1
         elif status == "pass":
             pass_count += 1
+        elif status == "needs_llm_judgment":
+            needs_llm_judgment_count += 1
     if veto_count > 0:
         overall_status = "veto"
-    elif deferred_llm_count > 0:
+    elif deferred_llm_count > 0 or needs_llm_judgment_count > 0:
         overall_status = "needs_llm_judgment"
     else:
         overall_status = "pass"
-    summary = (
-        f"verification ritual ({cadence}): {pass_count} pass, "
-        f"{veto_count} veto, {miss_count} miss"
-        + (f", {deferred_llm_count} deferred-llm" if deferred_llm_count else "")
-    )
+    summary_parts = [
+        f"verification ritual ({cadence}):",
+        f"{pass_count} pass",
+        f"{veto_count} veto",
+        f"{miss_count} miss",
+    ]
+    if deferred_llm_count:
+        summary_parts.append(f"{deferred_llm_count} deferred-llm")
+    if needs_llm_judgment_count:
+        summary_parts.append(f"{needs_llm_judgment_count} needs-llm-judgment")
+    summary = " ".join(summary_parts[:1]) + " " + ", ".join(summary_parts[1:])
     return WorkerResult(True, {
         "per_category_result": per_category_result,
         "overall_status": overall_status,
