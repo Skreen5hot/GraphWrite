@@ -30,7 +30,7 @@ And inspecting state.jsonld history shows `reason: before_not_found` for one or 
 **Recovery:**
 1. Inspect the on-disk content and the agent's `before` byte-by-byte. The `_repair_mojibake` helper in `fnsr_daemon` can repair both directions.
 2. If the issue is on-disk mojibake (created by a pre-v2.3.1 applier write), run `_repair_mojibake` over the whole file via a one-off operator script (see [§ 6](#6-mojibake-cleanup-patterns)).
-3. Reset the apply task: `python tools/state_admin.py reset urn:fnsr:task:NNN-apply --reason "..."`.
+3. Reset the apply task: `python state_admin.py reset urn:fnsr:task:NNN-apply --reason "..."`.
 4. Re-run the daemon; the existing developer outputs are reused with the now-clean file.
 
 ---
@@ -85,6 +85,47 @@ WARNING fnsr-daemon task urn:fnsr:task:NNN-edit blocked by CPS: agent 'developer
 - Read the full rejected_outputs in audit history. The agent's `needed` / `hint` fields usually say what's missing.
 - Provide the missing inputs, reset the task, retry.
 - If `error: task_too_broad` (post-v2.5.0): the agent suggests splitting; see [§ 4](#4-operator-task-splitting).
+
+---
+
+### `cited ADR(s) not found in registry` (v2.6.0)
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN blocked by CPS: change C1 → project/SPEC.md cites ADR(s) not present in DECISIONS.md: ADR-012, ADR-099
+```
+
+**What it means:** A worker agent proposed a `change.after` payload destined for a **canonical doc** (default: `project/DECISIONS.md`, `project/SPEC.md`, `project/ROADMAP.md`, `project/IMPLEMENTATION_PLAN.md`, anything under `arc/`) that cites one or more `ADR-NNN` references which are NOT registered as `## ADR-NNN:` headers in [project/DECISIONS.md](project/DECISIONS.md). The daemon parses the proposed text and the registry on every commit; missing ADRs trigger a veto so agents cannot invent ADR numbers in authoritative docs.
+
+**Recovery options:**
+1. **The ADR genuinely should exist first.** Queue a `question-resolver` task to draft the missing ADR-NNN entry into DECISIONS.md, then re-run the original task. This is the normal ordering: register ADR → cite ADR.
+2. **The agent invented the number.** Reject the agent's proposal entirely. Either reset with a tightened prompt naming the actual ADR to cite, or split into smaller scope so the LLM has less room to confabulate.
+3. **The citation belongs in a non-canonical doc** (code comment, etc.). Move the proposed edit to a non-canonical path — the CPS check is scoped to canonical-doc destinations only.
+
+**Configuration knobs** (env vars, set before starting the daemon):
+- `FNSR_DECISIONS_PATH` — override the registry-file location.
+- `FNSR_CANONICAL_DOCS` — colon-separated exact-path list (overrides defaults).
+- `FNSR_CANONICAL_DOC_PREFIXES` — colon-separated prefix list (overrides defaults).
+
+---
+
+### `malformed awaiting_operator_decision` (v2.6.0)
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN blocked by CPS: awaiting_operator_decision shape invalid: options must be a non-empty list
+```
+
+**What it means:** The agent returned `outputs.status == "awaiting_operator_decision"` (the v2.6.0 operator-handoff sentinel) but the accompanying shape is malformed. Required shape:
+- `options` — non-empty list of strings or `{label, tradeoff}` dicts
+- `recommendation` — non-empty string
+
+If both keys are well-formed, the daemon commits the task with `status=awaiting_operator_decision`. If either is missing/empty/wrong type, CPS vetoes.
+
+**Recovery:**
+- Read the rejected_outputs in audit history — usually the agent omitted `recommendation` or returned `options: []` as a placeholder.
+- Tighten the agent prompt: "If you cannot resolve, return `status: awaiting_operator_decision` with at least two `options[]` AND a non-empty `recommendation` naming your preferred option and why." Reset, retry.
+- If the agent CAN actually decide, remove the awaiting-decision branch from its prompt entirely.
 
 ---
 
@@ -215,7 +256,7 @@ When a task fails repeatedly due to scope-too-broad (timeout, shape contract vio
 
 1. **Abandon the failing chain** (so the daemon doesn't keep retrying):
    ```
-   python tools/state_admin.py abandon urn:fnsr:task:NNN --reason "split: scope too broad" \
+   python state_admin.py abandon urn:fnsr:task:NNN --reason "split: scope too broad" \
        --replaced-by urn:fnsr:task:AAA,urn:fnsr:task:BBB,urn:fnsr:task:CCC
    ```
    This sets status=blocked and adds an `operator_reset` audit entry naming the replacement tasks.
@@ -237,6 +278,88 @@ When a task fails repeatedly due to scope-too-broad (timeout, shape contract vio
 | Task involves a "move section" operation | One sub-task to delete, one to add |
 | Task involves >5 logically independent before/after edits | One sub-task per edit, OR one sub-task per coherent region |
 | LLM consistently returns wrong-shape output | Scope is too broad; split until shape comes out right |
+
+---
+
+## 4.5 Resolving an `awaiting_operator_decision` task (v2.6.0)
+
+Some agents — typically the **synthesist** when reconciling contested findings, or the **question-resolver** when the operator's directive is ambiguous — can return:
+
+```json
+{
+  "outputs": {
+    "status": "awaiting_operator_decision",
+    "options": ["A: keep current behavior", "B: excise entirely", "C: defer to ADR"],
+    "recommendation": "B — context is no longer load-bearing."
+  }
+}
+```
+
+The daemon commits the task with `status=awaiting_operator_decision`. On the **next** daemon startup, you'll see a WARNING line per awaiting task:
+
+```
+WARNING fnsr-daemon AWAITING OPERATOR DECISION: urn:fnsr:task:NNN (3 options)
+```
+
+`python state_admin.py status` surfaces awaiting tasks at the top of its output with an `!! AWAITING OPERATOR DECISION` header.
+
+### Resolving
+
+```powershell
+python state_admin.py resolve urn:fnsr:task:NNN <option-index> [--note "rationale"]
+```
+
+`<option-index>` is **0-based**. This:
+1. Validates the task IS `awaiting_operator_decision` (refuses otherwise).
+2. Validates the option index is in range.
+3. Appends an `operator_resolution` history entry (chain-hashed) carrying `{option_index, option_text, note}`.
+4. Annotates `outputs.operator_resolution = {option_index, option_text, note}`.
+5. Sets `status=done`, making downstream `depends_on` tasks routable.
+
+### When the agent shouldn't have asked
+
+If you read the options and conclude the agent COULD have decided itself, don't resolve — abandon and retry with a tightened prompt. Operator decisions are scarce; agents that punt unnecessarily train the pattern in the wrong direction.
+
+---
+
+## 4.6 Banking forward-track insights (v2.6.0)
+
+During a run, the operator sometimes notices a methodology insight, a recurring pattern, or a latent risk that's worth preserving but doesn't belong as a normal task or ADR (yet). Banking captures these against an anchor task without polluting the task graph.
+
+```powershell
+python state_admin.py bank <anchor-task-id> \
+    --class {methodology|pattern|risk|insight} \
+    --content "After the v2.6.0 split, the synthesist needed a recommendation field, not options-only." \
+    [--cycle 12]
+```
+
+This appends a `forward_track` history entry on the anchor task with `{candidate_class, content, surfacing_cycle?}`. The entry is chain-hashed and lives in the audit trail alongside the task's normal lifecycle events.
+
+### When to bank vs. ADR vs. task
+
+| Signal | Use |
+|---|---|
+| Operator decision with downstream binding force | **ADR** in DECISIONS.md (queue a question-resolver task) |
+| Concrete work that must happen | **Task** (`state_admin.py append-tasks`) |
+| Observation worth preserving but not yet actionable | **Bank** as forward_track |
+| Recurring failure mode worth documenting | **Bank** as forward_track AND eventually fold into this PLAYBOOK |
+
+### Retrieval
+
+Forward-track entries don't surface in `status` listings (they're not task state). They show up when you walk an anchor task's history:
+
+```powershell
+python -c "
+import json
+s = json.load(open('state.jsonld', encoding='utf-8'))
+for t in s['tasks']:
+    for h in t['history']:
+        if h['event'] == 'forward_track':
+            print(t['@id'], h['payload'].get('candidate_class'), '-', h['payload'].get('content'))
+"
+```
+
+Periodic retrospective sweeps should fold the highest-signal banked entries into the template (PLAYBOOK, agent contracts, ADRs).
 
 ---
 
@@ -299,7 +422,7 @@ for t in s['tasks']:
 ### Verify chain integrity
 
 ```powershell
-python tools/state_admin.py verify
+python state_admin.py verify
 ```
 
 Walks every task's history, re-derives `chain_hash` from `prev_hash + event + payload`, reports any mismatch. Should print `PASS` for a healthy state.jsonld.
@@ -324,7 +447,7 @@ for t in s['tasks']:
 The state.jsonld is operator-mutable. Sometimes the right move is to surgically modify it directly. Conventions:
 
 - **Always stop the daemon first** (`Ctrl-C`) to avoid race conditions. The daemon's lock is on `state.jsonld.lock`, not the data file.
-- **Use `tools/state_admin.py` for routine operations** (reset, abandon). It preserves the audit chain.
+- **Use `state_admin.py` for routine operations** (reset, abandon). It preserves the audit chain.
 - **For exotic changes, write a one-off Python script** that uses `fnsr_daemon._record` and `fnsr_daemon.hiri_sign` so audit entries chain correctly.
 - **Never delete history entries.** The chain is append-only by contract. To "undo" a state change, append an `operator_reset` event documenting the intent.
 - **After any manual edit, run `state_admin.py verify`** to confirm chain integrity.

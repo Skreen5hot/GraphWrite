@@ -11,6 +11,7 @@ Thumbs.db
 state.jsonld.lock
 fnsr.pid
 fnsr_test.pid
+raw_output.txt
 
 # Per-user Claude Code preferences (allowlist; not portable)
 .claude/settings.json

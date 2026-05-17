@@ -22,7 +22,7 @@ These apply to the Barcode System itself:
 - **JSON-LD canonical state.** All persistent state lives in `state.jsonld` with a stable schema.
 - **Stdlib-only.** The orchestrator is single-file Python with no required runtime dependencies.
 - **Audit trail.** Every state transition is recorded with a SHA-256 chain hash (`prev_hash` → `chain_hash`). Currently tamper-evident via chain consistency; not tamper-proof (no cryptographic signature yet — `hiri_sign` is a stub awaiting real signing).
-- **CPS containment hook.** A `cps_check` veto runs before every state commit. Vetoes on null outputs or on `outputs.error` truthy (agent-reported structured failure).
+- **CPS containment hook.** A `cps_check` veto runs before every state commit. Vetoes on: null outputs, `outputs.error` truthy (agent-reported structured failure), missing keys declared in the agent's `required_outputs:` frontmatter, malformed `awaiting_operator_decision` shape, or ADR-NNN citations in canonical-doc `changes[*].after` content that don't resolve to a registered ADR header in `project/DECISIONS.md`.
 - **Separation of concerns.** The deterministic Python daemon orchestrates; Claude Code subagents do the reasoning. No reasoning in the daemon; no state manipulation in the agents.
 - **Single-worker by design.** One daemon instance per state file, enforced by `fnsr.pid` lock at startup.
 
@@ -80,7 +80,7 @@ The conversational personas exist for fast, in-context work. The dispatched agen
 
 **Validation.** Two tracks, by scope of change:
 
-- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, and the applier system agent. Every daemon change MUST keep the suite green.
+- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + ADR-citation registry + awaiting-decision shape), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank). Every daemon change MUST keep the suite green.
 - **GraphWrite subject** (TypeScript): every change MUST pass
   - `npm run build` — no TypeScript errors
   - `npm test` — all spec tests pass
@@ -114,10 +114,67 @@ The daemon runs a single-worker loop:
 4. **Dispatch.** `invoke_agent` routes to a system agent (deterministic Python in `SYSTEM_AGENTS`) if one is registered for the name, otherwise spawns `claude --agent <name> --output-format json` with a prompt containing TASK_ID, INPUTS, UPSTREAM, and the contract reminder.
 5. **Extract.** For worker agents, `_extract_outputs` parses the response — handles bare JSON, claude json envelope, stream-json, and markdown-fenced JSON. System agents return their `outputs` directly from the Python function.
 6. **CPS check.** Veto on null outputs, `outputs.error` truthy, OR missing keys declared in the agent's `required_outputs:` frontmatter. Vetoes record `rejected_outputs` in audit history and set `status=blocked` (no retry — structured errors and contract violations are deterministic).
-7. **Commit.** On success: store outputs, `status=done`, append a `completed` history entry chained via `hiri_sign`. On retry-eligible failure: `status=ready`, `attempts++`. On exhaustion (`attempts >= MAX_ATTEMPTS`): `status=failed`.
-8. **Crash recovery.** On daemon startup, any task left in `in_progress` is revived to `ready` with a `recovered_from_in_progress` audit entry (`attempts` preserved — operator can issue an explicit `operator_reset` history event for clemency).
+7. **Commit.** On success: store outputs, `status=done`, append a `completed` history entry chained via `hiri_sign`. On retry-eligible failure: `status=ready`, `attempts++`. On exhaustion (`attempts >= MAX_ATTEMPTS`): `status=failed`. If the agent returns `outputs.status == "awaiting_operator_decision"` with a valid shape (`options[]` non-empty, `recommendation` non-empty string), the task is committed with `status=awaiting_operator_decision` — no CPS veto for the missing `required_outputs`, since the agent is explicitly handing back to the operator.
+8. **Crash recovery.** On daemon startup, any task left in `in_progress` is revived to `ready` with a `recovered_from_in_progress` audit entry (`attempts` preserved — operator can issue an explicit `operator_reset` history event for clemency). The daemon also scans for `awaiting_operator_decision` tasks on startup and emits a WARNING line per task — the daemon will not progress past them in dispatch ordering until the operator runs `state_admin resolve`.
 
-Task statuses: `ready`, `in_progress`, `done`, `blocked`, `failed`.
+Task statuses: `ready`, `in_progress`, `done`, `blocked`, `failed`, `awaiting_operator_decision`.
+
+## 7.5 Canonical Documents and the ADR-Citation CPS Check
+
+Some files in the repo are **canonical authored docs** — they govern decisions and protocol, not transient code. When a worker agent proposes a `changes[].after` payload destined for one of these paths, the CPS check parses the proposed content for `ADR-NNN` citations and vetoes the commit if any cited ADR is not present as a `## ADR-NNN:` header in [project/DECISIONS.md](project/DECISIONS.md). This prevents an agent from inventing ADR numbers in authoritative docs.
+
+Default canonical paths (checked by exact match, normalized for Windows separators):
+
+- `project/DECISIONS.md`
+- `project/SPEC.md`
+- `project/ROADMAP.md`
+- `project/IMPLEMENTATION_PLAN.md`
+
+Default canonical prefixes (checked by `startswith`):
+
+- `arc/` — anything under `arc/` is treated as authored protocol content.
+
+Configuration via environment variables:
+
+- `FNSR_DECISIONS_PATH` — path to the ADR registry file. Default `./project/DECISIONS.md`.
+- `FNSR_CANONICAL_DOCS` — colon-separated list of exact paths. Overrides the defaults if set.
+- `FNSR_CANONICAL_DOC_PREFIXES` — colon-separated list of path prefixes. Overrides the defaults if set.
+
+The check is scoped: ADR-NNN mentions in `changes[].after` destined for non-canonical paths (e.g., `src/kernel/transform.ts`) are NOT checked, since inline code comments may legitimately reference unmerged ADR drafts.
+
+## 7.6 Operator-Decision Handoff Path
+
+Some questions cannot be answered by an agent — they require operator judgment (Q1/Q2/Q3/Q4-style decisions, scope splits, contested tradeoffs). An agent may return:
+
+```json
+{
+  "outputs": {
+    "status": "awaiting_operator_decision",
+    "options": ["option A description", "option B description", ...],
+    "recommendation": "Recommend A because ..."
+  }
+}
+```
+
+`options[]` MAY be a list of strings OR a list of objects (`{"label": "A", "tradeoff": "..."}`). `recommendation` MUST be a non-empty string. Both keys are required; an empty `options` list or a missing/blank `recommendation` triggers a CPS veto for malformed shape.
+
+When this shape is recognized, the daemon commits the task with `status=awaiting_operator_decision`. The operator resolves it via:
+
+```
+python state_admin.py resolve <task-id> <option-index> [--note "..."]
+```
+
+Resolution appends an `operator_resolution` audit entry (chain-hashed), annotates `outputs.operator_resolution = {option_index, option_text, note}`, and sets `status=done` so downstream tasks become routable.
+
+## 7.7 Forward-Track Banking
+
+When the operator notices a methodology insight, recurring pattern, or risk that's worth preserving but does NOT belong as a normal task or ADR, they bank it as a `forward_track` history entry against an anchor task:
+
+```
+python state_admin.py bank <anchor-task-id> --class {methodology|pattern|risk|insight} --content "..." [--cycle N]
+```
+
+This appends a `forward_track` event (chain-hashed) with `candidate_class`, `content`, and optional `surfacing_cycle`. The audit trail accumulates these without polluting the task graph. They surface during retrospective sweeps and feed future template/PLAYBOOK updates.
 
 ## 8. Session Workflow
 
@@ -173,7 +230,7 @@ Layer 2: src/adapters/        <- Optional. Infrastructure integration.
 | File | Purpose |
 |---|---|
 | [fnsr_daemon.py](fnsr_daemon.py) | The orchestrator — single-file Python stdlib. |
-| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation (reset / abandon / append-tasks / verify / status). Run `python state_admin.py --help`. |
+| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation (reset / abandon / append-tasks / verify / status / resolve / bank). `status` surfaces any `awaiting_operator_decision` tasks at the top. `resolve` closes an awaiting task by selecting an option index. `bank` records a forward-track methodology/pattern/risk insight against an anchor task. Run `python state_admin.py --help`. |
 | [state.jsonld](state.jsonld) | JSON-LD work queue with hash-chained audit trail. |
 | `state.jsonld.lock` | OS-level lock for state I/O (auto-created, gitignored). |
 | `fnsr.pid` | OS-level daemon-instance lock (auto-created, gitignored). |

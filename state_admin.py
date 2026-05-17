@@ -201,7 +201,9 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    """Print task statuses. Optional --filter STATUS to show only one bucket."""
+    """Print task statuses. Optional --filter STATUS to show only one bucket.
+    `awaiting_operator_decision` tasks are surfaced at the top regardless of
+    filter so operators don't miss them."""
     state_path = Path(args.state_path)
     state = _load_state(state_path)
     by_status: dict[str, list[str]] = {}
@@ -212,10 +214,96 @@ def cmd_status(args: argparse.Namespace) -> int:
         for tid in ids:
             print(tid)
         return 0
+    # Surface awaiting_operator_decision at the top — operators must see it
+    awaiting = by_status.pop("awaiting_operator_decision", [])
+    if awaiting:
+        print(f"!! AWAITING OPERATOR DECISION ({len(awaiting)}):")
+        for tid in awaiting:
+            print(f"  {tid}")
+            print(f"    resolve: python state_admin.py resolve {tid} --option N")
+        print()
     for status, ids in sorted(by_status.items()):
         print(f"{status} ({len(ids)}):")
         for tid in ids:
             print(f"  {tid}")
+    return 0
+
+
+def cmd_resolve(args: argparse.Namespace) -> int:
+    """Resolve an `awaiting_operator_decision` task by picking one of the
+    options the agent surfaced. Records the operator_resolution audit event,
+    annotates the task's outputs with the chosen option, and marks the task
+    done so downstream chain dependencies advance.
+
+    The chosen ADR (if the operator wants one drafted) is the operator's
+    next step — queue a question-resolver task with the resolution as a
+    structured answer, or edit DECISIONS.md directly.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.task_id)
+    if task is None:
+        print(f"task not found: {args.task_id}", file=sys.stderr)
+        return 1
+    if task.get("status") != "awaiting_operator_decision":
+        print(f"task {args.task_id} status is {task.get('status')!r}, "
+              f"not awaiting_operator_decision", file=sys.stderr)
+        return 1
+    outputs = task.get("outputs") or {}
+    options = outputs.get("options")
+    if not isinstance(options, list) or not options:
+        print(f"task {args.task_id} has no options to resolve", file=sys.stderr)
+        return 1
+    if args.option < 1 or args.option > len(options):
+        print(f"option {args.option} out of range; task has {len(options)} "
+              f"option(s)", file=sys.stderr)
+        return 1
+    chosen_option = options[args.option - 1]
+    payload = {
+        "chosen_option_index": args.option,
+        "chosen_option": chosen_option,
+        "operator": args.operator,
+    }
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_audit(task, "operator_resolution", payload)
+    # Annotate outputs with the resolution so downstream agents reading
+    # via UPSTREAM see the resolved choice
+    if isinstance(task.get("outputs"), dict):
+        task["outputs"]["operator_resolution"] = payload
+    task["status"] = "done"
+    _save_state(state_path, state)
+    print(f"resolved: {args.task_id}  (option {args.option} of "
+          f"{len(options)})")
+    return 0
+
+
+def cmd_bank(args: argparse.Namespace) -> int:
+    """Record a forward-track audit event against a task. Captures a pattern
+    observation, risk callout, methodology candidate, or other operational
+    intelligence as an append-only audit entry — no task state change.
+    Phase-exit-retro (v3.0) will consume these events.
+
+    The cycle number is operator-provided in v2.6.0 (no cycle counter yet
+    until v2.8.0's commit-finalize lands). Pass --cycle if you have one.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.task_id)
+    if task is None:
+        print(f"task not found: {args.task_id}", file=sys.stderr)
+        return 1
+    payload: dict[str, Any] = {
+        "candidate_class": args.candidate_class,
+        "content": args.content,
+        "operator": args.operator,
+    }
+    if args.cycle is not None:
+        payload["surfacing_cycle"] = args.cycle
+    _append_audit(task, "forward_track", payload)
+    _save_state(state_path, state)
+    print(f"banked: {args.task_id}  class={args.candidate_class}"
+          + (f"  cycle={args.cycle}" if args.cycle is not None else ""))
     return 0
 
 
@@ -256,8 +344,33 @@ def _build_parser() -> argparse.ArgumentParser:
     p_status = sub.add_parser("status", help="print task statuses")
     p_status.add_argument("--filter",
                            help="show only this status (ready|in_progress|"
-                                "done|blocked|failed)")
+                                "done|blocked|failed|awaiting_operator_decision)")
     p_status.set_defaults(func=cmd_status)
+
+    p_resolve = sub.add_parser("resolve",
+                                help="resolve an awaiting_operator_decision task")
+    p_resolve.add_argument("task_id")
+    p_resolve.add_argument("--option", type=int, required=True,
+                            help="1-based index of the option to pick")
+    p_resolve.add_argument("--notes",
+                            help="optional operator notes recorded with the "
+                                 "resolution")
+    p_resolve.add_argument("--operator", default="operator")
+    p_resolve.set_defaults(func=cmd_resolve)
+
+    p_bank = sub.add_parser("bank",
+                             help="record a forward-track audit event")
+    p_bank.add_argument("task_id",
+                         help="task @id to anchor the audit entry against")
+    p_bank.add_argument("--candidate-class", required=True,
+                         help="pattern | risk | methodology | decision | other")
+    p_bank.add_argument("--content", required=True,
+                         help="the observation / candidate text")
+    p_bank.add_argument("--cycle", type=int, default=None,
+                         help="optional surfacing cycle number "
+                              "(operator-provided in v2.6.0)")
+    p_bank.add_argument("--operator", default="operator")
+    p_bank.set_defaults(func=cmd_bank)
 
     return p
 

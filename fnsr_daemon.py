@@ -65,6 +65,22 @@ MAX_ATTEMPTS = int(os.environ.get("FNSR_MAX_ATTEMPTS", "3"))
 RAW_STDOUT_LOG_BYTES = int(os.environ.get("FNSR_RAW_STDOUT_BYTES", "4000"))
 DAEMON_PID_PATH = Path(os.environ.get("FNSR_PID", "./fnsr.pid"))
 API_BACKOFF_S = int(os.environ.get("FNSR_API_BACKOFF_S", "60"))
+DECISIONS_PATH = Path(os.environ.get("FNSR_DECISIONS_PATH",
+                                       "./project/DECISIONS.md"))
+# Files where ADR citations are load-bearing. Citations to non-existent
+# ADRs in these files veto via CPS. Override via env vars per project.
+CANONICAL_DOC_PATHS = [
+    p.strip() for p in os.environ.get(
+        "FNSR_CANONICAL_DOCS",
+        "project/DECISIONS.md,project/SPEC.md,project/ROADMAP.md,"
+        "project/IMPLEMENTATION_PLAN.md"
+    ).split(",") if p.strip()
+]
+CANONICAL_DOC_PREFIXES = [
+    p.strip() for p in os.environ.get(
+        "FNSR_CANONICAL_DOC_PREFIXES", "arc/"
+    ).split(",") if p.strip()
+]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -210,6 +226,118 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
                     f"agent {agent_name!r} missing required output keys: "
                     f"{missing}"
                 )
+
+
+def _validate_awaiting_decision_shape(outputs: dict[str, Any]) -> Optional[str]:
+    """Return None if `outputs` is a well-formed awaiting_operator_decision
+    envelope, or a veto-reason string if malformed. Required fields:
+      status         : "awaiting_operator_decision"  (caller already checked)
+      options        : non-empty list of dict|str entries describing choices
+      recommendation : str — the agent's suggested option (free-form, can
+                       reference an option by index or content)
+    """
+    options = outputs.get("options")
+    if not isinstance(options, list) or len(options) == 0:
+        return ("awaiting_operator_decision output must include a non-empty "
+                "`options` list")
+    rec = outputs.get("recommendation")
+    if not isinstance(rec, str) or not rec.strip():
+        return ("awaiting_operator_decision output must include a "
+                "non-empty `recommendation` string")
+    return None
+
+
+_ADR_CITATION_RE = re.compile(r"\bADR-(\d{3})\b")
+_ADR_HEADER_RE = re.compile(r"^## ADR-(\d{3}):", re.MULTILINE)
+
+
+def _load_adr_registry(decisions_path: Path = DECISIONS_PATH) -> set[str]:
+    """Parse DECISIONS.md and return the set of ADR numbers that exist
+    (as three-digit strings). Returns empty set if file missing — callers
+    should treat that as "no registry available; skip the check."
+    """
+    if not decisions_path.exists():
+        return set()
+    try:
+        text = decisions_path.read_text(encoding="utf-8-sig")
+    except OSError:
+        return set()
+    return {m.group(1) for m in _ADR_HEADER_RE.finditer(text)}
+
+
+def _is_canonical_doc(file_rel: str) -> bool:
+    """True if file_rel is in the canonical-docs allowlist (exact match
+    or under a canonical-prefix directory like arc/). Canonical docs are
+    where ADR citations are load-bearing; the CPS check only enforces on
+    these paths to avoid false positives in casual mentions elsewhere."""
+    if not file_rel:
+        return False
+    # Normalize Windows / forward slashes for comparison.
+    normalized = file_rel.replace("\\", "/")
+    if normalized in CANONICAL_DOC_PATHS:
+        return True
+    for prefix in CANONICAL_DOC_PREFIXES:
+        if normalized.startswith(prefix):
+            return True
+    return False
+
+
+def _check_adr_citations(proposed_outputs: Any,
+                          decisions_path: Path = DECISIONS_PATH) -> None:
+    """Veto when proposed changes cite a non-existent ADR in canonical docs.
+
+    Scoped to `changes[*].after` content destined for files in the
+    canonical-docs allowlist. ADR citations elsewhere (casual mentions in
+    commit messages, test fixtures, code comments) are not checked — this
+    avoids false positives. Kills the "ADR-NNN ghost" class: agent
+    cites ADR-012 but DECISIONS.md has no ADR-012 entry, or its ADR-012
+    is a different decision than the agent thinks.
+
+    No-op when:
+      - proposed_outputs has no `changes` (not a developer-shaped output)
+      - DECISIONS.md doesn't exist yet (no registry to check against)
+      - No change targets a canonical doc
+    """
+    if not isinstance(proposed_outputs, dict):
+        return
+    changes = proposed_outputs.get("changes")
+    if not isinstance(changes, list):
+        return
+    registry: Optional[set[str]] = None  # lazily loaded only if needed
+    missing_per_change: list[tuple[str, str, list[str]]] = []
+    for c in changes:
+        if not isinstance(c, dict):
+            continue
+        file_rel = c.get("file")
+        if not _is_canonical_doc(file_rel or ""):
+            continue
+        after = c.get("after")
+        if not isinstance(after, str):
+            continue
+        cites = sorted({m.group(1) for m in _ADR_CITATION_RE.finditer(after)})
+        if not cites:
+            continue
+        if registry is None:
+            registry = _load_adr_registry(decisions_path)
+            if not registry:
+                # No DECISIONS.md or empty — skip the check; nothing to
+                # validate against. Operator can build the registry later.
+                return
+        bad = [n for n in cites if n not in registry]
+        if bad:
+            missing_per_change.append(
+                (c.get("id", "?"), file_rel, [f"ADR-{n}" for n in bad])
+            )
+    if missing_per_change:
+        # First entry's detail is the headline; full list goes to message.
+        cid, fpath, bad_list = missing_per_change[0]
+        more = (f" (and {len(missing_per_change) - 1} more change(s))"
+                if len(missing_per_change) > 1 else "")
+        raise ContainmentVeto(
+            f"change {cid!r} on canonical doc {fpath!r} cites non-existent "
+            f"ADR(s) {bad_list}{more}; canonical ADR registry is "
+            f"DECISIONS.md"
+        )
 
 
 def hiri_sign(prev_hash: str, payload: dict[str, Any]) -> str:
@@ -955,8 +1083,43 @@ def run_one_cycle() -> bool:
 
         prev_hash = _last_hash(live)
         if result.ok:
+            # v2.6.0: special handling for `awaiting_operator_decision`
+            # output shape. Agents emit this when surfacing a real
+            # ambiguity that requires operator input. Recognized before
+            # the standard CPS path so it isn't vetoed for missing
+            # required_outputs keys.
+            if (isinstance(result.outputs, dict)
+                    and result.outputs.get("status")
+                        == "awaiting_operator_decision"):
+                veto_reason = _validate_awaiting_decision_shape(result.outputs)
+                if veto_reason is None:
+                    live["outputs"] = result.outputs
+                    live["status"] = "awaiting_operator_decision"
+                    options = result.outputs.get("options") or []
+                    _record(live, prev_hash, "awaiting_operator_decision", {
+                        "options_count": len(options),
+                        "recommendation": result.outputs.get("recommendation"),
+                    })
+                    log.warning(
+                        "task %s awaiting operator decision: %d option(s); "
+                        "resolve via `state_admin resolve %s --option N`",
+                        live["@id"], len(options), live["@id"],
+                    )
+                    return True
+                # Fall through to CPS veto handling with the shape error
+                live["outputs"] = result.outputs
+                _record(live, prev_hash, "cps_veto", {
+                    "reason": veto_reason,
+                    "rejected_outputs": result.outputs,
+                })
+                live["status"] = "blocked"
+                log.warning("task %s blocked by CPS: %s",
+                            live["@id"], veto_reason)
+                return True
+
             try:
                 cps_check(live, result.outputs)
+                _check_adr_citations(result.outputs)
             except ContainmentVeto as veto:
                 # Preserve the rejected payload on the task so operators
                 # can inspect what was actually returned, and embed it
@@ -1127,6 +1290,20 @@ def main() -> int:
                 "instance; revived to ready",
                 n,
             )
+
+        # Surface tasks awaiting operator decision so the chain isn't
+        # silently stuck waiting for human input.
+        with locked_state() as state:
+            awaiting = [t["@id"] for t in state.get("tasks", [])
+                        if t.get("status") == "awaiting_operator_decision"]
+        if awaiting:
+            log.warning(
+                "%d task(s) AWAITING OPERATOR DECISION; resolve via "
+                "`python state_admin.py resolve <task-id> --option N`",
+                len(awaiting),
+            )
+            for tid in awaiting:
+                log.warning("  awaiting: %s", tid)
 
         log.info("fnsr-daemon starting: state=%s agents=%s pid=%d",
                  STATE_PATH, AGENTS_DIR, os.getpid())
