@@ -179,14 +179,46 @@ class ContainmentVeto(Exception):
 _REQUIRED_OUTPUTS_RE = re.compile(
     r"^required_outputs:\s*\[(.*?)\]\s*$", re.MULTILINE
 )
+_REQUIRED_OUTPUTS_BY_MODE_BLOCK_RE = re.compile(
+    r"^required_outputs:\s*\n((?:[ \t]+\S+:\s*\[.*?\]\s*\n)+)",
+    re.MULTILINE,
+)
+_REQUIRED_OUTPUTS_BY_MODE_ENTRY_RE = re.compile(
+    r"^[ \t]+(\S+):\s*\[(.*?)\]\s*$", re.MULTILINE
+)
 
 
-def _agent_required_outputs(agent_name: str) -> list[str]:
+def _parse_outputs_list(raw: str) -> list[str]:
+    return [
+        s.strip().strip('"').strip("'")
+        for s in raw.split(",")
+        if s.strip()
+    ]
+
+
+def _agent_required_outputs(
+    agent_name: str, mode: Optional[str] = None
+) -> list[str]:
     """
-    Read an agent's `required_outputs` from its frontmatter. Returns the
-    list of keys an agent's `outputs` dict MUST contain on success; empty
-    list if the agent has no declaration (or no .md file). Single-line
-    list syntax only: `required_outputs: [a, b, c]`.
+    Read an agent's `required_outputs` from its frontmatter.
+
+    Two frontmatter syntaxes are supported:
+
+      1. Flat list (single-mode agents):
+            required_outputs: [a, b, c]
+
+      2. Per-mode dict (multi-mode agents like architect which has both
+         `review` and `ratification` modes per Spec 03):
+            required_outputs:
+              review: [findings, recommendations, summary, recommendation]
+              ratification: [ruling, editorial_verdict, ...]
+
+    When the frontmatter uses dict syntax, `mode` selects which list to
+    return. If `mode` is None or unrecognized, returns the empty list —
+    callers MUST pass the task's `inputs.mode` for multi-mode agents.
+
+    Returns empty list when the agent has no declaration (or no .md
+    file). Single-mode agents ignore the `mode` argument entirely.
     """
     agent_path = AGENTS_DIR / f"{agent_name}.md"
     if not agent_path.exists():
@@ -198,14 +230,22 @@ def _agent_required_outputs(agent_name: str) -> list[str]:
     if end < 0:
         return []
     frontmatter = text[3:end]
-    match = _REQUIRED_OUTPUTS_RE.search(frontmatter)
-    if not match:
-        return []
-    return [
-        s.strip().strip('"').strip("'")
-        for s in match.group(1).split(",")
-        if s.strip()
-    ]
+
+    flat = _REQUIRED_OUTPUTS_RE.search(frontmatter)
+    if flat:
+        return _parse_outputs_list(flat.group(1))
+
+    block = _REQUIRED_OUTPUTS_BY_MODE_BLOCK_RE.search(frontmatter)
+    if block:
+        modes = {
+            m.group(1): _parse_outputs_list(m.group(2))
+            for m in _REQUIRED_OUTPUTS_BY_MODE_ENTRY_RE.finditer(block.group(1))
+        }
+        if mode is None:
+            return []
+        return modes.get(mode, [])
+
+    return []
 
 
 def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
@@ -219,7 +259,12 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
             )
         agent_name = task.get("agent")
         if agent_name:
-            required = _agent_required_outputs(agent_name)
+            # Multi-mode agents (architect: review|ratification) declare
+            # required_outputs keyed by mode in frontmatter. The task's
+            # inputs.mode selects which list applies.
+            inputs = task.get("inputs") or {}
+            mode = inputs.get("mode") if isinstance(inputs, dict) else None
+            required = _agent_required_outputs(agent_name, mode=mode)
             missing = [k for k in required if k not in proposed_outputs]
             if missing:
                 raise ContainmentVeto(

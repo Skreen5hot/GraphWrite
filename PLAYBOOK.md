@@ -129,6 +129,63 @@ If both keys are well-formed, the daemon commits the task with `status=awaiting_
 
 ---
 
+### `ruling: denied, rationale: reconnaissance_required` (v2.7.0)
+
+**Example outputs in audit history:**
+```json
+{
+  "ruling": "denied",
+  "editorial_verdict": "substantive",
+  "editorial_verdict_reason": "modifies normative shall language in spec §3.2.1",
+  "rationale": "reconnaissance_required",
+  ...
+}
+```
+
+**What it means:** Architect's Pass 2a ratification refused because UPSTREAM lacks a `reconnaissance` task entry, AND the architect classified the proposed change as substantive (not editorial). Per FNSR Protocol Spec 03 §"Reconnaissance requirement", substantive changes require reconnaissance evidence; the refusal is the architect's contract working as designed.
+
+**Recovery options:**
+1. **Queue a reconnaissance task first**, then re-queue the ratification with the reconnaissance entry as a `depends_on`. Standard substantive-change chain: `reconnaissance → ratification → operator-applier` (v2.7.0) or `→ commit-finalize` (v2.8.0+).
+2. **The change is actually editorial.** Read the `editorial_verdict_reason` field — does the rationale stand up? If the architect mis-classified, re-queue ratification with a clearer prompt asking the architect to re-evaluate the editorial-vs-substantive boundary against the structural heuristic in [.claude/agents/architect.md](.claude/agents/architect.md). The boundary is LLM-judged; misclassifications are expected and the `editorial_verdict_reason` field is the audit-surfacing mechanism.
+3. **The change scope is wrong.** If the proposed change touches both editorial AND substantive surfaces, split into two ratification tasks (one for the editorial portion, one for the substantive portion with reconnaissance).
+
+---
+
+### Architect ratification missing `editorial_verdict_reason` (v2.7.0)
+
+**Example log:**
+```
+WARNING fnsr-daemon task urn:fnsr:task:NNN-ratify blocked by CPS: agent 'architect' missing required output keys: ['editorial_verdict_reason']
+```
+
+**What it means:** Architect emitted a ratification ruling but omitted the `editorial_verdict_reason` field. Per FNSR Protocol Spec 03 and the v2.7.0 architect contract, this field is required even when the verdict itself is provided — it's the audit-surfacing mechanism for the LLM's classification rationale.
+
+**Recovery:** Tighten the architect's prompt to explicitly require `editorial_verdict_reason`. Reset the task; retry. If the LLM keeps dropping the field, split the task to reduce cognitive load on the LLM.
+
+---
+
+### Reconnaissance agent returned `error: scope_violation` (v2.7.0)
+
+**Example outputs in audit history:**
+```json
+{
+  "error": "scope_violation",
+  "what_was_asked": "propose a fix for the cardinality bug",
+  "why_it_violates_contract": "requires proposal, not observation",
+  "what_i_can_do_instead": "observe current cardinality behavior in src/kernel/cardinality.ts"
+}
+```
+
+**What it means:** The reconnaissance agent's task INSTRUCTION asked for something a read-only-by-contract agent cannot do — propose a fix, recommend a change, or decide a tradeoff. The agent correctly refused via the structured-error path. CPS vetoes; task goes `blocked`.
+
+**Recovery:** Re-queue with a properly-scoped task. Read the `what_i_can_do_instead` field — the agent has suggested the observation-shaped subset of the request. Either:
+1. Queue a NEW reconnaissance task with the narrowed scope from `what_i_can_do_instead`.
+2. Queue a developer task with the original (proposal-shaped) request — the developer agent is allowed to propose.
+
+The reconnaissance agent is the first instance of the read-only-by-contract pattern; this refusal is the pattern working as designed.
+
+---
+
 ### API 5xx errors (post-v2.4.2 backoff)
 
 **Example log:**
@@ -322,18 +379,48 @@ If you read the options and conclude the agent COULD have decided itself, don't 
 
 ---
 
-## 4.6 Banking forward-track insights (v2.6.0)
+## 4.6 Banking insights (v2.6.0 + v2.7.0 Spec 05 lifecycle)
 
-During a run, the operator sometimes notices a methodology insight, a recurring pattern, or a latent risk that's worth preserving but doesn't belong as a normal task or ADR (yet). Banking captures these against an anchor task without polluting the task graph.
+During a run, the operator notices a methodology insight, a recurring pattern, a discipline correction, or a latent risk worth preserving. Banking captures these against an anchor task without polluting the task graph.
+
+### v2.7.0+ canonical form
 
 ```powershell
 python state_admin.py bank <anchor-task-id> \
-    --class {methodology|pattern|risk|insight} \
     --content "After the v2.6.0 split, the synthesist needed a recommendation field, not options-only." \
-    [--cycle 12]
+    [--category {methodology-refinement-candidate|pattern-observation|discipline-correction|contingency-operationalization|discipline-state-transition-observation}] \
+    [--state {1|2|3}] \
+    [--cycle <cycle-id>]
 ```
 
-This appends a `forward_track` history entry on the anchor task with `{candidate_class, content, surfacing_cycle?}`. The entry is chain-hashed and lives in the audit trail alongside the task's normal lifecycle events.
+This appends a `banking` history entry per FNSR Protocol Spec 05 §"Audit event structure for bankings". Default `--category pattern-observation`; default `--state 1` (verbal-pending). The event carries `banking_id`, `category`, `state`, `content`, `transition_history`, `forward_tracked_by`, and optional `surfacing_cycle`.
+
+### v2.6.0 legacy form (still accepted)
+
+```powershell
+python state_admin.py bank <anchor-task-id> \
+    --candidate-class {pattern|risk|methodology|decision|other} \
+    --content "..." [--cycle <cycle-id>]
+```
+
+`--candidate-class` values are mapped to Spec 05 categories at command time (pattern → pattern-observation, methodology → methodology-refinement-candidate, decision → discipline-correction, risk → methodology-refinement-candidate, other → pattern-observation). The emitted event is still `event=banking` with the full Spec 05 structure.
+
+### Implicit vs explicit lifecycle operation
+
+Per FNSR Spec 05's v1.1 review note, the substrate is neutral about which mode the subject project operates:
+
+- **Implicit mode** (Logic Team practice): bank with default `--state 1`; never emit transition events; reconcile at phase-exit doc-pass. Counting views may diverge (architect-strict-count vs SME-inclusive-count); the divergence carries information.
+- **Explicit mode**: bank, then run `transition-banking` whenever the banking moves between states:
+
+```powershell
+python state_admin.py transition-banking <banking-id> \
+    --to-state {1|2|3} \
+    --reason "..." \
+    [--trigger {pass_2b_commit_landed|phase_exit_doc_pass_fold|manual_operator_action}] \
+    [--transitioning-cycle <cycle-id>]
+```
+
+The transition emits a `banking_state_transition` audit event chain-hashed against the same anchor task that hosts the banking's create event.
 
 ### When to bank vs. ADR vs. task
 
@@ -341,12 +428,13 @@ This appends a `forward_track` history entry on the anchor task with `{candidate
 |---|---|
 | Operator decision with downstream binding force | **ADR** in DECISIONS.md (queue a question-resolver task) |
 | Concrete work that must happen | **Task** (`state_admin.py append-tasks`) |
-| Observation worth preserving but not yet actionable | **Bank** as forward_track |
-| Recurring failure mode worth documenting | **Bank** as forward_track AND eventually fold into this PLAYBOOK |
+| Observation worth preserving but not yet actionable | **Bank** (event=banking) |
+| Recurring failure mode worth documenting | **Bank** AND eventually fold into this PLAYBOOK |
+| **Commitment to FUTURE deliberation on a specific item** | **Forward-track create** (§ 4.8); distinct from banking per Spec 07 |
 
 ### Retrieval
 
-Forward-track entries don't surface in `status` listings (they're not task state). They show up when you walk an anchor task's history:
+Banking entries don't surface in `status` listings (they're not task state). They show up when you walk an anchor task's history:
 
 ```powershell
 python -c "
@@ -354,12 +442,125 @@ import json
 s = json.load(open('state.jsonld', encoding='utf-8'))
 for t in s['tasks']:
     for h in t['history']:
-        if h['event'] == 'forward_track':
-            print(t['@id'], h['payload'].get('candidate_class'), '-', h['payload'].get('content'))
+        if h['event'] == 'banking':
+            p = h['payload']
+            print(t['@id'], p['banking_id'], p['category'], 'state', p['state'], '-', p['content'])
+        # v2.6.0 legacy events used event=forward_track for bankings
+        elif h['event'] == 'forward_track' and 'candidate_class' in h.get('payload', {}):
+            p = h['payload']
+            print(t['@id'], '[v2.6.0 legacy]', p['candidate_class'], '-', p['content'])
 "
 ```
 
 Periodic retrospective sweeps should fold the highest-signal banked entries into the template (PLAYBOOK, agent contracts, ADRs).
+
+---
+
+## 4.7 Pass 2a sequencing: reconnaissance → ratification (v2.7.0)
+
+Per FNSR Protocol Spec 03, changes that mutate canonical state pass through a two-pass discipline. v2.7.0 ships Pass 2a (reconnaissance + ratification); Pass 2b's verification-gated commit-finalize lands in v2.8.0. In v2.7.0 the operator manually queues the apply step after ratification succeeds.
+
+### Substantive-change chain
+
+For changes to defined terms, ADR text, constraint clauses, normative `shall`/`must` language, behavioral spec content — queue:
+
+```
+reconnaissance task (read-only investigation)
+    ↓
+ratification task (architect Pass 2a, mode: ratification)
+    ↓
+operator manually queues an applier task to land the ratified change
+```
+
+The architect's refusal contract refuses ratification when reconnaissance is absent and the change is substantive. The refusal lands as `ruling: denied, rationale: reconnaissance_required` (see § 1 failure modes). Queue a reconnaissance task and re-ratify.
+
+### Editorial-correction chain
+
+For typo fixes, formatting consistency, terminology tightening that preserves semantics, citation format updates:
+
+```
+ratification task (architect Pass 2a — editorial_verdict: editorial)
+    ↓
+operator manually queues an applier task
+```
+
+Reconnaissance is bypassed. The architect's `editorial_verdict: editorial` classification permits this.
+
+### Brief-confirmation chain
+
+For follow-up commits to amendments whose substance was ratified at a prior cycle:
+
+```
+operator manually queues an applier task with brief_confirmation: true
+    in inputs, and depends_on referencing the prior ratification
+```
+
+No new ratification — substance was ratified previously. The `brief_confirmation: true` flag is captured for v2.8.0+ cycle-counter suppression.
+
+### Reconnaissance task contract
+
+The `reconnaissance` agent is read-only by contract (tools: Read, Grep, Glob; no Edit/Write/Bash). Its output is `findings`, `summary`, `evidence_paths` — observations grounded in file paths and line ranges. If you queue a reconnaissance task whose INSTRUCTION asks for a proposal or recommendation, the agent will refuse via `error: scope_violation` (see § 1 failure modes). This is the first instance of the read-only-by-contract agent pattern; the refusal is the contract working as designed.
+
+---
+
+## 4.8 Phase boundaries and forward-track inheritance (v2.7.0 Spec 07)
+
+Forward-tracks record commitments to FUTURE deliberation on specific items — structurally distinct from bankings (observations ABOUT the protocol). Spec 07 separates the two surfaces because conflating them would have caused the bankings-lifecycle model to collide with itself at every cross-phase forward-track inheritance event.
+
+### Creating a forward-track
+
+```powershell
+python state_admin.py forward-track create \
+    --anchor-task <task-id> \
+    --sub-surface {consumer-closure-path|internal-methodology-refinement} \
+    --subject-type {banking|fixture|capability|candidacy|other} \
+    --subject-id <id> --description "..." \
+    --deliberation-cycle <cycle-id> --phase-origin <phase-id>
+```
+
+Examples:
+
+- A v0.2 feature commitment: `--sub-surface consumer-closure-path --subject-type capability --subject-id feature-x --deliberation-cycle v0.2-roadmap`
+- A Cat 9 verification-ritual candidacy: `--sub-surface internal-methodology-refinement --subject-type candidacy --subject-id cat-9-cited-content-consistency --deliberation-cycle phase-exit-retro`
+
+### Declaring a phase boundary
+
+```powershell
+python state_admin.py phase-boundary <from-phase> <to-phase> \
+    --anchor-task <task-id> [--cycle <cycle-id>] [--notes "..."]
+```
+
+This emits a `phase_boundary_declared` event anchored on the specified task. Substrate is phase-schema-neutral; the operator declares.
+
+### Inheriting unresolved forward-tracks across a boundary
+
+```powershell
+python state_admin.py forward-track inherit \
+    --from-phase <id> --to-phase <id> \
+    --inherited-at-cycle <entry-cycle-id>
+```
+
+Walks every Spec 07 forward-track event in `state.jsonld`. For each unresolved forward-track (state A or B) whose current phase context matches `--from-phase`, emits a `forward_track_phase_inheritance` event on the same anchor task. The forward-track's effective phase context is then `--to-phase` going forward.
+
+### Phase boundary + inheritance workflow
+
+The two commands are deliberately separate (paired manually or wrapped in a script):
+
+```powershell
+# Operator at phase-3 close
+python state_admin.py phase-boundary phase-3 phase-4 \
+    --anchor-task <last-task-of-phase-3> \
+    --cycle phase-3-close \
+    --notes "phase-3 exited cleanly; 3 forward-tracks still in state A"
+
+python state_admin.py forward-track inherit \
+    --from-phase phase-3 --to-phase phase-4 \
+    --inherited-at-cycle phase-4-entry
+```
+
+### v2.7.0 forward-track scope
+
+`create` + `inherit` are enabling primitives. `transition` (advance lifecycle state), `list` (query by sub-surface/state), `aging` (flag long-lived candidates) are operating primitives that land in v2.8.0 alongside the verification-ritual agent's new-candidacy emissions.
 
 ---
 

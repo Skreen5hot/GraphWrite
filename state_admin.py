@@ -5,13 +5,32 @@ tasks, abandon failing chains, append new tasks, or verify audit-chain
 integrity. Every modification preserves the SHA-256 hash chain by routing
 through fnsr_daemon's `hiri_sign` and `_last_hash` helpers.
 
-Usage:
+v2.6.0 surface:
     python state_admin.py reset <task_id> --reason "..." [--operator NAME]
     python state_admin.py abandon <task_id> --reason "..." \\
         [--replaced-by id1,id2,id3] [--operator NAME]
     python state_admin.py append-tasks <json-file>
     python state_admin.py verify [--quiet]
     python state_admin.py status [--filter STATUS]
+    python state_admin.py resolve <task_id> --option N [--notes "..."]
+    python state_admin.py bank <task_id> --content "..." \\
+        [--category CAT] [--state N] [--cycle N]
+                # v2.6.0 also accepted --candidate-class (legacy);
+                # see cmd_bank for the v2.6.0 -> Spec 05 category mapping.
+
+v2.7.0 additions (Pass 2a sequencing + banking lifecycle per FNSR Specs 03/05/07):
+    python state_admin.py transition-banking <banking_id> --to-state N \\
+        --reason "..." [--transitioning-cycle CYCLE]
+    python state_admin.py phase-boundary <from_phase> <to_phase> \\
+        --anchor-task <task_id> [--declared-by NAME]
+    python state_admin.py forward-track create --anchor-task <task_id> \\
+        --sub-surface {consumer-closure-path|internal-methodology-refinement} \\
+        --subject-type {banking|fixture|capability|candidacy|other} \\
+        --subject-id <id> --description "..." \\
+        --deliberation-cycle <cycle-id> --phase-origin <phase-id> \\
+        [--ft-id <ft-id>]
+    python state_admin.py forward-track inherit --from-phase <id> \\
+        --to-phase <id> --inherited-at-cycle <cycle-id>
 
 All commands operate on `state.jsonld` in the current directory by default;
 pass `--state-path PATH` to override. STOP THE DAEMON before modifying state
@@ -278,14 +297,63 @@ def cmd_resolve(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_bank(args: argparse.Namespace) -> int:
-    """Record a forward-track audit event against a task. Captures a pattern
-    observation, risk callout, methodology candidate, or other operational
-    intelligence as an append-only audit entry — no task state change.
-    Phase-exit-retro (v3.0) will consume these events.
+# v2.7.0 Spec 05 banking category set (closed enumeration; Spec 05 §"Banking taxonomy")
+SPEC05_CATEGORIES = (
+    "methodology-refinement-candidate",
+    "pattern-observation",
+    "discipline-correction",
+    "contingency-operationalization",
+    "discipline-state-transition-observation",
+)
 
-    The cycle number is operator-provided in v2.6.0 (no cycle counter yet
-    until v2.8.0's commit-finalize lands). Pass --cycle if you have one.
+# v2.6.0 --candidate-class -> Spec 05 --category back-compat mapping
+V260_TO_SPEC05_CATEGORY = {
+    "pattern": "pattern-observation",
+    "methodology": "methodology-refinement-candidate",
+    "decision": "discipline-correction",
+    "risk": "methodology-refinement-candidate",
+    "other": "pattern-observation",
+}
+
+
+def _resolve_banking_category(args: argparse.Namespace) -> str:
+    """Resolve --category (Spec 05) given the caller may have passed
+    --candidate-class (v2.6.0 legacy). v2.6.0 values are mapped to their
+    Spec 05 equivalents per V260_TO_SPEC05_CATEGORY."""
+    if args.category:
+        return args.category
+    if args.candidate_class:
+        return V260_TO_SPEC05_CATEGORY.get(args.candidate_class, args.candidate_class)
+    return "pattern-observation"
+
+
+def _banking_id(task: dict[str, Any]) -> str:
+    """Generate a banking_id stable to the anchor task + sequence within
+    the task's history. Format: bank-<task-id-tail>-<sequence>."""
+    task_id = task.get("@id", "unknown")
+    task_tail = task_id.rsplit(":", 1)[-1]
+    sequence = sum(
+        1 for h in task.get("history", [])
+        if h.get("event") in ("banking", "forward_track")
+    )
+    return f"bank-{task_tail}-{sequence + 1}"
+
+
+def cmd_bank(args: argparse.Namespace) -> int:
+    """Record a banking audit event against a task per Spec 05.
+
+    v2.6.0 emitted event=forward_track with --candidate-class payload.
+    v2.7.0+ emits event=banking with the Spec 05 audit event structure
+    (banking_id, category, state, surfacing_cycle, content,
+    transition_history, forward_tracked_by). Legacy --candidate-class
+    is still accepted and mapped to the closest Spec 05 category; the
+    v2.6.0 audit events already in the chain remain untouched and are
+    read as legacy bankings by downstream consumers.
+
+    Spec 05 §"Important: this spec corrects the original directive":
+    bankings have a three-state lifecycle (verbal-pending ->
+    partially-committed -> formalized). New bankings default to State 1
+    (verbal-pending) unless --state overrides.
     """
     state_path = Path(args.state_path)
     state = _load_state(state_path)
@@ -293,17 +361,299 @@ def cmd_bank(args: argparse.Namespace) -> int:
     if task is None:
         print(f"task not found: {args.task_id}", file=sys.stderr)
         return 1
+    category = _resolve_banking_category(args)
+    if category not in SPEC05_CATEGORIES:
+        print(f"warning: category {category!r} is not a Spec 05 category; "
+              f"accepted but downstream readers may not classify it correctly",
+              file=sys.stderr)
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    banking_id = args.banking_id or _banking_id(task)
+    transition_entry: dict[str, Any] = {
+        "state": args.state,
+        "timestamp": timestamp,
+    }
+    if args.cycle is not None:
+        transition_entry["transitioning_cycle"] = args.cycle
     payload: dict[str, Any] = {
-        "candidate_class": args.candidate_class,
+        "banking_id": banking_id,
+        "category": category,
+        "state": args.state,
         "content": args.content,
+        "transition_history": [transition_entry],
+        "forward_tracked_by": [],
         "operator": args.operator,
     }
     if args.cycle is not None:
         payload["surfacing_cycle"] = args.cycle
+    _append_audit(task, "banking", payload)
+    _save_state(state_path, state)
+    print(f"banked: {args.task_id}  banking_id={banking_id}  "
+          f"category={category}  state={args.state}"
+          + (f"  cycle={args.cycle}" if args.cycle is not None else ""))
+    return 0
+
+
+def _find_banking(state: dict[str, Any], banking_id: str) \
+        -> Optional[tuple[dict[str, Any], dict[str, Any]]]:
+    """Locate a banking event by banking_id across all task histories.
+    Returns (task, event_entry) on hit, or None.
+
+    Accepts BOTH v2.7.0+ event=banking events AND v2.6.0 legacy
+    event=forward_track events (when their payload contains a
+    banking_id field). v2.6.0 events without banking_id are not
+    findable here; the operator must transition them by hand if needed.
+    """
+    for t in state.get("tasks", []):
+        for h in t.get("history", []):
+            payload = h.get("payload") or {}
+            if h.get("event") in ("banking", "forward_track") and \
+                    payload.get("banking_id") == banking_id:
+                return (t, h)
+    return None
+
+
+def _banking_current_state(task: dict[str, Any], banking_id: str) -> Optional[int]:
+    """Compute a banking's current lifecycle state by walking the task's
+    history. Returns the latest state from a transition event, or the
+    initial state from the create event, or None if not found."""
+    current = None
+    for h in task.get("history", []):
+        payload = h.get("payload") or {}
+        if payload.get("banking_id") != banking_id:
+            continue
+        if h.get("event") == "banking" or h.get("event") == "forward_track":
+            current = payload.get("state", 1)
+        elif h.get("event") == "banking_state_transition":
+            current = payload.get("to_state", current)
+    return current
+
+
+def cmd_transition_banking(args: argparse.Namespace) -> int:
+    """Transition a banking to a new lifecycle state per Spec 05.
+
+    Emits a banking_state_transition audit event on the SAME task that
+    hosts the banking's create event. The substrate is neutral about
+    whether the subject project operates the lifecycle implicitly
+    (no transition events, reconciliation at phase-exit doc-pass) or
+    explicitly (per-transition events); this command is for the
+    explicit-mode operators.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    found = _find_banking(state, args.banking_id)
+    if found is None:
+        print(f"banking not found: {args.banking_id}", file=sys.stderr)
+        return 1
+    task, _create_event = found
+    current_state = _banking_current_state(task, args.banking_id)
+    if current_state is None:
+        print(f"banking {args.banking_id} has no resolvable state",
+              file=sys.stderr)
+        return 1
+    if current_state == args.to_state:
+        print(f"banking {args.banking_id} already at state {current_state}; "
+              f"no-op", file=sys.stderr)
+        return 1
+    payload: dict[str, Any] = {
+        "banking_id": args.banking_id,
+        "from_state": current_state,
+        "to_state": args.to_state,
+        "trigger": args.trigger,
+        "reason": args.reason,
+        "operator": args.operator,
+    }
+    if args.transitioning_cycle:
+        payload["transitioning_cycle"] = args.transitioning_cycle
+    _append_audit(task, "banking_state_transition", payload)
+    _save_state(state_path, state)
+    print(f"transitioned: {args.banking_id}  "
+          f"state {current_state} -> {args.to_state}")
+    return 0
+
+
+def cmd_phase_boundary(args: argparse.Namespace) -> int:
+    """Emit a phase_boundary_declared audit event.
+
+    Phases are subject-project concepts, not substrate primitives. This
+    command lets the operator declare a phase transition as a first-class
+    audit event without coupling the substrate to a phase schema. The
+    event anchors to a specific task (operator picks; typically the last
+    task of from_phase or the first task of to_phase).
+
+    Pair with `forward-track inherit` to bulk-inherit unresolved
+    forward-tracks across the boundary.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.anchor_task)
+    if task is None:
+        print(f"anchor task not found: {args.anchor_task}", file=sys.stderr)
+        return 1
+    payload: dict[str, Any] = {
+        "from_phase": args.from_phase,
+        "to_phase": args.to_phase,
+        "declared_by": args.declared_by,
+    }
+    if args.cycle:
+        payload["cycle"] = args.cycle
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_audit(task, "phase_boundary_declared", payload)
+    _save_state(state_path, state)
+    print(f"phase-boundary: {args.from_phase} -> {args.to_phase}  "
+          f"(anchored on {args.anchor_task})")
+    return 0
+
+
+def _forward_track_id(task: dict[str, Any]) -> str:
+    """Generate a forward_track_id stable to the anchor task + sequence."""
+    task_id = task.get("@id", "unknown")
+    task_tail = task_id.rsplit(":", 1)[-1]
+    sequence = sum(
+        1 for h in task.get("history", [])
+        if h.get("event") == "forward_track"
+        and "forward_track_id" in (h.get("payload") or {})
+    )
+    return f"ft-{task_tail}-{sequence + 1}"
+
+
+def cmd_forward_track_create(args: argparse.Namespace) -> int:
+    """Create a forward-track audit event per Spec 07.
+
+    Forward-tracks record COMMITMENTS TO FUTURE DELIBERATION on specific
+    items. Distinct from bankings (which record observations ABOUT the
+    protocol). Lifecycle: candidate (State A) -> deliberated-at-named-cycle
+    (State B) -> resolved (State C). v2.7.0 ships State A creation +
+    inheritance; State B/C transitions and list/aging queries land in
+    v2.8.0.
+
+    Audit event structure matches Spec 07 §"Audit event structure for
+    forward-tracks" EXACTLY, including fields that won't be operated on
+    in v2.7.0 (inherited_through_phases: [], transition_history: [{...}]).
+    Forward-tracks created in v2.7.0 must be readable by v2.8.0 transition
+    and list without migration.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.anchor_task)
+    if task is None:
+        print(f"anchor task not found: {args.anchor_task}", file=sys.stderr)
+        return 1
+    ft_id = args.ft_id or _forward_track_id(task)
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    payload: dict[str, Any] = {
+        "forward_track_id": ft_id,
+        "state": "A",
+        "sub_surface": args.sub_surface,
+        "subject": {
+            "type": args.subject_type,
+            "id": args.subject_id,
+            "description": args.description,
+        },
+        "named_deliberation_cycle": args.deliberation_cycle,
+        "phase_origin": args.phase_origin,
+        "inherited_through_phases": [],
+        "transition_history": [
+            {
+                "state": "A",
+                "timestamp": timestamp,
+                "transitioning_cycle": args.deliberation_cycle,
+            }
+        ],
+        "operator": args.operator,
+    }
     _append_audit(task, "forward_track", payload)
     _save_state(state_path, state)
-    print(f"banked: {args.task_id}  class={args.candidate_class}"
-          + (f"  cycle={args.cycle}" if args.cycle is not None else ""))
+    print(f"forward-track created: {ft_id}  "
+          f"sub_surface={args.sub_surface}  "
+          f"subject={args.subject_type}:{args.subject_id}  "
+          f"phase_origin={args.phase_origin}")
+    return 0
+
+
+def _ft_is_spec07(payload: dict[str, Any]) -> bool:
+    """Distinguish a Spec 07 forward-track event payload from a v2.6.0
+    legacy bank event payload (which also used event=forward_track).
+    The Spec 07 payload has a forward_track_id field; the legacy v2.6.0
+    payload does not."""
+    return "forward_track_id" in payload
+
+
+def _ft_current_state(task: dict[str, Any], ft_id: str) -> Optional[str]:
+    """Compute a forward-track's current lifecycle state by walking the
+    task's history."""
+    current = None
+    for h in task.get("history", []):
+        payload = h.get("payload") or {}
+        if payload.get("forward_track_id") != ft_id:
+            continue
+        ev = h.get("event")
+        if ev == "forward_track" and _ft_is_spec07(payload):
+            current = payload.get("state", "A")
+        elif ev == "forward_track_state_transition":
+            current = payload.get("to_state", current)
+    return current
+
+
+def cmd_forward_track_inherit(args: argparse.Namespace) -> int:
+    """Bulk-inherit unresolved forward-tracks across an operator-declared
+    phase boundary per Spec 07.
+
+    Walks every Spec 07 forward-track event in state.jsonld; for each
+    forward-track whose current state is A or B (not resolved) and whose
+    phase_origin matches --from-phase OR whose inherited_through_phases
+    tail matches --from-phase, emits a forward_track_phase_inheritance
+    audit event on the SAME task hosting the original forward-track. The
+    inheritance event updates the forward-track's effective phase context
+    (computed from the chain at read time).
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    inherited = 0
+    skipped_resolved = 0
+    seen_ids: set[str] = set()
+    for task in state.get("tasks", []):
+        for h in list(task.get("history", [])):
+            payload = h.get("payload") or {}
+            if h.get("event") != "forward_track":
+                continue
+            if not _ft_is_spec07(payload):
+                continue
+            ft_id = payload["forward_track_id"]
+            if ft_id in seen_ids:
+                continue
+            seen_ids.add(ft_id)
+            # Determine current phase context: latest inheritance event's
+            # to_phase, or original phase_origin.
+            current_phase = payload.get("phase_origin")
+            for h2 in task.get("history", []):
+                p2 = h2.get("payload") or {}
+                if p2.get("forward_track_id") != ft_id:
+                    continue
+                if h2.get("event") == "forward_track_phase_inheritance":
+                    current_phase = p2.get("to_phase", current_phase)
+            if current_phase != args.from_phase:
+                continue
+            current_state = _ft_current_state(task, ft_id)
+            if current_state == "C":
+                skipped_resolved += 1
+                continue
+            inheritance_payload = {
+                "forward_track_id": ft_id,
+                "from_phase": args.from_phase,
+                "to_phase": args.to_phase,
+                "inherited_at_cycle": args.inherited_at_cycle,
+                "timestamp": timestamp,
+                "operator": args.operator,
+            }
+            _append_audit(task, "forward_track_phase_inheritance",
+                          inheritance_payload)
+            inherited += 1
+    if inherited:
+        _save_state(state_path, state)
+    print(f"forward-track inherit: {args.from_phase} -> {args.to_phase}  "
+          f"inherited={inherited}  skipped_resolved={skipped_resolved}")
     return 0
 
 
@@ -359,18 +709,123 @@ def _build_parser() -> argparse.ArgumentParser:
     p_resolve.set_defaults(func=cmd_resolve)
 
     p_bank = sub.add_parser("bank",
-                             help="record a forward-track audit event")
+                             help="record a banking audit event (Spec 05)")
     p_bank.add_argument("task_id",
                          help="task @id to anchor the audit entry against")
-    p_bank.add_argument("--candidate-class", required=True,
-                         help="pattern | risk | methodology | decision | other")
     p_bank.add_argument("--content", required=True,
-                         help="the observation / candidate text")
-    p_bank.add_argument("--cycle", type=int, default=None,
-                         help="optional surfacing cycle number "
-                              "(operator-provided in v2.6.0)")
+                         help="the banking content / observation text")
+    p_bank.add_argument("--category", default=None,
+                         choices=SPEC05_CATEGORIES,
+                         help="Spec 05 banking taxonomy category "
+                              "(default: pattern-observation)")
+    p_bank.add_argument("--candidate-class", default=None,
+                         choices=("pattern", "methodology", "decision",
+                                  "risk", "other"),
+                         help="v2.6.0 legacy synonym; mapped to a Spec 05 "
+                              "category. Prefer --category for v2.7.0+.")
+    p_bank.add_argument("--state", type=int, default=1, choices=(1, 2, 3),
+                         help="banking lifecycle state (Spec 05): "
+                              "1=verbal-pending, 2=partially-committed, "
+                              "3=formalized (default: 1)")
+    p_bank.add_argument("--banking-id", default=None,
+                         help="optional explicit banking_id "
+                              "(default: auto-generated from task @id)")
+    p_bank.add_argument("--cycle", default=None,
+                         help="optional surfacing cycle identifier")
     p_bank.add_argument("--operator", default="operator")
     p_bank.set_defaults(func=cmd_bank)
+
+    p_trans = sub.add_parser("transition-banking",
+                              help="transition a banking to a new state "
+                                   "(Spec 05 lifecycle)")
+    p_trans.add_argument("banking_id",
+                          help="banking_id to transition")
+    p_trans.add_argument("--to-state", type=int, required=True,
+                          choices=(1, 2, 3),
+                          help="target state (1/2/3)")
+    p_trans.add_argument("--reason", required=True,
+                          help="rationale for the transition")
+    p_trans.add_argument("--trigger", default="manual_operator_action",
+                          help="trigger label per Spec 05 §'Lifecycle state "
+                               "transitions' (e.g., pass_2b_commit_landed, "
+                               "phase_exit_doc_pass_fold, "
+                               "manual_operator_action)")
+    p_trans.add_argument("--transitioning-cycle", default=None,
+                          help="cycle id during which the transition occurred")
+    p_trans.add_argument("--operator", default="operator")
+    p_trans.set_defaults(func=cmd_transition_banking)
+
+    p_phase = sub.add_parser("phase-boundary",
+                              help="emit a phase_boundary_declared audit "
+                                   "event (operator-emitted; substrate is "
+                                   "phase-schema-neutral)")
+    p_phase.add_argument("from_phase",
+                          help="phase identifier we are leaving "
+                               "(e.g., phase-1)")
+    p_phase.add_argument("to_phase",
+                          help="phase identifier we are entering "
+                               "(e.g., phase-2)")
+    p_phase.add_argument("--anchor-task", required=True,
+                          help="task @id to anchor the phase-boundary event "
+                               "against")
+    p_phase.add_argument("--cycle", default=None,
+                          help="optional cycle id at which the boundary is "
+                               "declared")
+    p_phase.add_argument("--notes", default=None,
+                          help="optional operator notes")
+    p_phase.add_argument("--declared-by", default="operator")
+    p_phase.set_defaults(func=cmd_phase_boundary)
+
+    p_ft = sub.add_parser("forward-track",
+                           help="forward-track surface operations (Spec 07)")
+    ft_sub = p_ft.add_subparsers(dest="ft_cmd", required=True)
+
+    p_ft_create = ft_sub.add_parser(
+        "create",
+        help="create a forward-track in State A (candidate)"
+    )
+    p_ft_create.add_argument("--anchor-task", required=True,
+                              help="task @id to anchor the forward-track "
+                                   "event against (typically the surfacing "
+                                   "task)")
+    p_ft_create.add_argument(
+        "--sub-surface", required=True,
+        choices=("consumer-closure-path", "internal-methodology-refinement"),
+        help="audience sub-surface (Spec 07 §'Audience sub-surfaces')"
+    )
+    p_ft_create.add_argument(
+        "--subject-type", required=True,
+        choices=("banking", "fixture", "capability", "candidacy", "other"),
+        help="what kind of item is being forward-tracked"
+    )
+    p_ft_create.add_argument("--subject-id", required=True,
+                              help="referenced-event id (or descriptor for "
+                                   "type=other)")
+    p_ft_create.add_argument("--description", required=True,
+                              help="human-readable description")
+    p_ft_create.add_argument("--deliberation-cycle", required=True,
+                              help="named cycle at which deliberation will "
+                                   "occur (e.g., phase-exit-retro, "
+                                   "v0.2-roadmap)")
+    p_ft_create.add_argument("--phase-origin", required=True,
+                              help="phase that surfaced the forward-track "
+                                   "(e.g., phase-1)")
+    p_ft_create.add_argument("--ft-id", default=None,
+                              help="optional explicit forward_track_id "
+                                   "(default: auto-generated)")
+    p_ft_create.add_argument("--operator", default="operator")
+    p_ft_create.set_defaults(func=cmd_forward_track_create)
+
+    p_ft_inherit = ft_sub.add_parser(
+        "inherit",
+        help="bulk-inherit unresolved forward-tracks across a phase boundary"
+    )
+    p_ft_inherit.add_argument("--from-phase", required=True)
+    p_ft_inherit.add_argument("--to-phase", required=True)
+    p_ft_inherit.add_argument("--inherited-at-cycle", required=True,
+                               help="entry cycle id of the destination phase")
+    p_ft_inherit.add_argument("--operator", default="operator")
+    p_ft_inherit.set_defaults(func=cmd_forward_track_inherit)
 
     return p
 

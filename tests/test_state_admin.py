@@ -291,8 +291,11 @@ class TestResolveCommand(unittest.TestCase):
 
 
 class TestBankCommand(unittest.TestCase):
-    """v2.6.0: record a forward-track audit event with candidate_class
-    and optional surfacing_cycle. No task state change."""
+    """v2.7.0 `bank` emits event=banking with Spec 05 audit event structure:
+    banking_id, category, state, content, transition_history,
+    forward_tracked_by, optional surfacing_cycle. v2.6.0's
+    --candidate-class flag is still accepted and mapped to Spec 05
+    categories per V260_TO_SPEC05_CATEGORY."""
 
     def setUp(self):
         self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-bank-test-"))
@@ -305,13 +308,13 @@ class TestBankCommand(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def test_bank_records_audit_event_no_state_change(self):
+    def test_bank_emits_spec05_banking_event(self):
         rc = state_admin.main([
             "--state-path", str(self.state_path),
             "bank", "urn:fnsr:task:anchor",
-            "--candidate-class", "pattern",
+            "--category", "pattern-observation",
             "--content", "observed cascade failure pattern in multi-edit tasks",
-            "--cycle", "12",
+            "--cycle", "Q-4-Step5-A",
         ])
         self.assertEqual(rc, 0)
         state = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -319,16 +322,73 @@ class TestBankCommand(unittest.TestCase):
         self.assertEqual(t["status"], "done")  # unchanged
         self.assertEqual(len(t["history"]), 1)
         evt = t["history"][0]
-        self.assertEqual(evt["event"], "forward_track")
-        self.assertEqual(evt["payload"]["candidate_class"], "pattern")
-        self.assertEqual(evt["payload"]["surfacing_cycle"], 12)
-        self.assertIn("cascade", evt["payload"]["content"])
+        self.assertEqual(evt["event"], "banking")
+        payload = evt["payload"]
+        self.assertEqual(payload["category"], "pattern-observation")
+        self.assertEqual(payload["state"], 1)  # default
+        self.assertEqual(payload["surfacing_cycle"], "Q-4-Step5-A")
+        self.assertIn("cascade", payload["content"])
+        # Spec 05 audit event structure: banking_id, transition_history,
+        # forward_tracked_by are required.
+        self.assertTrue(payload["banking_id"].startswith("bank-"))
+        self.assertEqual(payload["forward_tracked_by"], [])
+        self.assertEqual(len(payload["transition_history"]), 1)
+        self.assertEqual(payload["transition_history"][0]["state"], 1)
+
+    def test_bank_default_category_is_pattern_observation(self):
+        # No --category and no --candidate-class -> default
+        # pattern-observation per Spec 05.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--content", "<observation>",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["payload"]["category"], "pattern-observation")
+
+    def test_bank_state_2_partially_committed(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--category", "methodology-refinement-candidate",
+            "--content", "<observation>",
+            "--state", "2",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["payload"]["state"], 2)
+        self.assertEqual(evt["payload"]["transition_history"][0]["state"], 2)
+
+    def test_bank_legacy_candidate_class_maps_to_spec05(self):
+        # v2.6.0 back-compat: --candidate-class accepts old taxonomy and
+        # maps to Spec 05 category names.
+        cases = [
+            ("pattern", "pattern-observation"),
+            ("methodology", "methodology-refinement-candidate"),
+            ("decision", "discipline-correction"),
+            ("risk", "methodology-refinement-candidate"),
+            ("other", "pattern-observation"),
+        ]
+        for legacy, expected_spec05 in cases:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "bank", "urn:fnsr:task:anchor",
+                "--candidate-class", legacy,
+                "--content", f"<observation via legacy {legacy}>",
+            ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        self.assertEqual(len(events), len(cases))
+        for evt, (legacy, expected_spec05) in zip(events, cases):
+            self.assertEqual(evt["payload"]["category"], expected_spec05,
+                             f"legacy {legacy!r} should map to {expected_spec05!r}")
 
     def test_bank_without_cycle_omits_field(self):
         state_admin.main([
             "--state-path", str(self.state_path),
             "bank", "urn:fnsr:task:anchor",
-            "--candidate-class", "risk",
+            "--category", "methodology-refinement-candidate",
             "--content", "watch for the X corner case",
         ])
         state = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -339,7 +399,7 @@ class TestBankCommand(unittest.TestCase):
         state_admin.main([
             "--state-path", str(self.state_path),
             "bank", "urn:fnsr:task:anchor",
-            "--candidate-class", "methodology",
+            "--category", "methodology-refinement-candidate",
             "--content", "operator-task-splitting pattern worth documenting",
         ])
         rc = state_admin.main([
@@ -352,9 +412,28 @@ class TestBankCommand(unittest.TestCase):
         rc = state_admin.main([
             "--state-path", str(self.state_path),
             "bank", "urn:fnsr:task:nonexistent",
-            "--candidate-class", "pattern", "--content", "x",
+            "--category", "pattern-observation", "--content", "x",
         ])
         self.assertEqual(rc, 1)
+
+    def test_bank_banking_id_is_unique_per_task(self):
+        # Two bankings against the same task should get distinct ids.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--category", "pattern-observation",
+            "--content", "first",
+        ])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--category", "pattern-observation",
+            "--content", "second",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        self.assertNotEqual(events[0]["payload"]["banking_id"],
+                            events[1]["payload"]["banking_id"])
 
 
 class TestStatusHighlightsAwaiting(unittest.TestCase):
@@ -392,6 +471,401 @@ class TestStatusHighlightsAwaiting(unittest.TestCase):
         ready_pos = out.index("ready")
         self.assertLess(awaiting_pos, done_pos)
         self.assertLess(awaiting_pos, ready_pos)
+
+
+class TestTransitionBankingCommand(unittest.TestCase):
+    """v2.7.0 transition-banking emits a banking_state_transition audit event
+    on the same task that hosts the banking. Per Spec 05, this lets the
+    substrate operate the banking lifecycle explicitly when the subject
+    project elects to (Logic Team operates it implicitly)."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-trans-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+        # Create a banking so we can transition it.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--category", "pattern-observation",
+            "--content", "test banking for transition",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.banking_id = state["tasks"][0]["history"][0]["payload"]["banking_id"]
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_transition_emits_state_transition_event(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", self.banking_id,
+            "--to-state", "2",
+            "--reason", "pass-2b commit landed",
+            "--trigger", "pass_2b_commit_landed",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        self.assertEqual(events[-1]["event"], "banking_state_transition")
+        p = events[-1]["payload"]
+        self.assertEqual(p["banking_id"], self.banking_id)
+        self.assertEqual(p["from_state"], 1)
+        self.assertEqual(p["to_state"], 2)
+        self.assertEqual(p["trigger"], "pass_2b_commit_landed")
+
+    def test_transition_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", self.banking_id,
+            "--to-state", "3",
+            "--reason", "phase-exit doc-pass fold",
+            "--trigger", "phase_exit_doc_pass_fold",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+    def test_transition_to_same_state_is_noop(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", self.banking_id,
+            "--to-state", "1",  # already in state 1
+            "--reason", "test", "--trigger", "manual_operator_action",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_transition_unknown_banking_returns_error(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", "bank-nope-99",
+            "--to-state", "2", "--reason", "test",
+            "--trigger", "manual_operator_action",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_transition_multi_step_walks_correctly(self):
+        # 1 -> 2 -> 3 chain; each transition reads the previous as
+        # its "from_state".
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", self.banking_id,
+            "--to-state", "2", "--reason", "step",
+            "--trigger", "pass_2b_commit_landed",
+        ])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "transition-banking", self.banking_id,
+            "--to-state", "3", "--reason", "step",
+            "--trigger", "phase_exit_doc_pass_fold",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        # banking + 2 transitions = 3 events
+        self.assertEqual(len(events), 3)
+        self.assertEqual(events[1]["payload"]["from_state"], 1)
+        self.assertEqual(events[1]["payload"]["to_state"], 2)
+        self.assertEqual(events[2]["payload"]["from_state"], 2)
+        self.assertEqual(events[2]["payload"]["to_state"], 3)
+
+
+class TestPhaseBoundaryCommand(unittest.TestCase):
+    """v2.7.0 phase-boundary emits a phase_boundary_declared audit event
+    anchored on a specific task. Substrate is phase-schema-neutral; the
+    operator declares the boundary."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-phase-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_phase_boundary_emits_audit_event(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase-boundary", "phase-1", "phase-2",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--notes", "phase-1 exit; phase-2 entry",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["event"], "phase_boundary_declared")
+        self.assertEqual(evt["payload"]["from_phase"], "phase-1")
+        self.assertEqual(evt["payload"]["to_phase"], "phase-2")
+        self.assertEqual(evt["payload"]["notes"],
+                         "phase-1 exit; phase-2 entry")
+
+    def test_phase_boundary_missing_anchor_returns_error(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase-boundary", "phase-1", "phase-2",
+            "--anchor-task", "urn:fnsr:task:nope",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_phase_boundary_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase-boundary", "phase-1", "phase-2",
+            "--anchor-task", "urn:fnsr:task:anchor",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+
+class TestForwardTrackCreateCommand(unittest.TestCase):
+    """v2.7.0 forward-track create emits a Spec 07 audit event with the FULL
+    structure (state: A, sub_surface, subject, named_deliberation_cycle,
+    phase_origin, inherited_through_phases: [], transition_history:
+    [{state: A, ...}]). v2.8.0 transition/list/aging must be able to read
+    these without migration."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-ft-create-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_create_emits_spec07_structured_event(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "internal-methodology-refinement",
+            "--subject-type", "candidacy",
+            "--subject-id", "cat-9-cited-content-consistency",
+            "--description", "Cat 9 candidacy from Q-4-Step5-A",
+            "--deliberation-cycle", "phase-exit-retro",
+            "--phase-origin", "phase-4",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["event"], "forward_track")
+        p = evt["payload"]
+        # Spec 07 structure must match EXACTLY, including unused fields.
+        self.assertTrue(p["forward_track_id"].startswith("ft-"))
+        self.assertEqual(p["state"], "A")
+        self.assertEqual(p["sub_surface"], "internal-methodology-refinement")
+        self.assertEqual(p["subject"]["type"], "candidacy")
+        self.assertEqual(p["subject"]["id"],
+                         "cat-9-cited-content-consistency")
+        self.assertIn("Cat 9", p["subject"]["description"])
+        self.assertEqual(p["named_deliberation_cycle"], "phase-exit-retro")
+        self.assertEqual(p["phase_origin"], "phase-4")
+        # Empty list, not omitted — Spec 07 requires the field.
+        self.assertEqual(p["inherited_through_phases"], [])
+        # transition_history seeded with the create.
+        self.assertEqual(len(p["transition_history"]), 1)
+        self.assertEqual(p["transition_history"][0]["state"], "A")
+
+    def test_create_explicit_ft_id_preserved(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "consumer-closure-path",
+            "--subject-type", "capability",
+            "--subject-id", "feature-v02-x",
+            "--description", "v0.2 X capability",
+            "--deliberation-cycle", "v0.2-roadmap",
+            "--phase-origin", "phase-3",
+            "--ft-id", "ft-x-custom-99",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["payload"]["forward_track_id"],
+                         "ft-x-custom-99")
+
+    def test_create_disambiguates_from_v260_legacy_forward_track_events(self):
+        # First, seed a v2.6.0-style legacy event (no forward_track_id key).
+        # Then create a v2.7.0 Spec 07 forward-track. The two must be
+        # distinguishable.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "bank", "urn:fnsr:task:anchor",
+            "--candidate-class", "pattern",
+            "--content", "v2.6.0 legacy banking via --candidate-class",
+        ])
+        # v2.7.0 bank emits event=banking, NOT event=forward_track.
+        # Now create a real forward-track.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "internal-methodology-refinement",
+            "--subject-type", "banking",
+            "--subject-id", "bank-anchor-1",
+            "--description", "tracks the bank-anchor-1 banking",
+            "--deliberation-cycle", "phase-exit-retro",
+            "--phase-origin", "phase-4",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        # First is the banking; second is the forward-track.
+        self.assertEqual(events[0]["event"], "banking")
+        self.assertEqual(events[1]["event"], "forward_track")
+        self.assertIn("forward_track_id", events[1]["payload"])
+        self.assertNotIn("forward_track_id", events[0]["payload"])
+
+    def test_create_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "consumer-closure-path",
+            "--subject-type", "fixture",
+            "--subject-id", "fixture-x",
+            "--description", "x fixture commitment",
+            "--deliberation-cycle", "v0.2-roadmap",
+            "--phase-origin", "phase-3",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+
+class TestForwardTrackInheritCommand(unittest.TestCase):
+    """v2.7.0 forward-track inherit walks all Spec 07 forward-track events,
+    finds the ones in State A/B whose current phase context matches
+    --from-phase, and emits forward_track_phase_inheritance events on
+    the same anchor tasks."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-ft-inherit-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:t1", "agent": "x", "status": "done",
+             "depends_on": [], "history": []},
+            {"@id": "urn:fnsr:task:t2", "agent": "x", "status": "done",
+             "depends_on": [], "history": []},
+        ])
+        # Create three forward-tracks across the two anchor tasks, all
+        # phase_origin=phase-3.
+        for anchor, ft_id, sub_surface in [
+            ("urn:fnsr:task:t1", "ft-a", "consumer-closure-path"),
+            ("urn:fnsr:task:t1", "ft-b", "internal-methodology-refinement"),
+            ("urn:fnsr:task:t2", "ft-c", "internal-methodology-refinement"),
+        ]:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "create",
+                "--anchor-task", anchor,
+                "--sub-surface", sub_surface,
+                "--subject-type", "candidacy",
+                "--subject-id", ft_id + "-subj",
+                "--description", ft_id + " description",
+                "--deliberation-cycle", "phase-exit-retro",
+                "--phase-origin", "phase-3",
+                "--ft-id", ft_id,
+            ])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_inherit_emits_event_per_unresolved_forward_track(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-3",
+            "--to-phase", "phase-4",
+            "--inherited-at-cycle", "phase-4-entry",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        inheritance_events = []
+        for t in state["tasks"]:
+            for h in t.get("history", []):
+                if h["event"] == "forward_track_phase_inheritance":
+                    inheritance_events.append(h)
+        # 3 forward-tracks, all unresolved, all in phase-3 -> 3 events.
+        self.assertEqual(len(inheritance_events), 3)
+        for evt in inheritance_events:
+            self.assertEqual(evt["payload"]["from_phase"], "phase-3")
+            self.assertEqual(evt["payload"]["to_phase"], "phase-4")
+            self.assertEqual(evt["payload"]["inherited_at_cycle"],
+                             "phase-4-entry")
+
+    def test_inherit_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-3",
+            "--to-phase", "phase-4",
+            "--inherited-at-cycle", "phase-4-entry",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+    def test_inherit_no_matching_forward_tracks_emits_zero_events(self):
+        # phase-2 has no forward-tracks
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-2",
+            "--to-phase", "phase-3",
+            "--inherited-at-cycle", "phase-3-entry",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        for t in state["tasks"]:
+            for h in t.get("history", []):
+                self.assertNotEqual(h["event"],
+                                    "forward_track_phase_inheritance")
+
+    def test_inherit_does_not_double_inherit(self):
+        # First inherit moves phase-3 -> phase-4. A second inherit with
+        # the SAME --from-phase should now find zero forward-tracks
+        # (because their current phase context is phase-4).
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-3",
+            "--to-phase", "phase-4",
+            "--inherited-at-cycle", "phase-4-entry",
+        ])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-3",
+            "--to-phase", "phase-5",
+            "--inherited-at-cycle", "phase-5-entry",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        # Should still have only 3 inheritance events (the first call),
+        # not 6 (which would happen if --from-phase phase-3 matched
+        # forward-tracks already inherited).
+        count = sum(
+            1 for t in state["tasks"]
+            for h in t.get("history", [])
+            if h["event"] == "forward_track_phase_inheritance"
+        )
+        self.assertEqual(count, 3)
 
 
 if __name__ == "__main__":

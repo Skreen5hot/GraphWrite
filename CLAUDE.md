@@ -37,7 +37,8 @@ Two kinds of agents:
 | [spec-reviewer](.claude/agents/spec-reviewer.md) | Structural, ontological, conformance review of specifications |
 | [adversarial-critic](.claude/agents/adversarial-critic.md) | Confirm / refute / extend an upstream reviewer's findings |
 | [synthesist](.claude/agents/synthesist.md) | Reconcile a reviewer + critic into a single decision document |
-| [architect](.claude/agents/architect.md) | System-level structural review; tradeoffs and load-bearing decisions |
+| [architect](.claude/agents/architect.md) | Two modes (selected via `inputs.mode`): `review` (structural findings + recommendations) and `ratification` (Pass 2a ruling per Spec 03; six-field ruling payload + refusal contract) |
+| [reconnaissance](.claude/agents/reconnaissance.md) | **Read-only-by-contract.** Gathers findings/evidence about the subject project's current state; produces no proposals, no recommendations. First instance of the read-only-by-contract agent pattern (Spec 03 reconnaissance requirement for substantive changes). |
 | [developer](.claude/agents/developer.md) | Minimal change proposals — describe-only (no Edit / Write tools) |
 | [semantic-sme](.claude/agents/semantic-sme.md) | Ontology, BFO/CCO grounding, OWL DL conformance |
 | [ux-sme](.claude/agents/ux-sme.md) | Workflows, cognitive load, expert/novice mode handling |
@@ -53,7 +54,7 @@ Two kinds of agents:
 Shared agent contract:
 - Output envelope: `{"outputs": {...}}`. No prose outside the JSON.
 - Structured failure: `{"outputs": {"error": "<slug>", ...}}` with a truthy slug string. Triggers a CPS veto and `status=blocked`.
-- `required_outputs:` in the agent's frontmatter declares keys that MUST be present on success (e.g., `[findings, summary, recommendation]`). CPS vetoes if any are missing.
+- `required_outputs:` in the agent's frontmatter declares keys that MUST be present on success. Two syntaxes are supported: flat list (e.g., `required_outputs: [findings, summary, recommendation]`) for single-mode agents, and per-mode dict (e.g., `required_outputs:\n  review: [findings, ...]\n  ratification: [ruling, ...]`) for multi-mode agents like the `architect`. Multi-mode agents require `inputs.mode` on the task; CPS picks the correct list at check time.
 - Upstream task outputs arrive via the prompt's `UPSTREAM` block (keyed by predecessor @id). Worker agents MUST NOT read `state.jsonld` — the orchestrator inlines the data they need.
 - Tools per agent's frontmatter. No agent has `Edit` or `Write` — file mutations route through the `applier` system agent, which records the diff in the audit trail.
 
@@ -80,7 +81,7 @@ The conversational personas exist for fast, in-context work. The dispatched agen
 
 **Validation.** Two tracks, by scope of change:
 
-- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + ADR-citation registry + awaiting-decision shape), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank). Every daemon change MUST keep the suite green.
+- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, the ADR-012 ghost fixture (Spec 06), and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / forward-track create / forward-track inherit). Every daemon change MUST keep the suite green.
 - **GraphWrite subject** (TypeScript): every change MUST pass
   - `npm run build` — no TypeScript errors
   - `npm test` — all spec tests pass
@@ -166,15 +167,153 @@ python state_admin.py resolve <task-id> <option-index> [--note "..."]
 
 Resolution appends an `operator_resolution` audit entry (chain-hashed), annotates `outputs.operator_resolution = {option_index, option_text, note}`, and sets `status=done` so downstream tasks become routable.
 
-## 7.7 Forward-Track Banking
+## 7.7 Banking Lifecycle (Spec 05)
 
-When the operator notices a methodology insight, recurring pattern, or risk that's worth preserving but does NOT belong as a normal task or ADR, they bank it as a `forward_track` history entry against an anchor task:
+The operator banks methodology insights, recurring patterns, disciplines observed, risks, and other operational intelligence as **banking events** anchored to a task:
 
 ```
-python state_admin.py bank <anchor-task-id> --class {methodology|pattern|risk|insight} --content "..." [--cycle N]
+python state_admin.py bank <anchor-task-id> --content "..." \
+    [--category {methodology-refinement-candidate|pattern-observation|discipline-correction|contingency-operationalization|discipline-state-transition-observation}] \
+    [--state {1|2|3}] [--cycle <cycle-id>]
 ```
 
-This appends a `forward_track` event (chain-hashed) with `candidate_class`, `content`, and optional `surfacing_cycle`. The audit trail accumulates these without polluting the task graph. They surface during retrospective sweeps and feed future template/PLAYBOOK updates.
+Per FNSR Protocol Spec 05, bankings have a **three-state lifecycle**:
+
+- **State 1 (verbal-pending)**: banked at a cycle; not yet captured in a committed artifact. Default for new bankings.
+- **State 2 (partially-committed)**: banking captured in committed routing-artifact text (Pass 2b commit landed); not yet formalized.
+- **State 3 (formalized)**: banking has a numbered entry in the canonical authoring-discipline document; phase-exit doc-pass has folded it in.
+
+The substrate is **neutral about implicit vs explicit lifecycle operation**:
+
+- **Implicit mode** (Logic Team's actual practice): the operator banks; never emits transition events; reconciles at phase-exit doc-pass. Counting views may diverge (architect-strict vs SME-inclusive); the divergence carries discipline-state-transition information and resolves at the doc-pass.
+- **Explicit mode**: the operator runs `state_admin transition-banking <banking-id> --to-state N --reason "..." [--trigger ...]` to emit a `banking_state_transition` audit event per Spec 05 §"Lifecycle state transitions" whenever the banking moves between states.
+
+Both modes are first-class. The substrate provides the apparatus; the subject project picks the operating mode.
+
+### v2.6.0 backward compatibility
+
+The v2.6.0 `bank` command emitted `event=forward_track` events with a `candidate_class` payload (pattern | risk | methodology | decision | other). v2.7.0+ `bank` emits `event=banking` events with the Spec 05 audit event structure (`banking_id`, `category`, `state`, `transition_history`, `forward_tracked_by`, optional `surfacing_cycle`). The v2.6.0 `--candidate-class` flag is still accepted for back-compat; legacy values are mapped to their closest Spec 05 categories (e.g., `pattern` → `pattern-observation`, `methodology` → `methodology-refinement-candidate`). Existing v2.6.0 audit events stay in the chain untouched (append-only) and are read as legacy bankings; no migration is needed, no phantom transition events are backfilled.
+
+## 7.8 Pass 2a Sequencing (Spec 03)
+
+Per FNSR Protocol Spec 03, changes that mutate canonical state pass through a two-pass discipline:
+
+- **Pass 2a (ratification)**: an architect agent reviews a proposed change against frozen contracts, prior rulings, and UPSTREAM reconnaissance evidence. Produces a ruling payload. **No state mutation.**
+- **Pass 2b (commit-finalize)**: a developer/applier agent executes the ratified change. Lands in v2.8.0 with verification-ritual gating; in v2.7.0 interim, the operator manually queues an existing-applier-path task to land the change.
+
+### Task-type chains
+
+**Default chain (substantive changes):**
+
+```
+reconnaissance → ratification → operator-applier (v2.7.0)
+                              → commit-finalize  (v2.8.0+)
+```
+
+**Editorial-correction chain** (typo fixes, formatting consistency, terminology tightening that preserves semantics, citation format updates):
+
+```
+ratification → operator-applier
+```
+
+Reconnaissance is bypassed. The architect's `editorial_verdict: editorial` classification permits this.
+
+**Brief-confirmation chain** (follow-up commit for an amendment to a prior ratified change):
+
+```
+operator-applier (brief_confirmation: true; depends_on: prior ratification)
+```
+
+No new ratification — the substance was ratified at the prior cycle. The `brief_confirmation: true` flag suppresses cycle-counter increment (Spec 04, v2.8.0+) but the brief-confirmation cycle is structurally a separate cycle for bankings purposes (per Spec 03 §"Implementation: brief-confirmation as a flag, separate cycle as structure").
+
+### Reconnaissance contract
+
+The `reconnaissance` agent is **read-only by contract** (`tools: Read, Grep, Glob`; no Edit, Write, Bash). Its output is `findings`, `summary`, `evidence_paths` — observations grounded in file paths and line ranges. It does not propose changes; that's the architect's and developer's job. This is the first instance of the read-only-by-contract agent pattern; future agents that need narrow scope (verification-ritual deterministic categories per Spec 02; second-pass adversarial-critic per Spec 02 Cat 9; FNSR moral-person evidence-collection) draw on its shape.
+
+### Architect refusal contract
+
+The architect agent in `ratification` mode (`inputs.mode: ratification`) walks UPSTREAM for an entry where `agent == "reconnaissance"`. For substantive changes, if reconnaissance is absent, the architect MUST refuse:
+
+```json
+{
+  "outputs": {
+    "ruling": "denied",
+    "editorial_verdict": "substantive",
+    "editorial_verdict_reason": "<why this is substantive, not editorial>",
+    "rationale": "reconnaissance_required",
+    "referenced_evidence": [],
+    "bankings": []
+  }
+}
+```
+
+The editorial-vs-substantive classification is LLM-judged at the boundary. The structural heuristic (editorial = typo / formatting / terminology-tightening / citation-format-update) is a starting test, not a closed enumeration (per Spec 03 §"Reconnaissance requirement", non-exhaustive). The `editorial_verdict_reason` field is the audit-surfacing mechanism — operators auditing a disputed classification read the reasoning field separately from the overall ruling rationale.
+
+### Ratification ruling payload
+
+A ratification task's `outputs` MUST include six fields:
+
+- `ruling: ratified | denied | deferred`
+- `editorial_verdict: editorial | substantive`
+- `editorial_verdict_reason: <one-sentence LLM rationale for the classification>`
+- `rationale: <full LLM rationale for the ruling>`
+- `referenced_evidence: list of upstream task refs, ADRs, spec sections, fixtures`
+- `bankings: list of new disciplines observed` — **empty list is acceptable**; omission is not. The architect declares "observed nothing new" explicitly via `bankings: []`.
+
+CPS enforces all six via the multi-mode `required_outputs` mechanism (§3 "Shared agent contract").
+
+## 7.9 Phase Boundaries and the Forward-Track Surface (Spec 07)
+
+Per FNSR Protocol Spec 07, **forward-tracks** record COMMITMENTS TO FUTURE DELIBERATION on specific items — structurally distinct from bankings (which record observations ABOUT the protocol). Forward-tracks have a candidate → deliberated-at-named-cycle → resolved lifecycle and stratify by **audience** (consumer-facing closure-path tracking vs internal-methodology-refinement queue).
+
+### Phase boundaries
+
+Phases are subject-project concepts, not substrate primitives. The operator declares a phase boundary as a first-class audit event:
+
+```
+python state_admin.py phase-boundary <from_phase> <to_phase> \
+    --anchor-task <task-id> [--cycle <cycle-id>] [--notes "..."]
+```
+
+This emits a `phase_boundary_declared` event anchored on the specified task. The substrate doesn't know what "phase" means — that's the subject project's discipline.
+
+### Forward-track create
+
+```
+python state_admin.py forward-track create \
+    --anchor-task <task-id> \
+    --sub-surface {consumer-closure-path|internal-methodology-refinement} \
+    --subject-type {banking|fixture|capability|candidacy|other} \
+    --subject-id <id> --description "..." \
+    --deliberation-cycle <cycle-id> --phase-origin <phase-id> \
+    [--ft-id <ft-id>]
+```
+
+Creates a Spec 07 forward-track in State A (candidate). The event payload matches Spec 07 §"Audit event structure for forward-tracks" exactly, including fields not yet operated on in v2.7.0 (`inherited_through_phases: []`, `transition_history: [{state: A, ...}]`). v2.8.0's `transition` and `list` commands must be able to read v2.7.0 forward-tracks without migration.
+
+### Forward-track inherit
+
+```
+python state_admin.py forward-track inherit \
+    --from-phase <id> --to-phase <id> --inherited-at-cycle <cycle-id>
+```
+
+Walks every Spec 07 forward-track event in `state.jsonld`. For each unresolved forward-track (state A or B) whose current phase context matches `--from-phase`, emits a `forward_track_phase_inheritance` event on the same anchor task. Pair this with `phase-boundary` for phase-transition workflows; the two commands stay separate so operators can sequence them or wrap in a script as needed.
+
+### v2.7.0 forward-track scope
+
+Ship in v2.7.0: `create` + `inherit` (enabling work; forward-tracks need to exist as audit events and need to inherit across boundaries so v2.8.0 can build on them). **Defer to v2.8.0:** `transition` (advance lifecycle state), `list` (query by sub-surface/state), `aging` (flag long-lived candidates). These operate forward-tracks; useful but not load-bearing until forward-tracks are accumulating across multiple phase boundaries.
+
+## 7.10 Forward-Track vs Banking Distinction (substrate naming)
+
+The v2.6.0 `bank` command emitted `event=forward_track` with a banking-shaped payload — a naming conflation that Spec 05 vs Spec 07 separation now exposes. v2.7.0+ corrects this:
+
+| Concept | v2.6.0 event_type | v2.7.0+ event_type | Notes |
+|---|---|---|---|
+| Banking (observation ABOUT the protocol) | `forward_track` (misnamed) | `banking` | Per Spec 05. Existing v2.6.0 events remain in the chain and are read as legacy bankings. |
+| Forward-track (commitment to FUTURE deliberation) | (did not exist) | `forward_track` | Per Spec 07. New in v2.7.0; payload has `forward_track_id` field which legacy banking events do not. Readers disambiguate by payload shape. |
+
+This is the kind of naming correction that motivated the FNSR v1.1 Logic Team review pushback: forward-tracks and bankings have structurally distinct lifecycles, audiences, and audit-trail-unity guarantees. Conflating them at the substrate level would have caused the bankings-lifecycle model to collide with itself at every cross-phase forward-track inheritance event.
 
 ## 8. Session Workflow
 
@@ -230,7 +369,7 @@ Layer 2: src/adapters/        <- Optional. Infrastructure integration.
 | File | Purpose |
 |---|---|
 | [fnsr_daemon.py](fnsr_daemon.py) | The orchestrator — single-file Python stdlib. |
-| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation (reset / abandon / append-tasks / verify / status / resolve / bank). `status` surfaces any `awaiting_operator_decision` tasks at the top. `resolve` closes an awaiting task by selecting an option index. `bank` records a forward-track methodology/pattern/risk insight against an anchor task. Run `python state_admin.py --help`. |
+| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation. v2.6.0 subcommands: `reset`, `abandon`, `append-tasks`, `verify`, `status`, `resolve`, `bank`. v2.7.0 subcommands: `transition-banking` (Spec 05 state transitions), `phase-boundary` (operator-emitted phase boundary), `forward-track create` and `forward-track inherit` (Spec 07 forward-track surface). `status` surfaces `awaiting_operator_decision` tasks at the top. v2.7.0's `bank` accepts `--category` (Spec 05) and `--state`; v2.6.0's `--candidate-class` flag remains accepted (mapped to Spec 05 categories). Run `python state_admin.py --help`. |
 | [state.jsonld](state.jsonld) | JSON-LD work queue with hash-chained audit trail. |
 | `state.jsonld.lock` | OS-level lock for state I/O (auto-created, gitignored). |
 | `fnsr.pid` | OS-level daemon-instance lock (auto-created, gitignored). |
