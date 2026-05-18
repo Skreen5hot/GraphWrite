@@ -1124,6 +1124,64 @@ def _load_category_specs(surface: str = "verification") -> list[dict]:
     return specs
 
 
+# ---- Retro surface loaders (v3.0-alpha.1 foundation) -------------------
+#
+# Per MAREP_INTEGRATION_SPEC §3 + §4: load retro-surface role bindings
+# and phase specs from surfaces/retro/. Reuses the verification-surface
+# pattern (Spec 01 surface-registry primitive) without modification.
+
+def _load_retro_role_bindings(surface: str = "retro") -> dict[str, dict]:
+    """Load every agents/<role>.md under surfaces/<surface>/agents/.
+
+    Returns a dict keyed by role-name (the frontmatter `role` field)
+    with values being the parsed frontmatter dict. Per-retro AGENTS.md
+    instance bindings override these surface defaults (merge logic in
+    v3.0-alpha.2 alongside the MAREP-Orchestrator).
+
+    Graceful degradation: returns empty dict when the directory doesn't
+    exist (substrate stays back-compat with pre-v3.0 state).
+    """
+    agents_dir = SURFACES_DIR / surface / "agents"
+    if not agents_dir.exists():
+        return {}
+    bindings: dict[str, dict] = {}
+    for path in sorted(agents_dir.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        fm = _parse_category_frontmatter(text)
+        if not fm or "role" not in fm:
+            continue
+        fm["_path"] = str(path)
+        bindings[fm["role"]] = fm
+    return bindings
+
+
+def _load_retro_phase_specs(surface: str = "retro") -> list[dict]:
+    """Load every phases/<phase>.md under surfaces/<surface>/phases/.
+
+    Returns ordered list (sorted by filename prefix, e.g. 01-, 02-...).
+    Same parser as _load_category_specs; same gracefully-degrades-on-
+    missing-directory semantics.
+    """
+    phases_dir = SURFACES_DIR / surface / "phases"
+    if not phases_dir.exists():
+        return []
+    specs = []
+    for path in sorted(phases_dir.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        fm = _parse_category_frontmatter(text)
+        if not fm or "phase_id" not in fm:
+            continue
+        fm["_path"] = str(path)
+        specs.append(fm)
+    return specs
+
+
 # Subject-project hook sandbox (Gap F v2.8.0-alpha.2).
 #
 # Per-surface namespace: _SUBJECT_SANDBOXES[surface][module_name] is the

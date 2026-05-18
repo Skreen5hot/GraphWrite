@@ -35,7 +35,7 @@ Two kinds of agents:
 | Worker agent | Role |
 |---|---|
 | [spec-reviewer](.claude/agents/spec-reviewer.md) | Structural, ontological, conformance review of specifications |
-| [synthesist](.claude/agents/synthesist.md) | Reconcile a reviewer + critic into a single decision document |
+| [synthesist](.claude/agents/synthesist.md) | Two modes (`default_mode: classic`): `classic` (existing v2.5.0 reviewer+critic reconciliation) and `generalized` (new in v3.0-alpha.1; N-stream synthesis as a **Bounded-Authority Orchestrator (BAO)** instance over the synthesis surface — first concrete BAO instance per [surfaces/_primitives/bounded-authority-orchestrator.md](surfaces/_primitives/bounded-authority-orchestrator.md)). |
 | [architect](.claude/agents/architect.md) | Two modes (selected via `inputs.mode`): `review` (structural findings + recommendations) and `ratification` (Pass 2a ruling per Spec 03; six-field ruling payload + refusal contract) |
 | [adversarial-critic](.claude/agents/adversarial-critic.md) | Two modes (`default_mode: review-second-pass`): `review-second-pass` (existing v2.5.0 contract; confirms/refutes/extends a prior reviewer's findings) and `cat-9-second-pass` (new in v2.8.0-alpha.3; confirms/disputes/extends Cat 9 LLM-judge **veto** verdicts per FNSR Spec 02 §"Open questions" — fires on Cat 9 vetoes only, not passes). Third instance of the read-only-by-contract agent pattern. |
 | [reconnaissance](.claude/agents/reconnaissance.md) | **Read-only-by-contract.** Gathers findings/evidence about the subject project's current state; produces no proposals, no recommendations. First instance of the read-only-by-contract agent pattern (Spec 03 reconnaissance requirement for substantive changes). |
