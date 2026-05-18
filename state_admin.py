@@ -601,6 +601,229 @@ def _ft_current_state(task: dict[str, Any], ft_id: str) -> Optional[str]:
     return current
 
 
+def _find_forward_track(state: dict[str, Any], ft_id: str) \
+        -> Optional[tuple[dict[str, Any], dict[str, Any]]]:
+    """Locate a Spec 07 forward-track event by forward_track_id across
+    all task histories. Returns (task, create-event) on hit, or None."""
+    for t in state.get("tasks", []):
+        for h in t.get("history", []):
+            payload = h.get("payload") or {}
+            if (h.get("event") == "forward_track"
+                    and payload.get("forward_track_id") == ft_id):
+                return (t, h)
+    return None
+
+
+def _ft_inheritance_count(task: dict[str, Any], ft_id: str) -> int:
+    """Count forward_track_phase_inheritance events for a given ft_id
+    on its anchor task. Used by the aging command to determine whether
+    a forward-track has been inherited through the configured threshold
+    of phases without resolution."""
+    return sum(
+        1 for h in task.get("history", [])
+        if h.get("event") == "forward_track_phase_inheritance"
+        and (h.get("payload") or {}).get("forward_track_id") == ft_id
+    )
+
+
+def cmd_forward_track_transition(args: argparse.Namespace) -> int:
+    """Transition a forward-track's lifecycle state per FNSR Spec 07.
+
+    State A (candidate) -> State B (deliberated-at-named-cycle):
+        the named deliberation cycle has run; outcome is pending
+        resolution.
+    State B -> State C (resolved):
+        terminal state reached via one of three resolution paths:
+        ratified-into-spec, merged-into-roadmap-release, withdrawn.
+    State A -> State C (skip B):
+        valid when deliberation resolves directly without an
+        intermediate B state (e.g., the surfacing cycle itself
+        produces the resolution).
+
+    Emits a forward_track_state_transition audit event on the same
+    task that hosts the original forward-track create event.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    found = _find_forward_track(state, args.ft_id)
+    if found is None:
+        print(f"forward-track not found: {args.ft_id}", file=sys.stderr)
+        return 1
+    task, _create_event = found
+    current_state = _ft_current_state(task, args.ft_id)
+    if current_state is None:
+        print(f"forward-track {args.ft_id} has no resolvable state",
+              file=sys.stderr)
+        return 1
+    if current_state == args.to_state:
+        print(f"forward-track {args.ft_id} already at state "
+              f"{current_state}; no-op", file=sys.stderr)
+        return 1
+    if args.to_state == "C" and not args.resolution_path:
+        print(f"transition to state C requires --resolution-path "
+              f"({{ratified-into-spec|merged-into-roadmap-release|withdrawn}})",
+              file=sys.stderr)
+        return 1
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    payload: dict[str, Any] = {
+        "forward_track_id": args.ft_id,
+        "from_state": current_state,
+        "to_state": args.to_state,
+        "trigger": args.trigger,
+        "reason": args.reason,
+        "transitioning_cycle": args.transitioning_cycle,
+        "timestamp": timestamp,
+        "operator": args.operator,
+    }
+    if args.to_state == "C":
+        payload["resolution_path"] = args.resolution_path
+    _append_audit(task, "forward_track_state_transition", payload)
+    _save_state(state_path, state)
+    print(f"transitioned: {args.ft_id}  "
+          f"state {current_state} -> {args.to_state}"
+          + (f"  resolution={args.resolution_path}"
+             if args.resolution_path else ""))
+    return 0
+
+
+def cmd_forward_track_list(args: argparse.Namespace) -> int:
+    """Query Spec 07 forward-tracks by sub_surface / state / phase.
+
+    Walks all task histories; for each Spec 07 forward-track event
+    (event=forward_track with forward_track_id), computes current
+    state + current phase context from the inheritance chain; applies
+    the filters; prints a summary table.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    rows = []
+    seen: set[str] = set()
+    for task in state.get("tasks", []):
+        for h in task.get("history", []):
+            payload = h.get("payload") or {}
+            if h.get("event") != "forward_track":
+                continue
+            if "forward_track_id" not in payload:
+                continue
+            ft_id = payload["forward_track_id"]
+            if ft_id in seen:
+                continue
+            seen.add(ft_id)
+            current_state = _ft_current_state(task, ft_id) or "A"
+            # Compute current phase from inheritance chain
+            current_phase = payload.get("phase_origin", "?")
+            for h2 in task.get("history", []):
+                p2 = h2.get("payload") or {}
+                if (h2.get("event") == "forward_track_phase_inheritance"
+                        and p2.get("forward_track_id") == ft_id):
+                    current_phase = p2.get("to_phase", current_phase)
+            # Apply filters
+            if args.sub_surface and payload.get("sub_surface") != args.sub_surface:
+                continue
+            if args.state and current_state != args.state:
+                continue
+            if args.phase and current_phase != args.phase:
+                continue
+            rows.append({
+                "ft_id": ft_id,
+                "sub_surface": payload.get("sub_surface", "?"),
+                "subject_type": payload.get("subject", {}).get("type", "?"),
+                "subject_id": payload.get("subject", {}).get("id", "?"),
+                "state": current_state,
+                "phase": current_phase,
+                "anchor_task": task.get("@id", "?"),
+            })
+    if not rows:
+        print("(no forward-tracks match the given filters)")
+        return 0
+    for r in rows:
+        print(f"  {r['ft_id']}  state={r['state']}  phase={r['phase']}  "
+              f"sub_surface={r['sub_surface']}  "
+              f"subject={r['subject_type']}:{r['subject_id']}")
+    print(f"total: {len(rows)} forward-track(s)")
+    return 0
+
+
+def cmd_forward_track_aging(args: argparse.Namespace) -> int:
+    """Flag forward-tracks that have inherited through the configured
+    threshold of phases without resolution.
+
+    Per FNSR Spec 07 §"Aging policy" + Aaron's CP4 observation 1:
+    long-lived candidates may indicate substantive blockers or
+    candidates that should be withdrawn rather than perpetually
+    deferred. The threshold defaults to 3 phases; overridable via
+    --threshold flag OR FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES env
+    var.
+
+    Each aging warning is itself emitted as a forward_track_aging_warning
+    audit event on the forward-track's anchor task. The audit chain
+    records when the warning was raised, so a future operator reviewing
+    aging history can see what was flagged at which cycle.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    # Resolve threshold: --threshold > env var > Spec 07 default (3)
+    threshold = args.threshold
+    if threshold is None:
+        env_val = os.environ.get(
+            "FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES")
+        try:
+            threshold = int(env_val) if env_val else 3
+        except ValueError:
+            threshold = 3
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    warned = 0
+    skipped_resolved = 0
+    skipped_under_threshold = 0
+    seen: set[str] = set()
+    for task in state.get("tasks", []):
+        for h in list(task.get("history", [])):
+            payload = h.get("payload") or {}
+            if h.get("event") != "forward_track":
+                continue
+            if "forward_track_id" not in payload:
+                continue
+            ft_id = payload["forward_track_id"]
+            if ft_id in seen:
+                continue
+            seen.add(ft_id)
+            current_state = _ft_current_state(task, ft_id) or "A"
+            if current_state == "C":
+                skipped_resolved += 1
+                continue
+            inheritance_count = _ft_inheritance_count(task, ft_id)
+            if inheritance_count < threshold:
+                skipped_under_threshold += 1
+                continue
+            warning_payload = {
+                "forward_track_id": ft_id,
+                "current_state": current_state,
+                "inheritance_count": inheritance_count,
+                "threshold": threshold,
+                "subject": payload.get("subject", {}),
+                "sub_surface": payload.get("sub_surface", "?"),
+                "phase_origin": payload.get("phase_origin", "?"),
+                "timestamp": timestamp,
+                "operator": args.operator,
+            }
+            if args.notes:
+                warning_payload["notes"] = args.notes
+            _append_audit(task, "forward_track_aging_warning",
+                          warning_payload)
+            warned += 1
+            print(f"  AGING  {ft_id}  "
+                  f"inherited_through={inheritance_count}  "
+                  f"state={current_state}  "
+                  f"subject={payload.get('subject', {}).get('id', '?')}")
+    if warned:
+        _save_state(state_path, state)
+    print(f"forward-track aging (threshold={threshold}): "
+          f"{warned} warning(s), "
+          f"{skipped_resolved} skipped resolved, "
+          f"{skipped_under_threshold} skipped under threshold")
+    return 0
+
+
 def cmd_forward_track_inherit(args: argparse.Namespace) -> int:
     """Bulk-inherit unresolved forward-tracks across an operator-declared
     phase boundary per Spec 07.
@@ -838,6 +1061,71 @@ def _build_parser() -> argparse.ArgumentParser:
                                help="entry cycle id of the destination phase")
     p_ft_inherit.add_argument("--operator", default="operator")
     p_ft_inherit.set_defaults(func=cmd_forward_track_inherit)
+
+    p_ft_trans = ft_sub.add_parser(
+        "transition",
+        help="transition a forward-track's lifecycle state (Spec 07 A/B/C)",
+    )
+    p_ft_trans.add_argument("ft_id",
+                             help="forward_track_id to transition")
+    p_ft_trans.add_argument(
+        "--to-state", required=True, choices=("B", "C"),
+        help="target state: B=deliberated-at-named-cycle, "
+             "C=resolved (requires --resolution-path)"
+    )
+    p_ft_trans.add_argument("--reason", required=True,
+                             help="rationale for the transition")
+    p_ft_trans.add_argument(
+        "--resolution-path", default=None,
+        choices=("ratified-into-spec", "merged-into-roadmap-release",
+                 "withdrawn"),
+        help="required when --to-state=C; one of the three Spec 07 "
+             "resolution paths"
+    )
+    p_ft_trans.add_argument(
+        "--trigger", default="manual_operator_action",
+        help="trigger label (e.g., named_deliberation_cycle_ran, "
+             "resolution_reached, manual_operator_action)"
+    )
+    p_ft_trans.add_argument("--transitioning-cycle", default=None,
+                             help="cycle id during which the transition "
+                                  "occurred")
+    p_ft_trans.add_argument("--operator", default="operator")
+    p_ft_trans.set_defaults(func=cmd_forward_track_transition)
+
+    p_ft_list = ft_sub.add_parser(
+        "list",
+        help="query forward-tracks by sub_surface / state / phase",
+    )
+    p_ft_list.add_argument(
+        "--sub-surface", default=None,
+        choices=("consumer-closure-path", "internal-methodology-refinement"),
+        help="filter by audience sub-surface"
+    )
+    p_ft_list.add_argument("--state", default=None,
+                            choices=("A", "B", "C"),
+                            help="filter by current lifecycle state")
+    p_ft_list.add_argument("--phase", default=None,
+                            help="filter by current phase context "
+                                 "(phase_origin or tail of inheritance "
+                                 "chain)")
+    p_ft_list.set_defaults(func=cmd_forward_track_list)
+
+    p_ft_age = ft_sub.add_parser(
+        "aging",
+        help="flag forward-tracks inherited through >= threshold phases "
+             "without resolution; emits forward_track_aging_warning audit "
+             "events",
+    )
+    p_ft_age.add_argument("--threshold", type=int, default=None,
+                           help="minimum inheritance count to warn on "
+                                "(default: 3 or FNSR_FORWARD_TRACK_"
+                                "AGING_THRESHOLD_PHASES env var)")
+    p_ft_age.add_argument("--notes", default=None,
+                           help="optional operator notes recorded with "
+                                "each aging warning")
+    p_ft_age.add_argument("--operator", default="operator")
+    p_ft_age.set_defaults(func=cmd_forward_track_aging)
 
     return p
 

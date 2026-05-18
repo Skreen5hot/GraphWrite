@@ -564,6 +564,88 @@ python state_admin.py forward-track inherit \
 
 ---
 
+## 4.9 Verification ritual operator patterns (v2.8.0)
+
+The verification ritual (FNSR Spec 02) runs on path-fence-authored content before routing, catching reference drift from canonical sources at machine speed. v2.8.0 ships eight ratified categories (Cat 1–8) plus two candidacies (Cat 9, Cat 10) with a deterministic-where-possible / LLM-where-necessary split.
+
+### Canonical Pass 2a/2b chain
+
+The full v2.8.0 chain for a substantive change:
+
+```
+reconnaissance               (read-only investigation; v2.7.0)
+    ↓
+verification-ritual          (deterministic Cat 1-8, 10; defers Cat 9 to LLM)
+    ↓ (if overall_status: needs_llm_judgment)
+verification-ritual-llm      (LLM Cat 9 judge; mode: cat-9-judge)
+    ↓ (only when ≥1 Cat 9 veto)
+adversarial-critic           (mode: cat-9-second-pass; veto mitigation)
+    ↓
+ratification                 (architect Pass 2a; six-field ruling payload)
+    ↓
+commit-finalize              (Pass 2b; applier with verification-ritual gating)
+```
+
+For **editorial-correction-scope** changes (typo / formatting / terminology-tightening / citation-format-update), reconnaissance is bypassed:
+
+```
+verification-ritual → [LLM chain if Cat 9 deferral] → ratification → commit-finalize
+```
+
+For **brief-confirmation cycles** (follow-up commits to amendments whose substance was ratified at a prior cycle):
+
+```
+commit-finalize (brief_confirmation: true, depends_on: prior ratification)
+```
+
+### v2.7.0 / v2.8.0 audit-chain shape — both read-compatible
+
+The substrate's append-only invariant means v2.7.0 audit chains remain valid in v2.8.0 state files. The shape evolution:
+
+| Element | v2.7.0 shape | v2.8.0 shape |
+|---|---|---|
+| Pass 2b step | operator-applier (manual applier task post-ratification) | `commit-finalize` task type (depends_on includes verification-ritual + ratification) |
+| Verification gating | none (interim) | verification-ritual `overall_status: pass` referenced in architect's `referenced_evidence` |
+| Cat 9 judgment | unavailable | `verification-ritual-llm` mode `cat-9-judge` with adversarial-critic second-pass on vetoes |
+
+No migration is required; v2.7.0 entries in `state.jsonld` remain readable. New chains use the v2.8.0 shape; old chains continue to verify under `state_admin.py verify`.
+
+### Four miss classes (v2.8.0-alpha.3+) — operator-fix path per class
+
+`per_category_result` miss entries carry `evidence.miss_class` discriminating the operator-fix path:
+
+| Miss class | Meaning | Operator fix path |
+|---|---|---|
+| `malformed_spec` | category spec file invalid (no frontmatter, missing `category_id`) | edit / repair the `cat-NN-*.md` spec file |
+| `unresolved_predicate` | predicate code unavailable (substrate default missing or subject-project hook failed to import) | fix the predicate code (`fnsr_daemon.cat_NN_xxx` or `subject.verification.cat_NN_xxx.py`); inspect `evidence.import_error` when present |
+| `missing_canonical_source` | required canonical sources absent from `inputs.canonical_sources` | provide the canonical source(s); `evidence.missing_canonical_source_keys` lists them |
+| `categorical_coverage_miss` | spec ran and emitted miss because case falls in known-uncovered territory (Cat 9/10 candidacy surfacing class) | phase-exit-retro deliberable; consider forward-track via `state_admin forward-track create --surfacing-task-id <task @id>` if the case warrants candidacy |
+
+Different filter; different action. Downstream tooling filtering on `miss_class` selects "things the operator should fix in code" (`unresolved_predicate`) vs "things the operator should provide" (`missing_canonical_source`) vs "things the operator should deliberate on" (`categorical_coverage_miss`).
+
+### Forward-track operating commands (v2.8.0 CP4)
+
+`state_admin forward-track` subcommands:
+
+| Subcommand | Purpose |
+|---|---|
+| `create` | Create a forward-track in State A (candidate). Optional `--surfacing-task-id` records the originating task. |
+| `inherit` | Bulk-inherit unresolved forward-tracks across an operator-declared phase boundary. |
+| `transition` | Advance a forward-track's lifecycle state (A→B, B→C, A→C). `--to-state C` requires `--resolution-path` (one of `ratified-into-spec`, `merged-into-roadmap-release`, `withdrawn`). |
+| `list` | Query by `--sub-surface`, `--state`, `--phase`. |
+| `aging` | Flag forward-tracks inherited through ≥ threshold phases without resolution. Threshold defaults to 3, overridable via `--threshold` flag or `FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES` env var. Each warning is itself an audit event (`forward_track_aging_warning`) — the audit chain records when warnings surfaced. |
+
+### When verification-ritual emits `needs_llm_judgment`
+
+The deterministic `verification-ritual` returns `overall_status: needs_llm_judgment` when at least one LLM-only category (Cat 9 today; future LLM cats too) was applicable AND its canonical sources were present. Operator action:
+
+1. Queue a `verification-ritual-llm` task with `depends_on: [<verification-ritual task @id>]` and `inputs.mode: cat-9-judge`.
+2. If the verification-ritual-llm emits a Cat 9 veto, queue an `adversarial-critic` task with `inputs.mode: cat-9-second-pass` and `depends_on: [<verification-ritual-llm task @id>]`. Cat 9 passes do NOT need second-pass.
+3. If the adversarial-critic disputes the veto, decide whether to override the Cat 9 veto or honor it.
+4. If verification-ritual-llm emits `new_candidacies`, run `state_admin forward-track create --surfacing-task-id <verification-ritual-llm task @id> --sub-surface internal-methodology-refinement --subject-type candidacy ...` for each candidacy the operator wants to track to phase-exit retro.
+
+---
+
 ## 5. Mojibake cleanup patterns
 
 The Barcode template handles mojibake at three layers (v2.3.1 + v2.4.0 + v2.4.1 + v2.4.2). But sometimes mojibake gets baked into project files BEFORE those defenses were in place — particularly if the file was created by an old daemon or by hand.

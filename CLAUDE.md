@@ -83,7 +83,7 @@ The conversational personas exist for fast, in-context work. The dispatched agen
 
 **Validation.** Two tracks, by scope of change:
 
-- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, the ADR-012 ghost fixture (Spec 06), and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / forward-track create / forward-track inherit). Every daemon change MUST keep the suite green.
+- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + `default_mode` mechanism + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, the ADR-012 ghost fixture (FNSR Spec 06), the verification-ritual machinery (category-spec loader; predicate resolver; subject-project hook loader; Cat 1–8 predicates + Cat 10 stub; orchestrator with four-class miss taxonomy and two-cadence dispatch), and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / forward-track create / inherit / transition / list / aging). Every daemon change MUST keep the suite green.
 - **GraphWrite subject** (TypeScript): every change MUST pass
   - `npm run build` — no TypeScript errors
   - `npm test` — all spec tests pass
@@ -317,6 +317,69 @@ The v2.6.0 `bank` command emitted `event=forward_track` with a banking-shaped pa
 
 This is the kind of naming correction that motivated the FNSR v1.1 Logic Team review pushback: forward-tracks and bankings have structurally distinct lifecycles, audiences, and audit-trail-unity guarantees. Conflating them at the substrate level would have caused the bankings-lifecycle model to collide with itself at every cross-phase forward-track inheritance event.
 
+## 7.11 Verification Ritual Surface (Spec 02; v2.8.0)
+
+The verification ritual catches references that drift from canonical sources at machine speed. Per FNSR Protocol Spec 02 §"Core structure", each ritual category is one specification file under `surfaces/verification/categories/cat-NN-*.md`; the substrate loads them at dispatch time.
+
+### Categories shipped in v2.8.0
+
+| Cat | Name | Mode | Cadence |
+|---|---|---|---|
+| 1 | Spec-Section-Existence | deterministic | pre-routing |
+| 2 | ADR Cross-Reference | deterministic | pre-routing |
+| 3 | Q-Ruling Cross-Reference | deterministic | pre-routing |
+| 4 | Reason-Code Frozen-Enum | deterministic | pre-routing |
+| 5 | FOL/OWL @type Discriminator | deterministic | pre-routing |
+| 6 | Manifest Mirror Consistency | deterministic | pre-routing |
+| 7 | Cross-Phase Cross-Reference | deterministic | pre-routing |
+| 8 | Multi-Canonical-Source | hybrid | two-cadence (pre-routing + activation-time) |
+| 9 | Cited-Content Consistency | LLM (candidacy) | pre-routing |
+| 10 | Type-Field-Structure | deterministic, subject-project hook (candidacy) | pre-routing |
+
+### Two-agent split
+
+Per FNSR Spec 02 + the operator-composes-chains pattern:
+
+- **`verification-ritual`** system agent (deterministic Python) runs Cat 1–8 + Cat 10. Defers Cat 9 + Cat 8-semantic-equivalence cases to LLM via `overall_status: needs_llm_judgment`.
+- **`verification-ritual-llm`** worker agent (LLM) runs `cat-9-judge` and `cat-8-semantic-equivalence` modes when the deterministic step defers.
+- **`adversarial-critic`** worker agent in `cat-9-second-pass` mode confirms / disputes / extends Cat 9 LLM verdicts that veto. Fires on vetoes only.
+
+### Pass 2a / Pass 2b chain (v2.8.0 canonical)
+
+```
+reconnaissance               (read-only investigation)
+    ↓
+verification-ritual          (deterministic)
+    ↓ (if needs_llm_judgment)
+verification-ritual-llm      (LLM judge)
+    ↓ (if ≥1 Cat 9 veto)
+adversarial-critic           (cat-9-second-pass)
+    ↓
+ratification                 (architect Pass 2a; six-field ruling)
+    ↓
+commit-finalize              (Pass 2b; applier; verification-ritual gating
+                              via the architect's referenced_evidence)
+```
+
+`commit-finalize` is a documented task type in v2.8.0; the substrate's `depends_on` graph carries the wiring per Aaron's Gap C adjudication. The architect's ratification ruling references the verification-ritual task @id in its `referenced_evidence` field. Operator queues the chain; substrate enforces dispatch ordering.
+
+### Four miss classes (v2.8.0-alpha.3)
+
+`per_category_result` miss entries carry `evidence.miss_class`:
+
+- `malformed_spec` — operator fixes the spec file
+- `unresolved_predicate` — operator fixes the predicate code
+- `missing_canonical_source` — operator provides the canonical source
+- `categorical_coverage_miss` — phase-exit-retro deliberable
+
+### Surface-registry primitive (Spec 01)
+
+`surfaces/verification/` is the first explicit use of FNSR Spec 01's surface-registry primitive. Future surfaces follow `surfaces/<surface>/<bucket-or-category>/` layout. Adding a new ratified category = drop a new file + (for deterministic) implement the named Python predicate, or (for LLM) declare the dispatcher agent + mode in frontmatter; no substrate release.
+
+### Operator workflow
+
+Operator queues `verification-ritual` upstream of `ratification`; the architect reads UPSTREAM for verification-ritual results and refuses ratification on `overall_status: veto` (and refuses on `needs_llm_judgment` without the LLM-side chain in UPSTREAM). See PLAYBOOK.md §4.9 for the operator-decision workflow when LLM categories surface vetoes or new_candidacies.
+
 ## 8. Session Workflow
 
 ### Starting a session
@@ -371,7 +434,7 @@ Layer 2: src/adapters/        <- Optional. Infrastructure integration.
 | File | Purpose |
 |---|---|
 | [fnsr_daemon.py](fnsr_daemon.py) | The orchestrator — single-file Python stdlib. |
-| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation. v2.6.0 subcommands: `reset`, `abandon`, `append-tasks`, `verify`, `status`, `resolve`, `bank`. v2.7.0 subcommands: `transition-banking` (Spec 05 state transitions), `phase-boundary` (operator-emitted phase boundary), `forward-track create` and `forward-track inherit` (Spec 07 forward-track surface). `status` surfaces `awaiting_operator_decision` tasks at the top. v2.7.0's `bank` accepts `--category` (Spec 05) and `--state`; v2.6.0's `--candidate-class` flag remains accepted (mapped to Spec 05 categories). Run `python state_admin.py --help`. |
+| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation. v2.6.0 subcommands: `reset`, `abandon`, `append-tasks`, `verify`, `status`, `resolve`, `bank`. v2.7.0 subcommands: `transition-banking` (Spec 05 state transitions), `phase-boundary` (operator-emitted phase boundary), `forward-track create` and `forward-track inherit`. v2.8.0 forward-track subcommands: `transition` (lifecycle A→B→C with `--resolution-path`), `list` (filters by sub_surface/state/phase), `aging` (flags forward-tracks inherited through ≥ threshold phases without resolution; emits `forward_track_aging_warning` audit events; threshold via `--threshold` or `FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES` env var). `forward-track create` accepts `--surfacing-task-id` for candidacy provenance per FNSR Spec 07 audit-trail-honesty refinement. Run `python state_admin.py --help`. |
 | [state.jsonld](state.jsonld) | JSON-LD work queue with hash-chained audit trail. |
 | `state.jsonld.lock` | OS-level lock for state I/O (auto-created, gitignored). |
 | `fnsr.pid` | OS-level daemon-instance lock (auto-created, gitignored). |

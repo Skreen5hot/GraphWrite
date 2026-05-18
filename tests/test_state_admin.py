@@ -911,5 +911,404 @@ class TestForwardTrackInheritCommand(unittest.TestCase):
         self.assertEqual(count, 3)
 
 
+class TestForwardTrackTransitionCommand(unittest.TestCase):
+    """v2.8.0 Checkpoint 4: forward-track transition (Spec 07 lifecycle
+    A→B→C with resolution_path on terminal). Pairs with create/inherit
+    (CP1/CP2/CP3) to give the operator the full operating surface for
+    Spec 07 forward-tracks."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-ft-trans-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "internal-methodology-refinement",
+            "--subject-type", "candidacy",
+            "--subject-id", "cat-9-candidacy",
+            "--description", "Cat 9 candidacy from Q-4-Step5-A",
+            "--deliberation-cycle", "phase-exit-retro",
+            "--phase-origin", "phase-4",
+            "--ft-id", "ft-x",
+        ])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_transition_a_to_b(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "B",
+            "--reason", "phase-exit retro ran",
+            "--trigger", "named_deliberation_cycle_ran",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["event"], "forward_track_state_transition")
+        self.assertEqual(evt["payload"]["from_state"], "A")
+        self.assertEqual(evt["payload"]["to_state"], "B")
+        self.assertNotIn("resolution_path", evt["payload"])
+
+    def test_transition_b_to_c_with_resolution_path(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "B",
+            "--reason", "deliberated",
+            "--trigger", "named_deliberation_cycle_ran",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "C",
+            "--reason", "ratified into authoring-discipline doc",
+            "--resolution-path", "ratified-into-spec",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["payload"]["from_state"], "B")
+        self.assertEqual(evt["payload"]["to_state"], "C")
+        self.assertEqual(evt["payload"]["resolution_path"],
+                         "ratified-into-spec")
+
+    def test_transition_to_c_without_resolution_path_returns_error(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "C",
+            "--reason", "test",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_transition_no_op_when_already_in_state(self):
+        # Forward-track was created in State A; transitioning to A again
+        # is a no-op.
+        # We can't use --to-state A (choices exclude it); so transition
+        # to B once, then to B again.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "B", "--reason", "step",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "B", "--reason", "no-op repeat",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_transition_unknown_ft_id_returns_error(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-nope",
+            "--to-state", "B", "--reason", "x",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_transition_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "B", "--reason", "step",
+        ])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-x",
+            "--to-state", "C", "--reason", "resolved",
+            "--resolution-path", "withdrawn",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+
+class TestForwardTrackListCommand(unittest.TestCase):
+    """v2.8.0 CP4: forward-track list with filters by sub_surface / state
+    / phase."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-ft-list-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+        for ft_id, sub_surface, phase in [
+            ("ft-a", "consumer-closure-path", "phase-3"),
+            ("ft-b", "internal-methodology-refinement", "phase-3"),
+            ("ft-c", "internal-methodology-refinement", "phase-4"),
+        ]:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "create",
+                "--anchor-task", "urn:fnsr:task:anchor",
+                "--sub-surface", sub_surface,
+                "--subject-type", "candidacy",
+                "--subject-id", ft_id + "-subj",
+                "--description", ft_id + " description",
+                "--deliberation-cycle", "phase-exit-retro",
+                "--phase-origin", phase,
+                "--ft-id", ft_id,
+            ])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_list_all_no_filters(self):
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "list",
+            ])
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+        self.assertIn("ft-a", out)
+        self.assertIn("ft-b", out)
+        self.assertIn("ft-c", out)
+        self.assertIn("total: 3", out)
+
+    def test_list_filter_by_sub_surface(self):
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "list",
+                "--sub-surface", "consumer-closure-path",
+            ])
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+        self.assertIn("ft-a", out)
+        self.assertNotIn("ft-b", out)
+        self.assertNotIn("ft-c", out)
+
+    def test_list_filter_by_phase(self):
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "list",
+                "--phase", "phase-3",
+            ])
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+        self.assertIn("ft-a", out)
+        self.assertIn("ft-b", out)
+        self.assertNotIn("ft-c", out)
+
+    def test_list_filter_by_state(self):
+        # Transition ft-a to B; filter by state=B should yield only ft-a.
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-a",
+            "--to-state", "B", "--reason", "x",
+        ])
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "list", "--state", "B",
+            ])
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+        self.assertIn("ft-a", out)
+        self.assertNotIn("ft-b", out)
+        self.assertNotIn("ft-c", out)
+
+    def test_list_no_matches_returns_message(self):
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "list",
+                "--state", "C",  # no resolved forward-tracks
+            ])
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+        self.assertIn("no forward-tracks", out.lower())
+
+
+class TestForwardTrackAgingCommand(unittest.TestCase):
+    """v2.8.0 CP4: forward-track aging emits forward_track_aging_warning
+    audit events for forward-tracks inherited through >= threshold
+    phases without resolution. Per Aaron's CP4 observation 1: warnings
+    are audit-chain events (not just CLI output) so future operators
+    can review aging history at phase boundaries."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-ft-aging-test-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:anchor", "agent": "x",
+            "status": "done", "depends_on": [], "history": [],
+        }])
+        # Forward-tracks at varying inheritance depths
+        for ft_id in ("ft-young", "ft-aged", "ft-resolved"):
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "create",
+                "--anchor-task", "urn:fnsr:task:anchor",
+                "--sub-surface", "internal-methodology-refinement",
+                "--subject-type", "candidacy",
+                "--subject-id", ft_id + "-subj",
+                "--description", ft_id,
+                "--deliberation-cycle", "phase-exit-retro",
+                "--phase-origin", "phase-1",
+                "--ft-id", ft_id,
+            ])
+        # Inherit ft-young once (under threshold of 3)
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-1", "--to-phase", "phase-2",
+            "--inherited-at-cycle", "phase-2-entry",
+        ])
+        # Inherit ft-aged + ft-resolved through three phases (>= threshold)
+        # by walking each individually since the inherit command operates
+        # on phase boundaries.
+        # ft-young is now in phase-2; ft-aged + ft-resolved also in phase-2.
+        # Continue inheritance: phase-2 -> phase-3 -> phase-4
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-2", "--to-phase", "phase-3",
+            "--inherited-at-cycle", "phase-3-entry",
+        ])
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "inherit",
+            "--from-phase", "phase-3", "--to-phase", "phase-4",
+            "--inherited-at-cycle", "phase-4-entry",
+        ])
+        # ft-resolved transitions to state C - should be skipped by aging
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "transition", "ft-resolved",
+            "--to-state", "C", "--reason", "resolved",
+            "--resolution-path", "withdrawn",
+        ])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_aging_warns_above_threshold_skips_resolved(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "aging",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        warnings = [
+            h for h in state["tasks"][0]["history"]
+            if h["event"] == "forward_track_aging_warning"
+        ]
+        # ft-young inherited only once (3 inheritances total: 1 each
+        # for phase-1->2, 2->3, 3->4 — wait, ft-young was created with
+        # phase-1 then inherited from phase-1->2 only since the next two
+        # inheritances filter on from-phase=2 then from-phase=3 etc.)
+        # Actually: all three inherit calls walk from the current phase.
+        # ft-young was created in phase-1. After inherit phase-1->2: phase=2.
+        # After inherit phase-2->3: phase=3. After inherit phase-3->4: phase=4.
+        # So ft-young inheritance_count = 3.
+        # ft-aged created phase-1, same inheritance path = 3 inheritances.
+        # ft-resolved same = 3 inheritances, then state C — skipped.
+        # threshold default = 3; ft-young and ft-aged both warned.
+        warned_ids = {w["payload"]["forward_track_id"] for w in warnings}
+        self.assertIn("ft-young", warned_ids)
+        self.assertIn("ft-aged", warned_ids)
+        self.assertNotIn("ft-resolved", warned_ids)
+
+    def test_aging_threshold_flag_overrides_default(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "aging",
+            "--threshold", "99",  # nothing meets this threshold
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        warnings = [
+            h for h in state["tasks"][0]["history"]
+            if h["event"] == "forward_track_aging_warning"
+        ]
+        self.assertEqual(len(warnings), 0)
+
+    def test_aging_env_var_threshold(self):
+        # FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES env var
+        old_env = os.environ.get("FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES")
+        os.environ["FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES"] = "99"
+        try:
+            rc = state_admin.main([
+                "--state-path", str(self.state_path),
+                "forward-track", "aging",
+            ])
+            self.assertEqual(rc, 0)
+            state = json.loads(self.state_path.read_text(encoding="utf-8"))
+            warnings = [
+                h for h in state["tasks"][0]["history"]
+                if h["event"] == "forward_track_aging_warning"
+            ]
+            self.assertEqual(len(warnings), 0)
+        finally:
+            if old_env is None:
+                del os.environ["FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES"]
+            else:
+                os.environ["FNSR_FORWARD_TRACK_AGING_THRESHOLD_PHASES"] = old_env
+
+    def test_aging_warning_payload_has_required_fields(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "aging",
+        ])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        warnings = [
+            h for h in state["tasks"][0]["history"]
+            if h["event"] == "forward_track_aging_warning"
+        ]
+        self.assertTrue(len(warnings) > 0)
+        for w in warnings:
+            p = w["payload"]
+            self.assertIn("forward_track_id", p)
+            self.assertIn("inheritance_count", p)
+            self.assertIn("threshold", p)
+            self.assertIn("current_state", p)
+            self.assertIn("timestamp", p)
+
+    def test_aging_chain_integrity_preserved(self):
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "aging",
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "verify", "--quiet",
+        ])
+        self.assertEqual(rc, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

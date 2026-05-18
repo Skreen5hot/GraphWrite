@@ -115,6 +115,7 @@ path (v2.7.0 interim) lands the change separately.
     "rationale": "<full rationale for the ratified/denied/deferred ruling>",
     "referenced_evidence": [
       { "type": "upstream_task", "id": "urn:fnsr:task:NNN", "field": "outputs.findings" },
+      { "type": "upstream_task", "id": "urn:fnsr:task:verify-NNN", "field": "outputs.overall_status", "kind": "verification-ritual" },
       { "type": "adr", "id": "ADR-NNN", "source": "project/DECISIONS.md" },
       { "type": "spec_section", "id": "§3.2", "source": "project/SPEC.md" }
     ],
