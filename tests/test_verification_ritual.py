@@ -127,14 +127,15 @@ class TestCategoryFrontmatterParser(unittest.TestCase):
 
 class TestCategoryLoader(unittest.TestCase):
     def test_loads_all_cat_specs(self):
-        # CP1 shipped cat-01..07. CP2 adds cat-08 (hybrid two-cadence)
-        # and cat-10 (subject-project-hook candidacy stub).
+        # CP1 shipped cat-01..07. CP2 added cat-08 (hybrid two-cadence)
+        # and cat-10 (subject-project-hook candidacy). CP3 adds cat-09
+        # (LLM cited-content-consistency candidacy).
         specs = d._load_category_specs()
         ids = sorted({s["category_id"]
                        for s in specs if not s.get("_malformed")})
         self.assertEqual(ids, ["cat-01", "cat-02", "cat-03", "cat-04",
                                 "cat-05", "cat-06", "cat-07", "cat-08",
-                                "cat-10"])
+                                "cat-09", "cat-10"])
 
     def test_each_spec_has_required_fields(self):
         specs = d._load_category_specs()
@@ -437,7 +438,12 @@ class TestVerificationRitualOrchestrator(unittest.TestCase):
         for cat_result in result.outputs["per_category_result"]:
             self.assertEqual(cat_result["status"], "miss")
 
-    def test_overall_pass_when_all_applicable_categories_pass(self):
+    def test_overall_needs_llm_judgment_when_cat_9_defers(self):
+        # CP3: with cat-09 loaded and its required sources (spec +
+        # decisions) provided, Cat 9 defers to verification-ritual-llm.
+        # The deterministic verification-ritual emits overall_status =
+        # needs_llm_judgment, even when every deterministic category
+        # passes. Operator queues verification-ritual-llm next.
         result = self._run({
             "artifact_text": "see §3.4.1 and ADR-001 for context.",
             "canonical_sources": {
@@ -445,11 +451,16 @@ class TestVerificationRitualOrchestrator(unittest.TestCase):
                 "decisions": SAMPLE_DECISIONS,
             },
         })
-        self.assertEqual(result.outputs["overall_status"], "pass")
+        self.assertEqual(result.outputs["overall_status"],
+                         "needs_llm_judgment")
         cat_results = {r["category_id"]: r
                        for r in result.outputs["per_category_result"]}
         self.assertEqual(cat_results["cat-01"]["status"], "pass")
         self.assertEqual(cat_results["cat-02"]["status"], "pass")
+        self.assertEqual(cat_results["cat-09"]["status"], "deferred_llm")
+        self.assertEqual(
+            cat_results["cat-09"]["evidence"]["llm_dispatcher_agent"],
+            "verification-ritual-llm")
 
     def test_overall_veto_propagates_from_any_category(self):
         result = self._run({
@@ -471,10 +482,10 @@ class TestVerificationRitualOrchestrator(unittest.TestCase):
             "canonical_sources": {},
             "cadence": "pre-routing",
         })
-        # CP2: Cat 1-7, Cat 8 (two-cadence applies in pre-routing), and
-        # Cat 10 all run; cat-10 is a candidacy with subject-project
-        # hook stub. Cat 9 (LLM-only) is not yet shipped in CP2.
-        self.assertEqual(len(result.outputs["per_category_result"]), 9)
+        # CP3: Cat 1-7, Cat 8 (two-cadence applies in pre-routing),
+        # Cat 9 (LLM candidacy; emits deferred_llm or miss-on-no-sources),
+        # Cat 10 (subject-project-hook candidacy) all run at pre-routing.
+        self.assertEqual(len(result.outputs["per_category_result"]), 10)
 
     def test_summary_string_format(self):
         result = self._run({
@@ -587,7 +598,10 @@ class TestMissTaxonomy(unittest.TestCase):
     evidence-grounded-extension cases.
     """
 
-    def test_unresolved_predicate_for_missing_canonical_source(self):
+    def test_missing_canonical_source_emits_split_miss_class(self):
+        # Gap I split (v2.8.0-alpha.3): missing_canonical_source is its
+        # own 4th miss class; was bucketed under unresolved_predicate
+        # in CP2.
         task = {
             "@id": "urn:fnsr:task:verify",
             "agent": "verification-ritual",
@@ -601,9 +615,19 @@ class TestMissTaxonomy(unittest.TestCase):
                      if r["category_id"] == "cat-01")
         self.assertEqual(cat01["status"], "miss")
         self.assertEqual(cat01["evidence"]["miss_class"],
-                         d.MISS_UNRESOLVED_PREDICATE)
-        self.assertEqual(cat01["evidence"]["reason"],
-                         "missing_canonical_source")
+                         d.MISS_MISSING_CANONICAL_SOURCE)
+        self.assertIn("missing_canonical_source_keys", cat01["evidence"])
+        self.assertIn("spec", cat01["evidence"]["missing_canonical_source_keys"])
+
+    def test_four_miss_classes_are_distinct_constants(self):
+        # Each operator-fix path has its own constant per Gap I split.
+        classes = {
+            d.MISS_MALFORMED_SPEC,
+            d.MISS_UNRESOLVED_PREDICATE,
+            d.MISS_MISSING_CANONICAL_SOURCE,
+            d.MISS_CATEGORICAL_COVERAGE,
+        }
+        self.assertEqual(len(classes), 4)
 
     def test_categorical_coverage_miss_from_predicate(self):
         # Cat 10's stub returns miss with miss_class set by the predicate
@@ -911,6 +935,167 @@ class TestTwoCadenceOrchestration(unittest.TestCase):
         self.assertNotIn("cat-02", cats_run)
         self.assertNotIn("cat-07", cats_run)
         self.assertNotIn("cat-10", cats_run)
+
+
+class TestCat09SpecAndDeferral(unittest.TestCase):
+    """v2.8.0-alpha.3: Cat 9 (cited-content consistency, LLM candidacy)
+    spec loaded by the deterministic verification-ritual; LLM categories
+    defer via overall_status=needs_llm_judgment when their canonical
+    sources are present. The CP3 verification-ritual-llm consumes the
+    deferred payload (LLM dispatch is operator-queued downstream)."""
+
+    def _run(self, inputs):
+        task = {"@id": "urn:test:verification", "agent": "verification-ritual",
+                "inputs": inputs}
+        return d._verification_ritual(task, {})
+
+    def test_cat_09_spec_loads(self):
+        specs = d._load_category_specs()
+        cat9 = next((s for s in specs if s.get("category_id") == "cat-09"),
+                     None)
+        self.assertIsNotNone(cat9)
+        self.assertEqual(cat9["implementation_mode"], "llm")
+        self.assertEqual(cat9["ratification_status"], "candidacy")
+        self.assertEqual(cat9["llm_dispatcher_agent"],
+                         "verification-ritual-llm")
+        self.assertEqual(cat9["llm_mode"], "cat-9-judge")
+
+    def test_cat_09_misses_when_canonical_sources_absent(self):
+        # No spec or decisions in canonical_sources -> Cat 9 misses with
+        # missing_canonical_source. The deferral signal only fires when
+        # there's content to judge.
+        result = self._run({
+            "artifact_text": "x",
+            "canonical_sources": {},
+        })
+        cat9 = next(r for r in result.outputs["per_category_result"]
+                     if r["category_id"] == "cat-09")
+        self.assertEqual(cat9["status"], "miss")
+        self.assertEqual(cat9["evidence"]["miss_class"],
+                         d.MISS_MISSING_CANONICAL_SOURCE)
+
+    def test_cat_09_defers_when_sources_present(self):
+        result = self._run({
+            "artifact_text": "see ADR-001 for context",
+            "canonical_sources": {
+                "spec": SAMPLE_SPEC,
+                "decisions": SAMPLE_DECISIONS,
+            },
+        })
+        cat9 = next(r for r in result.outputs["per_category_result"]
+                     if r["category_id"] == "cat-09")
+        self.assertEqual(cat9["status"], "deferred_llm")
+        self.assertEqual(cat9["evidence"]["llm_dispatcher_agent"],
+                         "verification-ritual-llm")
+        self.assertEqual(cat9["evidence"]["llm_mode"], "cat-9-judge")
+        # Overall status reflects the deferral
+        self.assertEqual(result.outputs["overall_status"],
+                         "needs_llm_judgment")
+
+
+class TestAdversarialCriticMultiMode(unittest.TestCase):
+    """v2.8.0-alpha.3: adversarial-critic gains a cat-9-second-pass mode
+    per FNSR Spec 02 §"Open questions" + Aaron's CP3 observation 2
+    (fires on Cat 9 vetoes only). default_mode=review-second-pass keeps
+    existing CP2-and-earlier dispatch tasks working unchanged."""
+
+    def test_default_mode_returns_review_second_pass_required_keys(self):
+        # Existing tasks dispatching adversarial-critic without inputs.mode
+        # should still get their required_outputs enforced per the
+        # review-second-pass contract (default_mode mechanism, v2.8.0-
+        # alpha.3 default_mode frontmatter field).
+        result = d._agent_required_outputs("adversarial-critic")
+        self.assertEqual(result, [
+            "verdicts", "missed_findings", "overall_verdict", "summary",
+        ])
+
+    def test_explicit_review_second_pass_mode(self):
+        result = d._agent_required_outputs(
+            "adversarial-critic", mode="review-second-pass")
+        self.assertEqual(result, [
+            "verdicts", "missed_findings", "overall_verdict", "summary",
+        ])
+
+    def test_cat_9_second_pass_mode(self):
+        result = d._agent_required_outputs(
+            "adversarial-critic", mode="cat-9-second-pass")
+        self.assertEqual(result, [
+            "cat_9_verdicts", "overall_verdict", "summary",
+        ])
+
+    def test_cat_9_second_pass_cps_check(self):
+        task = {"agent": "adversarial-critic",
+                "inputs": {"mode": "cat-9-second-pass"}}
+        outputs = {
+            "cat_9_verdicts": [
+                {"citation_reference": "ADR-012",
+                 "judge_verdict": "inconsistent",
+                 "second_pass_stance": "confirm_veto",
+                 "second_pass_rationale": "..."}
+            ],
+            "overall_verdict": "vetoes_confirmed",
+            "summary": "1 veto confirmed",
+        }
+        # MUST NOT raise.
+        d.cps_check(task, outputs)
+
+    def test_cat_9_second_pass_missing_cat_9_verdicts_vetoes(self):
+        task = {"agent": "adversarial-critic",
+                "inputs": {"mode": "cat-9-second-pass"}}
+        outputs = {
+            "overall_verdict": "vetoes_confirmed",
+            "summary": "x",
+        }
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d.cps_check(task, outputs)
+        self.assertIn("cat_9_verdicts", str(ctx.exception))
+
+    def test_review_second_pass_back_compat_cps_check(self):
+        # Existing task shape (no inputs.mode) still gets reviewed against
+        # the review-second-pass required_outputs.
+        task = {"agent": "adversarial-critic"}
+        outputs = {
+            "verdicts": [],
+            "missed_findings": [],
+            "overall_verdict": "reviewer_acceptable",
+            "summary": "x",
+        }
+        d.cps_check(task, outputs)
+
+
+class TestVerificationRitualLlmAgentContract(unittest.TestCase):
+    """v2.8.0-alpha.3: verification-ritual-llm worker agent's frontmatter
+    declares multi-mode required_outputs (cat-9-judge and
+    cat-8-semantic-equivalence) per Aaron's two-agent-split call."""
+
+    def test_agent_md_file_exists(self):
+        # Located alongside other worker agents
+        from pathlib import Path
+        path = Path(__file__).resolve().parent.parent / ".claude" / "agents" \
+            / "verification-ritual-llm.md"
+        self.assertTrue(path.exists())
+
+    def test_cat_9_judge_mode_required_outputs(self):
+        result = d._agent_required_outputs(
+            "verification-ritual-llm", mode="cat-9-judge")
+        self.assertEqual(result, [
+            "per_category_result", "overall_status", "summary",
+        ])
+
+    def test_cat_8_semantic_equivalence_mode_required_outputs(self):
+        result = d._agent_required_outputs(
+            "verification-ritual-llm", mode="cat-8-semantic-equivalence")
+        self.assertEqual(result, [
+            "per_category_result", "overall_status", "summary",
+        ])
+
+    def test_unknown_mode_returns_empty(self):
+        # No default_mode declared; unknown mode yields empty list (no
+        # required-keys enforcement). Caller is responsible for passing
+        # a valid mode.
+        result = d._agent_required_outputs(
+            "verification-ritual-llm", mode="unknown-mode")
+        self.assertEqual(result, [])
 
 
 class TestParseSeAcceptable(unittest.TestCase):

@@ -562,6 +562,12 @@ def cmd_forward_track_create(args: argparse.Namespace) -> int:
         ],
         "operator": args.operator,
     }
+    # v2.8.0-alpha.3 (Aaron's CP3 observation 3): preserve audit-trail
+    # honesty for candidacies by recording the task that surfaced the
+    # forward-track. Phase-exit-retro can then trace back to original
+    # evidence without manually walking the chain.
+    if args.surfacing_task_id:
+        payload["surfacing_task_id"] = args.surfacing_task_id
     _append_audit(task, "forward_track", payload)
     _save_state(state_path, state)
     print(f"forward-track created: {ft_id}  "
@@ -813,6 +819,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ft_create.add_argument("--ft-id", default=None,
                               help="optional explicit forward_track_id "
                                    "(default: auto-generated)")
+    p_ft_create.add_argument("--surfacing-task-id", default=None,
+                              help="task @id that surfaced this candidacy "
+                                   "(e.g., the verification-ritual-llm task "
+                                   "whose new_candidacies prompted the "
+                                   "creation). Preserves audit-trail evidence "
+                                   "for phase-exit-retro deliberation.")
     p_ft_create.add_argument("--operator", default="operator")
     p_ft_create.set_defaults(func=cmd_forward_track_create)
 

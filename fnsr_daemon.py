@@ -186,6 +186,9 @@ _REQUIRED_OUTPUTS_BY_MODE_BLOCK_RE = re.compile(
 _REQUIRED_OUTPUTS_BY_MODE_ENTRY_RE = re.compile(
     r"^[ \t]+(\S+):\s*\[(.*?)\]\s*$", re.MULTILINE
 )
+_DEFAULT_MODE_RE = re.compile(
+    r"^default_mode:\s*(\S+)\s*$", re.MULTILINE
+)
 
 
 def _parse_outputs_list(raw: str) -> list[str]:
@@ -202,20 +205,30 @@ def _agent_required_outputs(
     """
     Read an agent's `required_outputs` from its frontmatter.
 
-    Two frontmatter syntaxes are supported:
+    Three frontmatter syntaxes are supported:
 
       1. Flat list (single-mode agents):
             required_outputs: [a, b, c]
 
-      2. Per-mode dict (multi-mode agents like architect which has both
-         `review` and `ratification` modes per Spec 03):
+      2. Per-mode dict (multi-mode agents like architect):
             required_outputs:
               review: [findings, recommendations, summary, recommendation]
               ratification: [ruling, editorial_verdict, ...]
 
-    When the frontmatter uses dict syntax, `mode` selects which list to
-    return. If `mode` is None or unrecognized, returns the empty list —
-    callers MUST pass the task's `inputs.mode` for multi-mode agents.
+      3. Per-mode dict with default_mode (back-compat for agents that
+         existed pre-multi-mode; v2.8.0-alpha.3+ adversarial-critic uses
+         this so existing tasks without `mode` still get their required
+         keys enforced):
+            default_mode: review-second-pass
+            required_outputs:
+              review-second-pass: [verdicts, missed_findings, ...]
+              cat-9-second-pass: [cat_9_verdicts, ...]
+
+    When dict syntax is used:
+      - `mode` selects the list.
+      - If `mode` is None, the `default_mode` frontmatter field is
+        consulted; if present, that mode's list is returned.
+      - If neither matches, returns the empty list.
 
     Returns empty list when the agent has no declaration (or no .md
     file). Single-mode agents ignore the `mode` argument entirely.
@@ -242,6 +255,11 @@ def _agent_required_outputs(
             for m in _REQUIRED_OUTPUTS_BY_MODE_ENTRY_RE.finditer(block.group(1))
         }
         if mode is None:
+            # v2.8.0-alpha.3: consult default_mode frontmatter field for
+            # back-compat with existing tasks dispatched without inputs.mode.
+            dm = _DEFAULT_MODE_RE.search(frontmatter)
+            if dm:
+                return modes.get(dm.group(1), [])
             return []
         return modes.get(mode, [])
 
@@ -998,17 +1016,25 @@ def _question_resolver(task: dict[str, Any],
 SURFACES_DIR = Path(os.environ.get("FNSR_SURFACES_DIR", "./surfaces"))
 
 
-# ---- Miss taxonomy (Gap G v2.8.0-alpha.2) -----------------------------
+# ---- Miss taxonomy (Gap G v2.8.0-alpha.2; Gap I split v2.8.0-alpha.3) ----
 #
-# Per Aaron's adjudication: per_category_result entries with status=miss
-# carry an evidence.miss_class field discriminating substrate-fixable
-# vs evidence-grounded-extension cases.
+# Per Aaron's adjudications: per_category_result entries with status=miss
+# carry an evidence.miss_class field discriminating four operator-fix
+# paths.
+#
+#   malformed_spec            — spec file invalid → operator fixes the spec
+#   unresolved_predicate      — predicate code unavailable → operator fixes the code
+#   missing_canonical_source  — predicate inputs absent → operator provides the source
+#   categorical_coverage_miss — known-uncovered territory → phase-exit retro deliberable
+#
+# The fourth class (missing_canonical_source) was bucketed under
+# unresolved_predicate in CP2 with details.reason discrimination;
+# split out in CP3 per Gap I adjudication. Each class has a distinct
+# operator-fix path, independently filterable.
 MISS_MALFORMED_SPEC = "malformed_spec"
 MISS_UNRESOLVED_PREDICATE = "unresolved_predicate"
+MISS_MISSING_CANONICAL_SOURCE = "missing_canonical_source"
 MISS_CATEGORICAL_COVERAGE = "categorical_coverage_miss"
-# Note: missing canonical sources are bucketed under unresolved_predicate
-# with details.reason=missing_canonical_source in v2.8.0-alpha.2.
-# Surfaces as Gap I post-CP2 if it warrants a fourth class.
 
 
 @dataclass
@@ -1807,36 +1833,43 @@ def _verification_ritual(task: dict[str, Any],
             applicable = False
         if not applicable:
             continue
-        # LLM-only categories defer to verification-ritual-llm (CP3)
-        if spec.get("implementation_mode") == "llm":
-            per_category_result.append({
-                "category_id": cat_id,
-                "name": spec.get("name", cat_id),
-                "status": "deferred_llm",
-                "evidence": {"reason": "LLM-only categories run via "
-                                        "verification-ritual-llm in CP3+; "
-                                        "this run is deterministic-only"},
-            })
-            deferred_llm_count += 1
-            continue
+        # Check canonical-source availability BEFORE the LLM-deferral
+        # branch — an LLM category without its required sources is a
+        # missing_canonical_source miss, not a deferred-llm signal.
+        # The deferral only fires when there's content to judge.
         required_keys = spec.get("canonical_source_keys") or []
         missing_keys = [k for k in required_keys
                         if k not in canonical_sources]
         if missing_keys:
-            # v2.8.0-alpha.2: bucketed under unresolved_predicate per
-            # Aaron's three-class taxonomy; details.reason disambiguates
-            # the missing-canonical-source case.
             per_category_result.append({
                 "category_id": cat_id,
                 "name": spec.get("name", cat_id),
                 "status": "miss",
                 "evidence": {
-                    "miss_class": MISS_UNRESOLVED_PREDICATE,
-                    "reason": "missing_canonical_source",
+                    "miss_class": MISS_MISSING_CANONICAL_SOURCE,
+                    "reason": "required canonical source(s) absent from inputs",
                     "missing_canonical_source_keys": missing_keys,
                 },
             })
             miss_count += 1
+            continue
+        # LLM-only categories defer to verification-ritual-llm (CP3+)
+        # once their required canonical sources are available.
+        if spec.get("implementation_mode") == "llm":
+            per_category_result.append({
+                "category_id": cat_id,
+                "name": spec.get("name", cat_id),
+                "status": "deferred_llm",
+                "evidence": {
+                    "reason": ("LLM-only categories run via "
+                                "verification-ritual-llm; this is the "
+                                "deterministic pre-routing run."),
+                    "llm_dispatcher_agent": spec.get("llm_dispatcher_agent",
+                                                      "verification-ritual-llm"),
+                    "llm_mode": spec.get("llm_mode"),
+                },
+            })
+            deferred_llm_count += 1
             continue
         pred_name = spec.get("python_predicate")
         predicate = _resolve_predicate(pred_name, surface) if pred_name else None

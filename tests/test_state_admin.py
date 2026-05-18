@@ -728,6 +728,49 @@ class TestForwardTrackCreateCommand(unittest.TestCase):
         self.assertIn("forward_track_id", events[1]["payload"])
         self.assertNotIn("forward_track_id", events[0]["payload"])
 
+    def test_create_with_surfacing_task_id_records_provenance(self):
+        # v2.8.0-alpha.3 (Aaron's CP3 observation 3): forward-track
+        # create accepts --surfacing-task-id so phase-exit-retro can
+        # trace back to the original evidence (e.g., the verification-
+        # ritual-llm task whose new_candidacies prompted the creation).
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "internal-methodology-refinement",
+            "--subject-type", "candidacy",
+            "--subject-id", "cat-11-candidacy",
+            "--description", "candidacy surfaced by verification-ritual-llm",
+            "--deliberation-cycle", "phase-exit-retro",
+            "--phase-origin", "phase-4",
+            "--surfacing-task-id", "urn:fnsr:task:verify-llm-x",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertEqual(evt["payload"]["surfacing_task_id"],
+                         "urn:fnsr:task:verify-llm-x")
+
+    def test_create_without_surfacing_task_id_omits_field(self):
+        # --surfacing-task-id is optional; omitting it leaves the
+        # field absent from the payload (back-compat with v2.7.0 forward-
+        # tracks that didn't have this field).
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "forward-track", "create",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--sub-surface", "consumer-closure-path",
+            "--subject-type", "capability",
+            "--subject-id", "feat-x",
+            "--description", "x",
+            "--deliberation-cycle", "v0.2-roadmap",
+            "--phase-origin", "phase-3",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        evt = state["tasks"][0]["history"][-1]
+        self.assertNotIn("surfacing_task_id", evt["payload"])
+
     def test_create_chain_integrity_preserved(self):
         state_admin.main([
             "--state-path", str(self.state_path),

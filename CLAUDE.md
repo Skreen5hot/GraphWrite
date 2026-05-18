@@ -35,9 +35,9 @@ Two kinds of agents:
 | Worker agent | Role |
 |---|---|
 | [spec-reviewer](.claude/agents/spec-reviewer.md) | Structural, ontological, conformance review of specifications |
-| [adversarial-critic](.claude/agents/adversarial-critic.md) | Confirm / refute / extend an upstream reviewer's findings |
 | [synthesist](.claude/agents/synthesist.md) | Reconcile a reviewer + critic into a single decision document |
 | [architect](.claude/agents/architect.md) | Two modes (selected via `inputs.mode`): `review` (structural findings + recommendations) and `ratification` (Pass 2a ruling per Spec 03; six-field ruling payload + refusal contract) |
+| [adversarial-critic](.claude/agents/adversarial-critic.md) | Two modes (`default_mode: review-second-pass`): `review-second-pass` (existing v2.5.0 contract; confirms/refutes/extends a prior reviewer's findings) and `cat-9-second-pass` (new in v2.8.0-alpha.3; confirms/disputes/extends Cat 9 LLM-judge **veto** verdicts per FNSR Spec 02 §"Open questions" — fires on Cat 9 vetoes only, not passes). Third instance of the read-only-by-contract agent pattern. |
 | [reconnaissance](.claude/agents/reconnaissance.md) | **Read-only-by-contract.** Gathers findings/evidence about the subject project's current state; produces no proposals, no recommendations. First instance of the read-only-by-contract agent pattern (Spec 03 reconnaissance requirement for substantive changes). |
 | [developer](.claude/agents/developer.md) | Minimal change proposals — describe-only (no Edit / Write tools) |
 | [semantic-sme](.claude/agents/semantic-sme.md) | Ontology, BFO/CCO grounding, OWL DL conformance |
@@ -50,7 +50,8 @@ Two kinds of agents:
 | [applier](.claude/agents/applier.md) | Applies a developer / planner agent's `changes[]` to the filesystem with strict `before`-snippet matching, multi-change atomic apply, and UTF-8 BOM on new files |
 | [mojibake-repair](.claude/agents/mojibake-repair.md) | Cleans known cp1252-UTF8 mojibake patterns from upstream `changes[]` before they reach the applier |
 | [question-resolver](.claude/agents/question-resolver.md) | Takes synthesist `outstanding_questions` + operator structured answers, drafts ADR entries (matching ADR-001 format) for DECISIONS.md |
-| [verification-ritual](.claude/agents/verification-ritual.md) | v2.8.0 Checkpoint 1. Orchestrates the verification ritual per FNSR Spec 02. Loads category specs from `surfaces/verification/categories/` at dispatch time; runs deterministic Cat 1–7 predicates against the path-fence-authored artifact. Cat 8 hybrid + Cat 10 hook land in CP2; Cat 9 LLM judge in CP3. |
+| [verification-ritual](.claude/agents/verification-ritual.md) | v2.8.0 Checkpoint 1. Orchestrates the verification ritual per FNSR Spec 02. Loads category specs from `surfaces/verification/categories/` at dispatch time; runs deterministic Cat 1–8 + Cat 10. Defers Cat 9 (LLM-required) via `overall_status: needs_llm_judgment`. |
+| [verification-ritual-llm](.claude/agents/verification-ritual-llm.md) | v2.8.0 Checkpoint 3. **Read-only-by-contract.** LLM judge for the verification ritual's LLM-required categories. Two modes: `cat-9-judge` (cited-content consistency per FNSR Spec 02 Cat 9 candidacy; ADR-012 ghost anchor case) and `cat-8-semantic-equivalence` (activation-time semantic-equivalence judging when `semantic_equivalence_acceptable: {reason, scope}` flag is present). Second instance of the read-only-by-contract agent pattern. |
 
 Shared agent contract:
 - Output envelope: `{"outputs": {...}}`. No prose outside the JSON.
