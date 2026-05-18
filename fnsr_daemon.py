@@ -1968,11 +1968,479 @@ def _verification_ritual(task: dict[str, Any],
     }, "", "")
 
 
+# ---- test-runner (v2.9.0) -----------------------------------------------
+#
+# First substrate agent with shell-execution side effects beyond the
+# applier's file I/O. Runs an external test command via subprocess,
+# captures the output deterministically, parses results.
+
+_TEST_RUNNER_TIMEOUT_DEFAULT_S = int(
+    os.environ.get("FNSR_TEST_RUNNER_TIMEOUT_S", "300")
+)
+
+# python-unittest summary lines:
+#   "Ran 156 tests in 1.234s" or "Ran 156 tests in 1.234s\n\nOK"
+_UNITTEST_RAN_RE = re.compile(
+    r"Ran\s+(\d+)\s+tests?\s+in\s+([\d.]+)s", re.MULTILINE
+)
+_UNITTEST_FAILURES_RE = re.compile(
+    r"FAILED \((?:[\w]+=\d+(?:,\s*[\w]+=\d+)*)\)"
+)
+_UNITTEST_FAILED_COUNT_RE = re.compile(r"failures=(\d+)")
+_UNITTEST_ERROR_COUNT_RE = re.compile(r"errors=(\d+)")
+_UNITTEST_SKIPPED_COUNT_RE = re.compile(r"skipped=(\d+)")
+_UNITTEST_FAILURE_BLOCK_RE = re.compile(
+    # ^FAIL: or ^ERROR: ; capture full test identifier (may include
+    # the dotted (tests.module.Class.method) suffix); then the dash
+    # separator line; then the body up to the next block or end.
+    r"^(?:FAIL|ERROR):\s+(.+?)\s*$\s*^[-=]+\s*$\s*(.*?)"
+    r"(?=^(?:FAIL|ERROR|Ran|OK|FAILED)|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+# npm test summary lines (jest / mocha-ish; loose matching):
+_NPM_TESTS_RE = re.compile(
+    r"Tests?:\s*(?:(\d+)\s+failed,?\s*)?(?:(\d+)\s+skipped,?\s*)?(\d+)\s+passed,?\s*(?:(\d+)\s+total)?",
+    re.IGNORECASE,
+)
+
+
+def _parse_python_unittest_output(stdout: str, stderr: str,
+                                    first_n: int) -> dict:
+    """Parse python-unittest output (mostly on stderr) into structured
+    counts. Returns dict with passed/failed/skipped/total + first_n
+    failure blocks."""
+    # Prefer stderr where unittest emits its summary; fall back to stdout.
+    # (Operator-precedence-safe: explicit parens; do not collapse.)
+    text = (stderr or "") + "\n" + (stdout or "")
+    if not _UNITTEST_RAN_RE.search(text):
+        text = stdout or ""
+    ran_match = _UNITTEST_RAN_RE.search(text)
+    total = int(ran_match.group(1)) if ran_match else 0
+    duration_s = float(ran_match.group(2)) if ran_match else 0.0
+    failed = 0
+    errors = 0
+    skipped = 0
+    if _UNITTEST_FAILURES_RE.search(text):
+        f_match = _UNITTEST_FAILED_COUNT_RE.search(text)
+        e_match = _UNITTEST_ERROR_COUNT_RE.search(text)
+        s_match = _UNITTEST_SKIPPED_COUNT_RE.search(text)
+        if f_match:
+            failed = int(f_match.group(1))
+        if e_match:
+            errors = int(e_match.group(1))
+        if s_match:
+            skipped = int(s_match.group(1))
+    elif "OK" in text:
+        # OK summary may also have skipped count
+        s_match = _UNITTEST_SKIPPED_COUNT_RE.search(text)
+        if s_match:
+            skipped = int(s_match.group(1))
+    failed_total = failed + errors
+    passed = max(0, total - failed_total - skipped)
+    failures = []
+    for m in _UNITTEST_FAILURE_BLOCK_RE.finditer(text):
+        failures.append({
+            "test_name": m.group(1).strip(),
+            "failure_text": m.group(2).strip()[:1500],
+        })
+        if len(failures) >= first_n:
+            break
+    return {
+        "passed": passed,
+        "failed": failed_total,
+        "skipped": skipped,
+        "total": total,
+        "duration_s": duration_s,
+        "first_n_failures": failures,
+    }
+
+
+def _parse_npm_output(stdout: str, stderr: str, first_n: int) -> dict:
+    """Parse npm/jest-style test output. Best-effort; covers common
+    formats but not all test-runner configurations."""
+    text = (stdout or "") + "\n" + (stderr or "")
+    m = _NPM_TESTS_RE.search(text)
+    if m:
+        failed = int(m.group(1)) if m.group(1) else 0
+        skipped = int(m.group(2)) if m.group(2) else 0
+        passed = int(m.group(3)) if m.group(3) else 0
+        total = int(m.group(4)) if m.group(4) else (failed + skipped + passed)
+        return {
+            "passed": passed, "failed": failed, "skipped": skipped,
+            "total": total, "duration_s": 0.0, "first_n_failures": [],
+        }
+    return {
+        "passed": 0, "failed": 0, "skipped": 0, "total": 0,
+        "duration_s": 0.0, "first_n_failures": [],
+        "_unparsed": True,
+    }
+
+
+def _detect_parser(cmd: str) -> str:
+    """Auto-detect result parser from the command string."""
+    if "unittest" in cmd or ("python" in cmd and "test" in cmd):
+        return "python_unittest"
+    if "npm" in cmd or "yarn" in cmd or "jest" in cmd or "mocha" in cmd:
+        return "npm"
+    return "raw"
+
+
+def _test_runner(task: dict[str, Any],
+                  upstream: dict[str, Any]) -> WorkerResult:
+    """Run a test suite via subprocess; capture and parse the result.
+
+    First substrate agent with subprocess-based shell execution beyond
+    the applier's file I/O. Subject-project-agnostic — the test command
+    comes from inputs.cmd or the FNSR_TEST_RUNNER_CMD env var.
+    """
+    inputs = task.get("inputs") or {}
+    cmd_str = inputs.get("cmd") or os.environ.get("FNSR_TEST_RUNNER_CMD")
+    if not cmd_str:
+        return WorkerResult(True, {
+            "error": "test_command_unresolvable",
+            "details": ("no `cmd` in inputs and no FNSR_TEST_RUNNER_CMD "
+                        "env var set; cannot resolve test command"),
+        }, "", "")
+    cwd = inputs.get("cwd") or "."
+    parser = inputs.get("parser") or _detect_parser(cmd_str)
+    first_n = int(inputs.get("first_n_failures", 5))
+    timeout_s = int(inputs.get("timeout_s", _TEST_RUNNER_TIMEOUT_DEFAULT_S))
+    # Split the command for shell=False invocation
+    import shlex
+    try:
+        cmd_list = shlex.split(cmd_str)
+    except ValueError as e:
+        return WorkerResult(True, {
+            "error": "subprocess_failed",
+            "details": f"could not parse cmd: {e}",
+        }, "", "")
+    log.info("test-runner dispatch task=%s cmd=%r cwd=%r",
+             task.get("@id"), cmd_str, cwd)
+    started_at = time.time()
+    try:
+        proc = subprocess.run(
+            cmd_list,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+            shell=False,
+        )
+    except subprocess.TimeoutExpired as e:
+        return WorkerResult(True, {
+            "error": "timeout",
+            "details": f"test command exceeded {timeout_s}s timeout",
+            "raw_stdout_tail": (e.stdout or "")[-2000:]
+                if isinstance(e.stdout, str) else
+                (e.stdout or b"").decode(errors="replace")[-2000:],
+        }, "", "")
+    except FileNotFoundError as e:
+        return WorkerResult(True, {
+            "error": "subprocess_failed",
+            "details": f"could not start subprocess: {e}",
+        }, "", "")
+    elapsed = time.time() - started_at
+    stdout = proc.stdout or ""
+    stderr = proc.stderr or ""
+    # Parse
+    if parser == "python_unittest":
+        parsed = _parse_python_unittest_output(stdout, stderr, first_n)
+    elif parser == "npm":
+        parsed = _parse_npm_output(stdout, stderr, first_n)
+    else:
+        parsed = {
+            "passed": 0, "failed": 0, "skipped": 0, "total": 0,
+            "duration_s": elapsed, "first_n_failures": [],
+            "_unparsed": True,
+        }
+    duration_s = parsed.pop("duration_s", elapsed) or elapsed
+    if parsed.get("failed", 0) > 0:
+        status = "failures"
+    elif proc.returncode != 0 and parsed.get("total", 0) == 0:
+        status = "errors"
+    elif proc.returncode != 0:
+        status = "failures"
+    else:
+        status = "all_pass"
+    summary_parts = [
+        f"{status}:",
+        f"{parsed.get('passed', 0)} passed",
+        f"{parsed.get('failed', 0)} failed",
+        f"{parsed.get('skipped', 0)} skipped",
+        f"({parsed.get('total', 0)} total in {duration_s:.2f}s)",
+    ]
+    return WorkerResult(True, {
+        "status": status,
+        "passed": parsed.get("passed", 0),
+        "failed": parsed.get("failed", 0),
+        "skipped": parsed.get("skipped", 0),
+        "total": parsed.get("total", 0),
+        "duration_s": duration_s,
+        "first_n_failures": parsed.get("first_n_failures", []),
+        "raw_stdout_tail": (stdout + "\n" + stderr)[-2000:],
+        "exit_code": proc.returncode,
+        "summary": " ".join(summary_parts),
+        "parser_used": parser,
+    }, "", "")
+
+
+# ---- git-committer (v2.9.0) ---------------------------------------------
+#
+# First substrate agent with externally-visible side effects: a commit
+# lands in a repository visible to remotes / CI / collaborators. Safety
+# defaults refuse dirty working tree, protected-branch commits, and
+# bypass-hooks unless the operator opts in with an explicit flag plus
+# a bypass_reason recorded in the audit chain. Two-class failure
+# discrimination per Aaron's adjudication:
+#   - hook_failure: pre-commit hooks rejected; operator fixes code
+#   - git_command_failure: git itself rejected for non-hook reason;
+#                          operator fixes substrate/environment
+
+_GIT_COMMITTER_TIMEOUT_DEFAULT_S = int(
+    os.environ.get("FNSR_GIT_COMMITTER_TIMEOUT_S", "120")
+)
+
+
+def _git_protected_branches() -> list[str]:
+    env = os.environ.get("FNSR_PROTECTED_BRANCHES")
+    if env:
+        return [b.strip() for b in env.split(":") if b.strip()]
+    return ["main", "master"]
+
+
+def _git_run(args: list[str], cwd: str, *,
+              input_text: Optional[str] = None,
+              timeout_s: Optional[int] = None) -> tuple[int, str, str]:
+    """Run a git subcommand. Returns (returncode, stdout, stderr).
+    Never raises; FileNotFoundError surfaces as returncode=127."""
+    timeout_s = timeout_s or _GIT_COMMITTER_TIMEOUT_DEFAULT_S
+    try:
+        proc = subprocess.run(
+            ["git"] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+            shell=False,
+            input=input_text,
+        )
+        return proc.returncode, proc.stdout or "", proc.stderr or ""
+    except subprocess.TimeoutExpired:
+        return 124, "", f"git {args[0] if args else ''} timed out after {timeout_s}s"
+    except FileNotFoundError:
+        return 127, "", "git binary not found on PATH"
+
+
+def _git_current_branch(cwd: str) -> Optional[str]:
+    rc, out, _ = _git_run(["rev-parse", "--abbrev-ref", "HEAD"], cwd)
+    return out.strip() if rc == 0 else None
+
+
+def _git_dirty_paths(cwd: str, staged_paths: set[str]) -> list[str]:
+    """Return paths with uncommitted changes OUTSIDE the staged set.
+    A path is 'dirty' if it has unstaged modifications or it's untracked
+    AND not in the operator's intended staged_paths."""
+    rc, out, _ = _git_run(["status", "--porcelain"], cwd)
+    if rc != 0:
+        return []
+    dirty = []
+    for line in out.splitlines():
+        if len(line) < 4:
+            continue
+        # Porcelain v1 format: XY <path>
+        path = line[3:].strip().strip('"')
+        # Strip rename arrow if present
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        if path not in staged_paths:
+            dirty.append(path)
+    return dirty
+
+
+def _git_diff_was_hook_failure(stderr: str) -> bool:
+    """Heuristic discriminator between hook_failure and git_command_failure.
+    Pre-commit hooks emit recognizable patterns when they reject."""
+    indicators = (
+        "pre-commit hook",
+        "commit-msg hook",
+        "prepare-commit-msg hook",
+        "hook script",
+        "pre-commit failed",
+        "hooks/pre-commit",
+        "hooks/commit-msg",
+    )
+    s = stderr.lower()
+    return any(ind.lower() in s for ind in indicators)
+
+
+def _git_committer(task: dict[str, Any],
+                    upstream: dict[str, Any]) -> WorkerResult:
+    """Stage + commit + capture output. Safety defaults refuse; explicit
+    opt-in flags with bypass_reason override.
+
+    First substrate agent with externally-visible side effects. See
+    .claude/agents/git-committer.md for the full contract and
+    PLAYBOOK §4.10 for the operator-review-before-queuing pattern.
+    """
+    inputs = task.get("inputs") or {}
+    message = inputs.get("message")
+    paths = inputs.get("paths") or []
+    if not message or not isinstance(message, str):
+        return WorkerResult(True, {
+            "error": "missing_commit_message",
+            "details": "inputs.message is required and must be a string",
+        }, "", "")
+    if not paths or not isinstance(paths, list):
+        return WorkerResult(True, {
+            "error": "missing_paths",
+            "details": ("inputs.paths is required; specify files to "
+                         "stage (avoid -A per CLAUDE.md §6)"),
+        }, "", "")
+    cwd = inputs.get("cwd") or "."
+    allow_bypass_hooks = bool(inputs.get("allow_bypass_hooks", False))
+    allow_dirty = bool(inputs.get("allow_dirty", False))
+    allow_protected = bool(inputs.get("allow_protected_branch", False))
+    bypass_reason = inputs.get("bypass_reason")
+    protected_branches = (inputs.get("protected_branches")
+                          or _git_protected_branches())
+
+    # Bypass-flag-requires-reason gate.
+    bypass_invoked = None
+    if allow_bypass_hooks or allow_dirty or allow_protected:
+        if not bypass_reason or not isinstance(bypass_reason, str) \
+                or not bypass_reason.strip():
+            return WorkerResult(True, {
+                "error": "refused_unsafe_commit",
+                "reason": "bypass_flag_without_reason",
+                "details": ("operator set one or more allow_* bypass "
+                             "flags but provided no bypass_reason; refusing"),
+            }, "", "")
+        bypass_invoked = {
+            "allow_bypass_hooks": allow_bypass_hooks,
+            "allow_dirty": allow_dirty,
+            "allow_protected_branch": allow_protected,
+            "bypass_reason": bypass_reason.strip(),
+        }
+
+    # Pre-flight: confirm repo + branch state.
+    branch = _git_current_branch(cwd)
+    if branch is None:
+        return WorkerResult(True, {
+            "error": "git_command_failure",
+            "reason": "not_a_git_repo_or_git_unavailable",
+            "details": f"cwd={cwd!r} not in a git repo, or git unavailable",
+        }, "", "")
+
+    # Protected-branch refusal.
+    if branch in protected_branches and not allow_protected:
+        return WorkerResult(True, {
+            "error": "refused_unsafe_commit",
+            "reason": "protected_branch",
+            "details": (f"branch {branch!r} is in protected list "
+                         f"{protected_branches}; set allow_protected_branch "
+                         f"with bypass_reason to override"),
+            "current_branch": branch,
+        }, "", "")
+
+    # Dirty-tree refusal (paths-aware).
+    staged_set = set(paths)
+    dirty = _git_dirty_paths(cwd, staged_set)
+    # paths the operator wants to stage are not yet staged at this point;
+    # they show up in `git status --porcelain` as either modified-not-staged
+    # OR untracked; both are intended and should NOT be counted as dirty.
+    dirty_outside_intent = [p for p in dirty if p not in staged_set]
+    if dirty_outside_intent and not allow_dirty:
+        return WorkerResult(True, {
+            "error": "refused_unsafe_commit",
+            "reason": "dirty_working_tree",
+            "details": (f"working tree has uncommitted changes outside "
+                         f"the operator-specified paths: "
+                         f"{dirty_outside_intent[:10]}; set allow_dirty "
+                         f"with bypass_reason to override"),
+            "current_branch": branch,
+            "dirty_paths": dirty_outside_intent,
+        }, "", "")
+
+    # Stage the operator-specified paths.
+    add_rc, add_out, add_err = _git_run(["add", "--"] + list(paths), cwd)
+    if add_rc != 0:
+        return WorkerResult(True, {
+            "error": "git_command_failure",
+            "reason": "git_add_failed",
+            "details": f"git add returned {add_rc}",
+            "raw_stderr_tail": add_err[-2000:],
+            "exit_code": add_rc,
+        }, "", "")
+
+    # Commit. Pass message via stdin to avoid shell-escaping issues.
+    commit_args = ["commit", "-F", "-"]
+    if allow_bypass_hooks:
+        commit_args.append("--no-verify")
+    commit_rc, commit_out, commit_err = _git_run(
+        commit_args, cwd, input_text=message)
+
+    if commit_rc != 0:
+        if _git_diff_was_hook_failure(commit_err):
+            return WorkerResult(True, {
+                "error": "hook_failure",
+                "reason": "pre_commit_hook_rejected",
+                "details": ("pre-commit (or related) hook rejected the "
+                             "commit; fix the underlying issue and re-queue. "
+                             "If the hook is itself broken or the bypass is "
+                             "genuinely safe, set allow_bypass_hooks with "
+                             "bypass_reason"),
+                "raw_stderr_tail": commit_err[-2000:],
+                "exit_code": commit_rc,
+            }, "", "")
+        return WorkerResult(True, {
+            "error": "git_command_failure",
+            "reason": "git_commit_failed",
+            "details": "git commit returned non-zero",
+            "raw_stderr_tail": commit_err[-2000:],
+            "exit_code": commit_rc,
+        }, "", "")
+
+    # Resolve commit SHA + list of files changed.
+    sha_rc, sha_out, _ = _git_run(["rev-parse", "HEAD"], cwd)
+    commit_sha = sha_out.strip() if sha_rc == 0 else "unknown"
+    files_rc, files_out, _ = _git_run(
+        ["show", "--name-only", "--pretty=format:", commit_sha], cwd)
+    files_changed = (
+        [line.strip() for line in files_out.splitlines() if line.strip()]
+        if files_rc == 0 else list(paths)
+    )
+
+    summary_parts = [
+        "committed",
+        f"{len(files_changed)} file(s)",
+        f"to {branch}",
+        f"at {commit_sha[:12]}",
+    ]
+    if bypass_invoked:
+        flags_used = [k for k, v in bypass_invoked.items()
+                       if k.startswith("allow_") and v]
+        summary_parts.append(f"(bypass: {','.join(flags_used)})")
+
+    return WorkerResult(True, {
+        "status": "committed",
+        "commit_sha": commit_sha,
+        "branch": branch,
+        "files_changed": files_changed,
+        "summary": " ".join(summary_parts),
+        "bypass_invoked": bypass_invoked,
+    }, "", "")
+
+
 SYSTEM_AGENTS = {
     "applier": _apply_changes,
     "mojibake-repair": _mojibake_repair,
     "question-resolver": _question_resolver,
     "verification-ritual": _verification_ritual,
+    "test-runner": _test_runner,
+    "git-committer": _git_committer,
 }
 
 

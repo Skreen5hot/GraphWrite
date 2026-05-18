@@ -886,6 +886,186 @@ def cmd_forward_track_inherit(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- template-sync (v2.9.0) ---------------------------------------
+#
+# Automates the dual-track-workflow manifest's "files that must stay
+# identical across all three repos" sync step. Replaces ad-hoc `cp -f`
+# operator commands with a deterministic + verify-able workflow.
+
+# Default manifest: the files the dual-track-workflow memory designates
+# as "must stay identical." Override via FNSR_TEMPLATE_SYNC_MANIFEST env
+# var or --manifest CLI flag.
+_DEFAULT_TEMPLATE_SYNC_MANIFEST = (
+    "fnsr_daemon.py",
+    "state_admin.py",
+    "PLAYBOOK.md",
+    ".gitignore",
+    ".claude/agents/adversarial-critic.md",
+    ".claude/agents/applier.md",
+    ".claude/agents/architect.md",
+    ".claude/agents/developer.md",
+    ".claude/agents/git-committer.md",
+    ".claude/agents/mojibake-repair.md",
+    ".claude/agents/planner.md",
+    ".claude/agents/question-resolver.md",
+    ".claude/agents/reconnaissance.md",
+    ".claude/agents/semantic-sme.md",
+    ".claude/agents/spec-reviewer.md",
+    ".claude/agents/synthesist.md",
+    ".claude/agents/test-runner.md",
+    ".claude/agents/ux-sme.md",
+    ".claude/agents/verification-ritual.md",
+    ".claude/agents/verification-ritual-llm.md",
+    "surfaces/verification/surface-spec.md",
+    "surfaces/verification/categories/cat-01-spec-section-existence.md",
+    "surfaces/verification/categories/cat-02-adr-cross-reference.md",
+    "surfaces/verification/categories/cat-03-q-ruling-cross-reference.md",
+    "surfaces/verification/categories/cat-04-reason-code-frozen-enum.md",
+    "surfaces/verification/categories/cat-05-fol-owl-type-discriminator.md",
+    "surfaces/verification/categories/cat-06-manifest-mirror-consistency.md",
+    "surfaces/verification/categories/cat-07-cross-phase-cross-reference.md",
+    "surfaces/verification/categories/cat-08-multi-canonical-source.md",
+    "surfaces/verification/categories/cat-09-cited-content-consistency.md",
+    "surfaces/verification/categories/cat-10-type-field-structure.md",
+    "surfaces/verification/categories/cat-10-type-field-structure.py",
+    "tests/__init__.py",
+    "tests/test_adr_and_awaiting.py",
+    "tests/test_apply.py",
+    "tests/test_audit.py",
+    "tests/test_coerce_and_backoff.py",
+    "tests/test_cps.py",
+    "tests/test_extractor.py",
+    "tests/test_git_committer.py",
+    "tests/test_mojibake.py",
+    "tests/test_question_resolver.py",
+    "tests/test_reconciliation.py",
+    "tests/test_routing.py",
+    "tests/test_state_admin.py",
+    "tests/test_test_runner.py",
+    "tests/test_upstream.py",
+    "tests/test_verification_ritual.py",
+)
+
+
+def _load_template_sync_manifest(args: argparse.Namespace) -> list[str]:
+    """Resolve manifest: --manifest > FNSR_TEMPLATE_SYNC_MANIFEST > default."""
+    manifest_path = (args.manifest
+                     or os.environ.get("FNSR_TEMPLATE_SYNC_MANIFEST"))
+    if manifest_path:
+        with open(manifest_path, encoding="utf-8") as f:
+            return [
+                line.strip()
+                for line in f
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+    return list(_DEFAULT_TEMPLATE_SYNC_MANIFEST)
+
+
+def _read_bytes_or_none(path: Path) -> Optional[bytes]:
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
+
+
+def cmd_template_sync(args: argparse.Namespace) -> int:
+    """Sync substrate-shared files from source repo to target repo(s).
+
+    Default mode: verify (drift report only). Use --mode sync to copy
+    source -> targets then verify. Files in the manifest that are
+    absent from the source repo are flagged but do not cause a non-zero
+    exit; this lets manifests evolve across releases.
+
+    Exit codes:
+      0  no drift after operation
+      1  drift remains after operation (verify mode never auto-fixes)
+      2  source file missing for one or more manifest entries
+    """
+    source = Path(args.source or ".").resolve()
+    targets = [Path(t.strip()).resolve()
+               for t in args.targets.split(",") if t.strip()]
+    if not targets:
+        print("no targets specified", file=sys.stderr)
+        return 1
+    manifest = _load_template_sync_manifest(args)
+    missing_source: list[str] = []
+    drift: list[tuple[str, str, str]] = []  # (file, target, reason)
+    synced: list[tuple[str, str]] = []
+    unchanged: list[tuple[str, str]] = []
+    for rel in manifest:
+        src_path = source / rel
+        src_bytes = _read_bytes_or_none(src_path)
+        if src_bytes is None:
+            missing_source.append(rel)
+            continue
+        for target in targets:
+            tgt_path = target / rel
+            tgt_bytes = _read_bytes_or_none(tgt_path)
+            target_name = target.name
+            if args.mode == "sync":
+                # Always overwrite; create parent dirs if needed.
+                tgt_path.parent.mkdir(parents=True, exist_ok=True)
+                if tgt_bytes != src_bytes:
+                    tgt_path.write_bytes(src_bytes)
+                    synced.append((rel, target_name))
+                else:
+                    unchanged.append((rel, target_name))
+            else:
+                # verify mode
+                if tgt_bytes is None:
+                    drift.append((rel, target_name, "absent_from_target"))
+                elif tgt_bytes != src_bytes:
+                    drift.append((rel, target_name, "content_differs"))
+                else:
+                    unchanged.append((rel, target_name))
+    # Reporting
+    if missing_source:
+        print(f"missing in source ({len(missing_source)} file(s)):", file=sys.stderr)
+        for rel in missing_source:
+            print(f"  - {rel}", file=sys.stderr)
+    if args.mode == "sync":
+        if synced:
+            print(f"synced {len(synced)} file(s):")
+            for rel, target_name in synced:
+                print(f"  {rel} -> {target_name}")
+        if unchanged:
+            print(f"unchanged: {len(unchanged)} file(s)")
+        # Post-sync verification
+        post_drift: list[tuple[str, str, str]] = []
+        for rel in manifest:
+            src_path = source / rel
+            src_bytes = _read_bytes_or_none(src_path)
+            if src_bytes is None:
+                continue
+            for target in targets:
+                tgt_path = target / rel
+                if _read_bytes_or_none(tgt_path) != src_bytes:
+                    post_drift.append((rel, target.name, "still_differs"))
+        if post_drift:
+            print(f"WARNING: drift remains after sync ({len(post_drift)}):",
+                  file=sys.stderr)
+            for rel, target_name, reason in post_drift:
+                print(f"  {rel} ({target_name}): {reason}", file=sys.stderr)
+            return 1
+        print("template-sync: complete; no drift remains.")
+        return 0 if not missing_source else 2
+    else:
+        # verify mode
+        if drift:
+            print(f"drift detected ({len(drift)} file(s)):")
+            for rel, target_name, reason in drift:
+                print(f"  {rel} ({target_name}): {reason}")
+        if unchanged:
+            print(f"identical: {len(unchanged)} file(s)")
+        if drift:
+            return 1
+        if missing_source:
+            return 2
+        return 0
+
+
 # ---------- CLI ---------------------------------------------------------
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -1126,6 +1306,28 @@ def _build_parser() -> argparse.ArgumentParser:
                                 "each aging warning")
     p_ft_age.add_argument("--operator", default="operator")
     p_ft_age.set_defaults(func=cmd_forward_track_aging)
+
+    p_sync = sub.add_parser(
+        "template-sync",
+        help="Sync template-shared files from source repo to target "
+             "repo(s) per the dual-track-workflow manifest. Default "
+             "manifest is the substrate-shared file list; override via "
+             "FNSR_TEMPLATE_SYNC_MANIFEST env var.",
+    )
+    p_sync.add_argument("--source", default=None,
+                         help="source repo root (default: cwd)")
+    p_sync.add_argument("--targets", required=True,
+                         help="comma-separated target repo roots")
+    p_sync.add_argument("--mode", default="verify",
+                         choices=("verify", "sync"),
+                         help="verify: report drift only; sync: copy "
+                              "source -> targets then verify "
+                              "(default: verify)")
+    p_sync.add_argument("--manifest", default=None,
+                         help="path to a manifest file (one path per "
+                              "line, # comments). Defaults to the "
+                              "substrate's hardcoded shared-files list.")
+    p_sync.set_defaults(func=cmd_template_sync)
 
     return p
 

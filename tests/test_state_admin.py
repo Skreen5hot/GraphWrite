@@ -1310,5 +1310,213 @@ class TestForwardTrackAgingCommand(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
+class TestTemplateSyncCommand(unittest.TestCase):
+    """v2.9.0 template-sync command: deterministic substrate-shared file
+    sync from source repo to target repo(s), with verify and sync modes,
+    custom manifest support, and idempotency."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-tsync-test-"))
+        self.source = self.tmpdir / "source"
+        self.target_a = self.tmpdir / "target_a"
+        self.target_b = self.tmpdir / "target_b"
+        for p in (self.source, self.target_a, self.target_b):
+            p.mkdir(parents=True)
+        (self.source / "fnsr_daemon.py").write_text(
+            "# source content\n", encoding="utf-8")
+        (self.source / "PLAYBOOK.md").write_text(
+            "# source playbook\n", encoding="utf-8")
+        (self.source / "tests").mkdir()
+        (self.source / "tests" / "test_x.py").write_text(
+            "# source test\n", encoding="utf-8")
+        # Manifest file pointing at these three
+        self.manifest_path = self.tmpdir / "manifest.txt"
+        self.manifest_path.write_text(
+            "# test manifest\n"
+            "fnsr_daemon.py\n"
+            "PLAYBOOK.md\n"
+            "tests/test_x.py\n",
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_verify_mode_clean_when_targets_match(self):
+        # Pre-populate targets with matching content
+        for t in (self.target_a, self.target_b):
+            (t / "fnsr_daemon.py").write_text("# source content\n",
+                                                encoding="utf-8")
+            (t / "PLAYBOOK.md").write_text("# source playbook\n",
+                                             encoding="utf-8")
+            (t / "tests").mkdir()
+            (t / "tests" / "test_x.py").write_text("# source test\n",
+                                                     encoding="utf-8")
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", f"{self.target_a},{self.target_b}",
+            "--manifest", str(self.manifest_path),
+            "--mode", "verify",
+        ])
+        self.assertEqual(rc, 0)
+
+    def test_verify_mode_reports_drift_when_target_differs(self):
+        (self.target_a / "fnsr_daemon.py").write_text("# DIFFERENT\n",
+                                                       encoding="utf-8")
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(self.manifest_path),
+            "--mode", "verify",
+        ])
+        self.assertEqual(rc, 1)  # drift detected
+
+    def test_verify_mode_reports_drift_when_target_missing(self):
+        # target_a lacks the source files entirely
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(self.manifest_path),
+            "--mode", "verify",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_sync_mode_copies_source_to_target(self):
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(self.manifest_path),
+            "--mode", "sync",
+        ])
+        self.assertEqual(rc, 0)
+        for rel in ("fnsr_daemon.py", "PLAYBOOK.md", "tests/test_x.py"):
+            src_text = (self.source / rel).read_text(encoding="utf-8")
+            tgt_text = (self.target_a / rel).read_text(encoding="utf-8")
+            self.assertEqual(src_text, tgt_text)
+
+    def test_sync_mode_creates_parent_dirs(self):
+        # target_b lacks the tests/ subdirectory; sync should create it
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_b),
+            "--manifest", str(self.manifest_path),
+            "--mode", "sync",
+        ])
+        self.assertEqual(rc, 0)
+        self.assertTrue((self.target_b / "tests" / "test_x.py").exists())
+
+    def test_sync_mode_idempotent_second_run_unchanged(self):
+        state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(self.manifest_path),
+            "--mode", "sync",
+        ])
+        # Second run should report unchanged + clean exit
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(self.manifest_path),
+            "--mode", "verify",
+        ])
+        self.assertEqual(rc, 0)
+
+    def test_missing_source_file_returns_exit_code_2(self):
+        # Manifest references a file that doesn't exist in source
+        manifest_with_missing = self.tmpdir / "manifest_missing.txt"
+        manifest_with_missing.write_text(
+            "fnsr_daemon.py\nnonexistent_in_source.md\n", encoding="utf-8")
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(manifest_with_missing),
+            "--mode", "sync",
+        ])
+        self.assertEqual(rc, 2)
+
+    def test_manifest_comments_and_blanks_ignored(self):
+        manifest = self.tmpdir / "manifest_comments.txt"
+        manifest.write_text(
+            "# top-level comment\n"
+            "\n"
+            "fnsr_daemon.py\n"
+            "  # indented comment\n"
+            "PLAYBOOK.md\n"
+            "\n",
+            encoding="utf-8",
+        )
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", str(self.target_a),
+            "--manifest", str(manifest),
+            "--mode", "sync",
+        ])
+        # Should sync 2 files (fnsr_daemon.py + PLAYBOOK.md) without
+        # treating "# top-level comment" or "  # indented comment" as paths
+        self.assertEqual(rc, 0)
+        self.assertTrue((self.target_a / "fnsr_daemon.py").exists())
+        self.assertTrue((self.target_a / "PLAYBOOK.md").exists())
+
+    def test_env_var_manifest_override(self):
+        old = os.environ.get("FNSR_TEMPLATE_SYNC_MANIFEST")
+        os.environ["FNSR_TEMPLATE_SYNC_MANIFEST"] = str(self.manifest_path)
+        try:
+            rc = state_admin.main([
+                "template-sync",
+                "--source", str(self.source),
+                "--targets", str(self.target_a),
+                "--mode", "sync",
+            ])
+            self.assertEqual(rc, 0)
+        finally:
+            if old is None:
+                os.environ.pop("FNSR_TEMPLATE_SYNC_MANIFEST", None)
+            else:
+                os.environ["FNSR_TEMPLATE_SYNC_MANIFEST"] = old
+
+    def test_multiple_targets_synced_in_one_invocation(self):
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", f"{self.target_a},{self.target_b}",
+            "--manifest", str(self.manifest_path),
+            "--mode", "sync",
+        ])
+        self.assertEqual(rc, 0)
+        # Both targets should have all three source files
+        for t in (self.target_a, self.target_b):
+            for rel in ("fnsr_daemon.py", "PLAYBOOK.md", "tests/test_x.py"):
+                self.assertTrue((t / rel).exists(),
+                                 f"{rel} missing from {t.name}")
+
+    def test_no_targets_returns_error(self):
+        rc = state_admin.main([
+            "template-sync",
+            "--source", str(self.source),
+            "--targets", "",
+            "--manifest", str(self.manifest_path),
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_default_manifest_is_substrate_shared_files(self):
+        # Confirm the default manifest constant exists + contains the
+        # substrate-shared files per the dual-track-workflow memory.
+        default = state_admin._DEFAULT_TEMPLATE_SYNC_MANIFEST
+        self.assertIn("fnsr_daemon.py", default)
+        self.assertIn("state_admin.py", default)
+        self.assertIn("PLAYBOOK.md", default)
+        # Should include test-runner.md (v2.9.0)
+        self.assertIn(".claude/agents/test-runner.md", default)
+
+
 if __name__ == "__main__":
     unittest.main()

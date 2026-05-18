@@ -186,6 +186,67 @@ The reconnaissance agent is the first instance of the read-only-by-contract patt
 
 ---
 
+### `test-runner: subprocess_failed` / `test_command_unresolvable` (v2.9.0)
+
+**Example outputs in audit history:**
+```json
+{"error": "test_command_unresolvable", "details": "no `cmd` in inputs and no FNSR_TEST_RUNNER_CMD env var set"}
+```
+
+**What it means:** The `test-runner` system agent couldn't resolve the test command. Either no `cmd` was passed in task inputs AND no `FNSR_TEST_RUNNER_CMD` env var was set, OR the resolved command couldn't be spawned.
+
+**Recovery:**
+1. Pass `cmd` in task inputs explicitly: `{"agent": "test-runner", "inputs": {"cmd": "python -m unittest discover tests"}}`.
+2. Set `FNSR_TEST_RUNNER_CMD` env var before starting the daemon: `export FNSR_TEST_RUNNER_CMD="npm test"`.
+3. Verify the test command is on PATH and executable in the working directory.
+
+---
+
+### `git-committer: refused_unsafe_commit` (v2.9.0)
+
+**Example outputs in audit history:**
+```json
+{"error": "refused_unsafe_commit", "reason": "dirty_working_tree" | "protected_branch" | "bypass_flag_without_reason", "details": "..."}
+```
+
+**What it means:** The git-committer's safety defaults refused the commit. Three sub-reasons:
+
+- **`dirty_working_tree`** — the working tree has uncommitted changes outside the operator-specified `paths`. Default refusal because mixing unrelated changes into a commit is rarely intentional. Override: pass `allow_dirty: true` AND `bypass_reason: "<rationale>"`.
+- **`protected_branch`** — the current branch is in `protected_branches` (default: `main`, `master`). Default refusal because direct commits to main are operator-rare. Override: pass `allow_protected_branch: true` AND `bypass_reason: "<rationale>"`.
+- **`bypass_flag_without_reason`** — operator set one or more `allow_*` bypass flags but didn't supply `bypass_reason`. The bypass-with-reason invariant: every bypass becomes a citable audit event. Add the reason and retry.
+
+**Recovery:** Read the `reason` field. For genuine bypass needs, set the appropriate flag PLUS a `bypass_reason` that explains the operator intent at the moment of override. For everything else, fix the underlying issue (clean the working tree; switch off the protected branch; restructure the commit chain).
+
+---
+
+### `git-committer: hook_failure` vs `git-committer: git_command_failure` (v2.9.0)
+
+**Discrimination:** these two error classes look similar but have different operator-fix paths.
+
+`hook_failure`: pre-commit (or commit-msg) hook ran and rejected the commit. The substrate is doing its job correctly; the underlying code or content is the operator-fix path.
+
+```json
+{"error": "hook_failure", "reason": "pre_commit_hook_rejected", "raw_stderr_tail": "..."}
+```
+
+`git_command_failure`: git itself returned non-zero for a reason other than hook rejection (working tree state, repo unavailable, git add failed, nothing to commit, branch divergence, etc.).
+
+```json
+{"error": "git_command_failure", "reason": "git_commit_failed" | "git_add_failed" | "not_a_git_repo_or_git_unavailable", "raw_stderr_tail": "..."}
+```
+
+**Recovery — `hook_failure`:** read `raw_stderr_tail`; the hook will name what it rejected (linter error, test failure, message format, etc.). Fix the underlying issue and re-queue. If the hook itself is broken or the bypass is genuinely safe, override with `allow_bypass_hooks: true` + `bypass_reason: "<rationale>"` — the bypass lands in the audit chain.
+
+**Recovery — `git_command_failure`:** read `raw_stderr_tail` for the git error message. Common causes and fixes:
+- "not a git repository" → check `cwd` input; ensure `.git/` is initialized
+- "pathspec '...' did not match" → check that the `paths` exist in the working tree
+- "nothing to commit" → the staged paths are already up-to-date; no commit needed
+- "fatal: refusing to merge" / branch divergence → resolve upstream
+
+Both errors land under `unresolved_predicate` in the four-class miss taxonomy (`evidence.miss_class: unresolved_predicate`) with `evidence.reason` discriminating the operator-fix path.
+
+---
+
 ### API 5xx errors (post-v2.4.2 backoff)
 
 **Example log:**
@@ -643,6 +704,54 @@ The deterministic `verification-ritual` returns `overall_status: needs_llm_judgm
 2. If the verification-ritual-llm emits a Cat 9 veto, queue an `adversarial-critic` task with `inputs.mode: cat-9-second-pass` and `depends_on: [<verification-ritual-llm task @id>]`. Cat 9 passes do NOT need second-pass.
 3. If the adversarial-critic disputes the veto, decide whether to override the Cat 9 veto or honor it.
 4. If verification-ritual-llm emits `new_candidacies`, run `state_admin forward-track create --surfacing-task-id <verification-ritual-llm task @id> --sub-surface internal-methodology-refinement --subject-type candidacy ...` for each candidacy the operator wants to track to phase-exit retro.
+
+---
+
+## 4.10 Operator-review-before-queuing for external-side-effect agents (v2.9.0)
+
+The `git-committer` agent (v2.9.0) is the substrate's **first agent with externally-visible side effects**: a commit lands in a repository that other systems (remotes, CI, collaborators) can see and reason about. Every prior agent produced state changes confined to the substrate's own files (state.jsonld; surface state files; agent outputs).
+
+This changes the cost-of-error profile. Internal substrate operations are recoverable via the audit chain (operator can re-run; previous state is preserved in history). Externally-visible operations are only as recoverable as the external system permits (git commits can be amended or reverted but never made un-seen by collaborators; pushed commits more so; emails sent are sent).
+
+### The pattern
+
+For agents that produce externally-visible side effects:
+
+1. **Operator reviews the dispatch contents before queuing**, not after dispatch returns. The substrate's CPS gating provides a safety boundary, but the externally-visible cost-of-error is higher than the substrate's enforcement alone can warrant.
+2. **Agents in this class default to refusing** under conditions where operator judgment is required (`git-committer`'s dirty-tree / protected-branch / bypass-hooks defaults are this pattern).
+3. **Bypass requires explicit operator opt-in plus a stated reason** recorded in the audit chain. The reason becomes citable evidence of operator intent at the moment of override.
+4. **The agent does NOT chain to subsequent external operations.** `git-committer` does not push. If a future external-side-effect agent emits an email, it does not also call an API. Each externally-visible step is its own dispatched agent under separate operator review.
+
+### Agents in this class (current and future)
+
+| Agent | External side effect | Status |
+|---|---|---|
+| `git-committer` | Local commit (potentially pushable) | v2.9.0 |
+| `git-pusher` (hypothetical) | Push to remote | not implemented |
+| `email-sender` (hypothetical) | Email transmission | not implemented |
+| `api-caller` (hypothetical) | External HTTP / API call | not implemented |
+| `webhook-emitter` (hypothetical) | Webhook to external system | not implemented |
+
+The pattern documented here applies to all of them. When such agents are added in future releases, they MUST follow this pattern: default-refuse-under-judgment-conditions; opt-in-bypass-with-reason; no auto-chaining to further external operations.
+
+### Why this matters (FNSR-relevance)
+
+The synthetic moral person project will eventually require normative apparatus that produces external side effects (decisions communicated to stakeholders; commitments made on the agent's behalf; resources allocated). The operator-review-before-queuing discipline established here for `git-committer` is the substrate's precedent: external-side-effect agents are bounded by operator review, not just by substrate validation.
+
+This is the architecture's answer to: *what stops a substrate from acting unrecoverably in the world?* The answer is not "stronger substrate validation"; the answer is "operator judgment as a gating step, with the substrate's defaults pushing toward conservative refusals when the operator hasn't explicitly opted in."
+
+The pattern is the substrate-vs-procedure distinction (from v2.8.0's four-property pattern) applied to authority over external action: deterministic where possible (the safety defaults are mechanical refusals); operator judgment where necessary (bypass-with-reason); audit-chain visibility for both decisions (refusals and bypasses alike land in history).
+
+### When the operator should review before queuing
+
+For `git-committer`:
+- Read the proposed `message` and `paths` before queuing. Confirm the message accurately summarizes the changes and the paths are exactly the operator intends.
+- For commits on protected branches: explicitly approve via `allow_protected_branch: true` only when the operator has reviewed the diff AND determined direct-to-main is the right cadence (release-tag preparation; emergency fix; etc.).
+- For bypass-hooks: only when the operator has reviewed what the hook would reject AND determined the bypass is genuinely safe in this case.
+
+For future external-side-effect agents: same discipline. Read the proposed action; approve explicitly via opt-in flag + bypass_reason when overriding defaults.
+
+The substrate's role is to make the review tractable (clear `inputs` schemas; explicit bypass surfaces) and to record the operator's decisions (audit-chain entries for both the action and any bypasses invoked). The operator's role is to actually look before dispatching.
 
 ---
 
