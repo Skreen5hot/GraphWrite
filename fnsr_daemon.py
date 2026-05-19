@@ -508,6 +508,73 @@ def _is_retro_surface_task(task: dict[str, Any]) -> bool:
     return inputs.get("surface") == "retro"
 
 
+# Surface-audience primitive (v3.1.0; surfaces/_primitives/surface-audience.md)
+# Closed enumeration of audiences an output may target. v3.1.0 ships the
+# field declaration + audit recording; v3.2 will add registry enforcement
+# and differential quality gates.
+SURFACE_AUDIENCE_VALUES = ("consumer", "internal")
+SURFACE_AUDIENCE_DEFAULT = "internal"
+
+
+def _extract_surface_audience(outputs: Any) -> str:
+    """Read `surface_audience` from an agent's outputs per the surface-
+    audience substrate primitive (surfaces/_primitives/surface-audience.md).
+
+    Returns:
+      - the declared value when present and valid (one of
+        SURFACE_AUDIENCE_VALUES)
+      - SURFACE_AUDIENCE_DEFAULT ("internal") when the field is absent
+        or outputs is not a dict
+    Raises:
+      - ContainmentVeto when the field is present with a value outside
+        the closed enumeration; the substrate refuses unratified
+        audience values rather than treating them as default
+
+    Validation discipline: substrate decides; agents cannot extend the
+    enum by claiming compliance.
+    """
+    if not isinstance(outputs, dict):
+        return SURFACE_AUDIENCE_DEFAULT
+    if "surface_audience" not in outputs:
+        return SURFACE_AUDIENCE_DEFAULT
+    value = outputs["surface_audience"]
+    if value in SURFACE_AUDIENCE_VALUES:
+        return value
+    raise ContainmentVeto(
+        f"surface_audience_invalid_value: expected one of "
+        f"{SURFACE_AUDIENCE_VALUES}, got {value!r}. The surface-audience "
+        f"primitive declares a closed enumeration; substrate refuses "
+        f"unratified values per surfaces/_primitives/surface-audience.md."
+    )
+
+
+def _upstream_subject_surface_audience(upstream: dict[str, Any]) -> str:
+    """Walk an UPSTREAM dict for any upstream task's outputs.surface_audience
+    value. Returns the first declared value encountered, or
+    SURFACE_AUDIENCE_DEFAULT when no upstream provides one.
+
+    Used by verification-ritual to record the audience of the artifact
+    being verified per v3.1.0 surface-audience integration.
+    """
+    if not isinstance(upstream, dict):
+        return SURFACE_AUDIENCE_DEFAULT
+    for upstream_envelope in upstream.values():
+        if not isinstance(upstream_envelope, dict):
+            continue
+        # UPSTREAM entries may be either bare outputs dicts (when the
+        # operator inlines them) or wrapped envelopes with an `outputs`
+        # key. Handle both.
+        candidate = upstream_envelope.get("outputs") or upstream_envelope
+        if not isinstance(candidate, dict):
+            continue
+        if "surface_audience" not in candidate:
+            continue
+        # Defer validation to _extract_surface_audience so invalid
+        # upstream values still raise the standard veto.
+        return _extract_surface_audience(candidate)
+    return SURFACE_AUDIENCE_DEFAULT
+
+
 # Semantic-memory paths immutable from retro-surface turns per the
 # Episodic→Semantic discipline (surfaces/_primitives/
 # episodic-to-semantic-promotion.md). A retro turn that tries to mutate
@@ -2420,10 +2487,17 @@ def _verification_ritual(task: dict[str, Any],
     if needs_llm_judgment_count:
         summary_parts.append(f"{needs_llm_judgment_count} needs-llm-judgment")
     summary = " ".join(summary_parts[:1]) + " " + ", ".join(summary_parts[1:])
+    # v3.1.0 surface-audience integration: record the audience of the
+    # artifact being verified. Reads from UPSTREAM outputs; defaults
+    # to "internal" when no upstream declares the field. Per
+    # surfaces/_primitives/surface-audience.md — v3.1.0 records;
+    # v3.2 enforces.
+    subject_surface_audience = _upstream_subject_surface_audience(upstream)
     return WorkerResult(True, {
         "per_category_result": per_category_result,
         "overall_status": overall_status,
         "new_candidacies": [],  # populated in CP3+ when patterns no category covers surface
+        "subject_surface_audience": subject_surface_audience,
         "summary": summary,
     }, "", "")
 

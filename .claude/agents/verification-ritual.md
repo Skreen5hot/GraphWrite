@@ -1,7 +1,7 @@
 ---
 name: verification-ritual
 description: Deterministic system agent (v2.8.0 Checkpoint 1). Orchestrates the verification ritual per FNSR Protocol Spec 02. Loads category specs from surfaces/verification/categories/ at dispatch time; runs deterministic predicates against the path-fence-authored artifact for each applicable category; aggregates results. LLM-required categories (Cat 9, Cat 8 semantic-equivalence) emit a needs_llm_judgment signal for downstream dispatch via verification-ritual-llm in Checkpoint 3.
-required_outputs: [per_category_result, overall_status, new_candidacies, summary]
+required_outputs: [per_category_result, overall_status, new_candidacies, subject_surface_audience, summary]
 ---
 
 # verification-ritual — system agent (v2.8.0 Checkpoint 1)

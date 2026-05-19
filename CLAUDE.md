@@ -90,7 +90,7 @@ The conversational personas exist for fast, in-context work. The dispatched agen
 
 **Validation.** Two tracks, by scope of change:
 
-- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + `default_mode` mechanism + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts + retro-surface anti-pattern enforcement + semantic-memory immutability), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier + retro-applier system agents, the ADR-012 ghost fixture (FNSR Spec 06), the verification-ritual machinery (category-spec loader; predicate resolver; subject-project hook loader; Cat 1–8 predicates + Cat 10 stub; orchestrator with four-class miss taxonomy and two-cadence dispatch), the v3.0 retro family (init / phase-transition / vote / archive / verify / list) + promote-candidate (E→S deliberate promotion), and the rest of the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / phase-complete-declaration / forward-track create / inherit / transition / list / aging / template-sync). Every daemon change MUST keep the suite green.
+- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + `default_mode` mechanism + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts + retro-surface anti-pattern enforcement + semantic-memory immutability + surface-audience enumeration validation), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier + retro-applier system agents, the ADR-012 ghost fixture (FNSR Spec 06), the verification-ritual machinery (category-spec loader; predicate resolver; subject-project hook loader; Cat 1–8 predicates + Cat 10 stub; orchestrator with four-class miss taxonomy and two-cadence dispatch; v3.1.0 `subject_surface_audience` recording), the v3.0 retro family (init / phase-transition / vote / archive / verify / list) + promote-candidate (E→S deliberate promotion), and the rest of the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / phase-complete-declaration / forward-track create / inherit / transition / list / aging / template-sync). Every daemon change MUST keep the suite green.
 - **GraphWrite subject** (TypeScript): every change MUST pass
   - `npm run build` — no TypeScript errors
   - `npm test` — all spec tests pass
@@ -444,6 +444,36 @@ Per `surfaces/_primitives/anti-pattern-enforcement.md`, five anti-patterns fire 
 
 Per PLAYBOOK §4.10: `state_admin retro init` queues a multi-agent deliberation chain whose outputs eventually land as an archive entry + semantic-memory promotions. Same pattern as the v2.9.0 git-committer agent — externally-visible side effects warrant operator review of the chain composition (which roles, what AGENTS.md mapping, what anchor task) BEFORE queuing. The substrate enforces dispatch ordering; the operator owns the chain composition.
 
+## 7.13 Surface Audience (v3.1.0; originally-scoped trajectory terminal release)
+
+Per `surfaces/_primitives/surface-audience.md`: a per-output field declared by worker agents naming the audience their output is destined for. Two ratified values:
+
+- **`consumer`** — content destined for consumer-facing surfaces (demos, public docs, README, marketing, externally-published artifacts).
+- **`internal`** — everything else (substrate-development artifacts, audit-trail entries, operator-facing reports, methodological observations).
+
+The field lives in the output payload (`outputs.surface_audience: "consumer" | "internal"`), not agent frontmatter. Same agent may emit different audiences across dispatches; the field is per-output.
+
+### Default and validation
+
+When omitted, the substrate treats output as `internal` (conservative default; `consumer` is the deliberate elevation). The substrate's `_extract_surface_audience(outputs)` helper validates the value as a closed enumeration; values outside `{consumer, internal}` raise `ContainmentVeto` with `error: surface_audience_invalid_value`. Substrate decides; agents cannot extend the enum by claiming compliance.
+
+### v3.1.0 vs v3.2 enforcement split
+
+v3.1.0 ships the **field declaration and audit recording**:
+
+- Primitive doc at [surfaces/_primitives/surface-audience.md](surfaces/_primitives/surface-audience.md)
+- `_extract_surface_audience` helper in `fnsr_daemon.py`
+- Verification-ritual records `subject_surface_audience` in its output payload (read from UPSTREAM via `_upstream_subject_surface_audience`; defaults to `internal` when no upstream provides it)
+- `verification-ritual` agent contract updated: `required_outputs` declares the new field
+
+v3.2 (future) adds **registry enforcement**: agent frontmatter `produces_consumer: true` declarations; differential quality gates for consumer outputs; corpus-wide `TestSurfaceAudienceConformance` validation. The enforcement is deferred deliberately — v3.1.0 establishes the primitive; v3.2 builds enforcement against a stable foundation.
+
+### Trajectory closure context
+
+v3.1.0 is the originally-scoped trajectory's terminal release. The substrate's foundational design is complete with this release. What comes after v3.1.0 is either substrate evolution beyond originally-scoped trajectory (v3.2+ enforcement; new primitives surfacing from FNSR-larger-scope work) or substrate stabilization while FNSR-larger-scope work consumes the current foundation. The choice depends on what FNSR-larger-scope surfaces as substrate-relevant; the decision is downstream of trajectory closure.
+
+See [`ariadne/archive/retrospectives/2026-05-substrate-v2.9.0-to-v3.0.md`](file:///c:/Users/aaron/OneDrive/Documents/ariadne/archive/retrospectives/2026-05-substrate-v2.9.0-to-v3.0.md) §7 for the closure framing.
+
 ## 8. Session Workflow
 
 ### Starting a session
@@ -505,7 +535,7 @@ Layer 2: src/adapters/        <- Optional. Infrastructure integration.
 | `retros/<retro-id>/RETRO_STATE.jsonld` | Per-retro state with chain-hashed `audit[]` array. v3.0 final. Override directory via `FNSR_RETRO_DIR` env var. |
 | `archive/retrospectives/<retro-id>.jsonld` | Archived retros (episodic memory per Spec 01 + MAREP §16). v3.0 final. Override via `FNSR_RETRO_ARCHIVE_DIR` env var. |
 | [.claude/agents/](.claude/agents/) | Agent contracts (worker + system) with frontmatter + body. |
-| [surfaces/_primitives/](surfaces/_primitives/) | Substrate primitive docs: `bounded-authority-orchestrator.md` (v3.0-alpha.1), `episodic-to-semantic-promotion.md` (v3.0-alpha.2), `anti-pattern-enforcement.md` (v3.0 final). |
+| [surfaces/_primitives/](surfaces/_primitives/) | Substrate primitive docs: `bounded-authority-orchestrator.md` (v3.0-alpha.1), `episodic-to-semantic-promotion.md` (v3.0-alpha.2), `anti-pattern-enforcement.md` (v3.0 final), `surface-audience.md` (v3.1.0; originally-scoped trajectory terminal primitive). |
 | [surfaces/retro/](surfaces/retro/) | Retro surface: `surface-spec.md`, per-phase specs (`phases/`), per-role bindings (`agents/`). |
 | [tests/](tests/) | Python `unittest` suite. Run `python -m unittest discover tests`. |
 | [PLAYBOOK.md](PLAYBOOK.md) | Operator playbook: failure-mode recognition + recovery patterns from real-world runs. Read this when a chain stalls. |
