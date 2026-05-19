@@ -508,6 +508,97 @@ def _is_retro_surface_task(task: dict[str, Any]) -> bool:
     return inputs.get("surface") == "retro"
 
 
+# Semantic-memory paths immutable from retro-surface turns per the
+# Episodic→Semantic discipline (surfaces/_primitives/
+# episodic-to-semantic-promotion.md). A retro turn that tries to mutate
+# these paths gets a structured-error veto; promotion goes through the
+# deliberate ratification chain instead. The substrate-wide anti-pattern
+# enforcement framework (surfaces/_primitives/anti-pattern-enforcement.md)
+# names this its second explicit instance.
+_SEMANTIC_MEMORY_EXACT_PATHS = (
+    "CLAUDE.md",
+    "PLAYBOOK.md",
+    "project/DECISIONS.md",
+    "project/SPEC.md",
+    "project/ROADMAP.md",
+    "project/IMPLEMENTATION_PLAN.md",
+)
+_SEMANTIC_MEMORY_PREFIXES = (
+    "surfaces/",
+    ".claude/agents/",
+    "project/Routing/",
+    "arc/",
+)
+
+
+def _is_semantic_memory_path(file_rel: str) -> bool:
+    """True if file_rel is a semantic-memory canonical path per the
+    Episodic→Semantic discipline. Semantic memory paths are immutable
+    from retro-surface turns; promotion requires the ratification chain.
+    """
+    if not file_rel:
+        return False
+    normalized = file_rel.replace("\\", "/")
+    if normalized in _SEMANTIC_MEMORY_EXACT_PATHS:
+        return True
+    for prefix in _SEMANTIC_MEMORY_PREFIXES:
+        if normalized.startswith(prefix):
+            return True
+    return False
+
+
+def _check_no_semantic_memory_mutation(
+    task: dict[str, Any], outputs: dict[str, Any],
+) -> None:
+    """Per surfaces/_primitives/episodic-to-semantic-promotion.md +
+    surfaces/_primitives/anti-pattern-enforcement.md (second explicit
+    substrate instance of the anti-pattern enforcement framework).
+
+    Inspect proposed `changes[*]` for any file path that targets
+    semantic memory (CLAUDE.md, PLAYBOOK.md, ADRs, spec files,
+    surfaces/, .claude/agents/, project/Routing/, arc/). Raise
+    ContainmentVeto on hit — retro turns cannot mutate semantic memory
+    directly; promotion goes through the deliberate ratification chain
+    (reconnaissance → ratification → commit-finalize) per FNSR Spec 03.
+
+    Fires on retro-surface tasks (inputs.surface == "retro"). Non-retro
+    tasks pass through unaffected; the regular ratification chain is
+    the standard path for semantic-memory mutation.
+    """
+    if not isinstance(outputs, dict):
+        return
+    # Retro-surface scoping at the helper level (defense-in-depth):
+    # non-retro tasks pass through unaffected. cps_check ALSO filters
+    # via _is_retro_surface_task before dispatching this helper; the
+    # helper-level guard means out-of-band callers (tests, debugging)
+    # get the same behavior.
+    if not _is_retro_surface_task(task):
+        return
+    changes = outputs.get("changes")
+    if not isinstance(changes, list):
+        return
+    hits: list[dict[str, Any]] = []
+    for i, change in enumerate(changes):
+        if not isinstance(change, dict):
+            continue
+        # Accept multiple field-name variants for the target path
+        # (developer-shaped: `file`; applier-shaped: `path`).
+        target = change.get("file") or change.get("path")
+        if not isinstance(target, str):
+            continue
+        if _is_semantic_memory_path(target):
+            hits.append({"index": i, "path": target})
+    if hits:
+        raise ContainmentVeto(
+            f"semantic_memory_immutable_from_retro: retro-surface tasks "
+            f"cannot mutate canonical semantic-memory paths directly; "
+            f"promotion goes through the deliberate ratification chain "
+            f"(reconnaissance → ratification → commit-finalize) per "
+            f"FNSR Spec 03 + surfaces/_primitives/"
+            f"episodic-to-semantic-promotion.md. Refused paths: {hits[:5]}"
+        )
+
+
 def _agent_anti_pattern_config(agent_name: str) -> dict[str, Any]:
     """Read agent's frontmatter for length_budgets + forbidden_connectives
     + similarity_threshold. Returns empty dict when agent file missing
@@ -586,6 +677,10 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
                 length_budgets=config.get("length_budgets"),
                 forbidden_connectives=config.get("forbidden_connectives"),
             )
+            # Semantic-memory immutability check (v3.0 final): retro
+            # turns cannot mutate canonical semantic-memory paths
+            # directly per the Episodic→Semantic discipline.
+            _check_no_semantic_memory_mutation(task, proposed_outputs)
             # Redundant-affirmation check requires prior_turn_outputs;
             # passed via task.inputs.prior_turn_outputs when the operator
             # composes a multi-turn chain. No-op when absent.

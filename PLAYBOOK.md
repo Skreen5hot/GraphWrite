@@ -755,6 +755,102 @@ The substrate's role is to make the review tractable (clear `inputs` schemas; ex
 
 ---
 
+## 4.11 Operating a phase-exit retro end-to-end (v3.0 final)
+
+The retro surface (`surfaces/retro/`) is the substrate's deliberative-reflection mechanism. A typical phase-exit retro runs through six phases with operator-mediated transitions, ending in archive + (optionally) Episodic→Semantic promotions.
+
+### The complete operator chain
+
+```
+# 1. Declare the phase complete (operator-authoritative; v3.0-alpha.2)
+state_admin phase-complete-declaration phase-N \
+    --anchor-task <anchor-id> \
+    --rationale "Operator-reviewed; ACs met; ready for retro."
+
+# 2. Initialize the retro state file
+state_admin retro init phase-N-exit-retro \
+    --anchor-task <anchor-id> \
+    --phase-origin phase-N
+
+# 3. Queue Phase 1 (gathering) dispatch chain via append-tasks
+#    — one task per analytical role, plus a marep-orchestrator
+#    phase-transition assessment task. The operator owns chain
+#    composition; substrate enforces dispatch ordering via depends_on.
+state_admin append-tasks retro-phase-1-tasks.json
+python fnsr_daemon.py   # Daemon dispatches the chain
+
+# 4. Once Phase 1 outputs are in, commit the phase transition
+state_admin retro phase-transition phase-N-exit-retro \
+    --to-phase 02-merge \
+    --rationale "All analytical roles responded; orchestrator confirms."
+
+# (Repeat for phases 02 → 03 → 04 → 05 → 06 with appropriate
+# marep-orchestrator dispatches between transitions; the operator
+# is the gate at each transition.)
+
+# 5. At Phase 4 (consensus), record any operator-mediated votes
+state_admin retro vote phase-N-exit-retro \
+    --issue-id I3 --voter @QA --vote contest \
+    --rationale "Coverage gap evidence is inconclusive."
+
+# 6. At Phase 6 (compression), archive the retro
+state_admin retro archive phase-N-exit-retro
+
+# 7. For each promotion_candidates[] surfaced at archive, deliberate
+#    promotion via the E→S path
+state_admin promote-candidate \
+    --candidate-id PC1 --to-semantic PLAYBOOK.md \
+    --promotion-rationale "Pattern recurs; warrants PLAYBOOK entry." \
+    --from-retro phase-N-exit-retro
+
+# 8. Queue the standard ratification chain (reconnaissance →
+#    ratification → commit-finalize) for the semantic-memory update.
+#    The substrate's _check_no_semantic_memory_mutation refuses any
+#    retro-task direct edit; the ratification chain is the only path.
+```
+
+### Operator-review-before-queuing for retro init
+
+`state_admin retro init` queues a multi-agent deliberation chain whose outputs eventually land as an archived RETRO_STATE.jsonld + (potentially) semantic-memory promotions. Per §4.10's external-side-effect agent pattern, the operator SHOULD review chain composition BEFORE queuing:
+
+1. **Anchor task**: confirm the retro anchors on the correct substrate task (typically the phase-complete-declaration).
+2. **Role bindings**: review `surfaces/retro/agents/<role>.md` for each role's contract; if a per-retro `AGENTS.md` overrides defaults, review it.
+3. **Phase-origin**: confirm the phase identifier matches the phase being reflected on.
+4. **Analytical chain**: each Phase 1 analytical dispatch is one task in state.jsonld; review the JSON before append-tasks.
+
+The cost-of-error is the eventual archive + promotion events; review at queue time is cheaper than recovery after-the-fact (though every retro action remains audit-chain-visible and reversible at the substrate level — archived retros are append-only, so "reversing" means a new retro pass, not state mutation).
+
+### Verifying retro chain integrity
+
+After every retro mutation, the audit chain may be verified independently:
+
+```
+state_admin retro verify phase-N-exit-retro
+```
+
+Same algorithm as `state_admin verify` for state.jsonld; walks RETRO_STATE.audit and re-derives each entry's `chain_hash` from `prev_hash + event + payload` via `hiri_sign`. A failed verification indicates state tampering or a substrate bug (neither has been observed in production; the check exists as defense-in-depth).
+
+### When a retro chain stalls
+
+Symptoms and recovery paths:
+
+| Symptom | Likely cause | Recovery |
+|---|---|---|
+| Phase-transition refuses with "already in phase X" | Operator committed transition once already; new attempt is no-op | Confirm via `state_admin retro list` what phase the retro is actually in; advance from there |
+| Marep-orchestrator emits `proposed_transition.transition_kind: stay` repeatedly | Phase-exit criteria not met (analytical role didn't respond; orchestrator detected pending conflicts) | Read the orchestrator's `current_phase_status` field; address the blocker; re-dispatch |
+| `retro-applier` reports `version_mismatch` | Concurrent or stale `version_read` | Read current `retro.version` from the state file; re-emit the proposal with corrected `version_read` |
+| CPS veto `semantic_memory_immutable_from_retro` | A retro task tried to edit a canonical path directly | The task is mis-scoped; rescope as a `promote-candidate` followed by the ratification chain |
+| CPS veto `out_of_scope_mutation` from retro-applier | An analytical role proposed a section it doesn't own per the phase spec | Re-read `surfaces/retro/phases/<phase>.md` for that phase's per-role permitted_sections; adjust the agent's contract or operator's dispatch |
+| CPS veto `persona_theater_detected` / `redundant_affirmation` / `freeform_brainstorm_drift` | Anti-pattern fired on agent output | Read the veto's structured evidence; the agent's emitted text contained the pattern. Re-prompt or revise contract |
+
+### When promotion candidates are not promoted
+
+Not every candidate that surfaces at Phase 6 should promote. If the operator decides not to promote a candidate, document the decision — either by NOT running `promote-candidate` (no audit event = no promotion intent recorded) or by running a deliberate `--no-promote` annotation (no command yet at v3.0; for now, document in a banking entry on the retro's anchor task: `state_admin bank <anchor-task> --content "Candidate PC<n> reviewed; not promoted because <reason>." --category discipline-correction`).
+
+The asymmetry is by design: promotion REQUIRES a citable audit moment; not-promoting does not. Future operators reading the audit chain see promotions explicitly; absent promotions are inferable from the gap.
+
+---
+
 ## 5. Mojibake cleanup patterns
 
 The Barcode template handles mojibake at three layers (v2.3.1 + v2.4.0 + v2.4.1 + v2.4.2). But sometimes mojibake gets baked into project files BEFORE those defenses were in place — particularly if the file was created by an old daemon or by hand.

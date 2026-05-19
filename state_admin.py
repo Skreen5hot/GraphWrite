@@ -32,6 +32,20 @@ v2.7.0 additions (Pass 2a sequencing + banking lifecycle per FNSR Specs 03/05/07
     python state_admin.py forward-track inherit --from-phase <id> \\
         --to-phase <id> --inherited-at-cycle <cycle-id>
 
+v3.0 final additions (retro surface + Episodic→Semantic promotion):
+    python state_admin.py retro init <retro_id> --anchor-task <id> \\
+        --phase-origin <phase>
+    python state_admin.py retro phase-transition <retro_id> \\
+        --to-phase <phase> --rationale "..."
+    python state_admin.py retro vote <retro_id> --issue-id <id> \\
+        --voter <role> --vote {confirm|reject|contest} [--rationale "..."]
+    python state_admin.py retro archive <retro_id> [--archive-path PATH]
+    python state_admin.py retro verify <retro_id>
+    python state_admin.py retro list [--include-archived]
+    python state_admin.py promote-candidate --candidate-id <id> \\
+        --to-semantic <path> --promotion-rationale "..." \\
+        [--from-retro <retro_id>] [--anchor-task <task_id>]
+
 All commands operate on `state.jsonld` in the current directory by default;
 pass `--state-path PATH` to override. STOP THE DAEMON before modifying state
 to avoid race conditions on the lock file.
@@ -947,6 +961,507 @@ def cmd_forward_track_inherit(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- retro family (v3.0 final) -----------------------------------
+#
+# Operator-side commands for the retro surface per MAREP v2.2 + the
+# Episodic→Semantic discipline. RETRO_STATE.jsonld files live at
+# `retros/<retro-id>/RETRO_STATE.jsonld` (one per retro instance);
+# archived retros land at `<archive>/retrospectives/<retro-id>.jsonld`.
+#
+# All retro commands operate the retro's own chain-hashed audit array
+# (RETRO_STATE.audit), distinct from state.jsonld's per-task history.
+# The substrate's hiri_sign mechanism is reused so retro audit chains
+# are verifiable by the same tooling as state.jsonld chains.
+
+# Retro state file conventions
+_DEFAULT_RETRO_DIR = "retros"
+_DEFAULT_RETRO_ARCHIVE_DIR = "archive/retrospectives"
+
+
+def _retro_state_path_for(retro_id: str, base_dir: Optional[str] = None) -> Path:
+    """Compute the active RETRO_STATE.jsonld path for a given retro id."""
+    base = Path(base_dir or os.environ.get("FNSR_RETRO_DIR")
+                 or _DEFAULT_RETRO_DIR)
+    return base / retro_id / "RETRO_STATE.jsonld"
+
+
+def _load_retro_state(path: Path) -> dict[str, Any]:
+    """Load a RETRO_STATE.jsonld file. Raises SystemExit on missing
+    or unreadable file (operator-actionable error)."""
+    if not path.exists():
+        raise SystemExit(f"retro state not found: {path}")
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_retro_state(path: Path, state: dict[str, Any]) -> None:
+    """Atomic-write a RETRO_STATE.jsonld file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp, path)
+
+
+def _append_retro_audit(state: dict[str, Any], event: str,
+                         payload: dict[str, Any]) -> tuple[str, str, int]:
+    """Append a chain-hashed audit entry to RETRO_STATE.audit. Bumps
+    retro.version and returns (prev_hash, new_hash, new_version)."""
+    audit = state.setdefault("audit", [])
+    prev_hash = audit[-1]["chain_hash"] if audit else ("0" * 64)
+    new_hash = d.hiri_sign(prev_hash, {"event": event, "payload": payload})
+    new_version = (state.get("retro", {}).get("version") or 0) + 1
+    audit.append({
+        "version": new_version,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "event": event,
+        "payload": payload,
+        "prev_hash": prev_hash,
+        "chain_hash": new_hash,
+    })
+    state.setdefault("retro", {})["version"] = new_version
+    return prev_hash, new_hash, new_version
+
+
+def cmd_retro_init(args: argparse.Namespace) -> int:
+    """Initialize a new RETRO_STATE.jsonld for a retro instance.
+
+    Per MAREP v2.2 §7 + §12.1: the substrate creates the state file
+    with phase=01-gathering, initial empty sections, and an audit
+    entry retro_initialized chained from the zero-hash genesis.
+
+    The operator typically follows with `state_admin append-tasks` to
+    queue the marep-orchestrator dispatch chain (one task per phase
+    transition) and the analytical agents (qa, delivery-manager,
+    risk-analyst, architect, developer, user-advocate, skeptic) for
+    Phase 1 independent gathering. The substrate enforces dispatch
+    ordering via depends_on; the operator composes the chain.
+
+    PRE-QUEUE-REVIEW pattern (per PLAYBOOK §4.10, established for
+    git-committer): retro init has externally-visible effects via
+    eventual archive promotion. Operator SHOULD review the retro-id
+    + anchor-task + phase-origin + role bindings before queuing the
+    multi-agent chain.
+    """
+    state_path = _retro_state_path_for(args.retro_id, args.retros_dir)
+    if state_path.exists():
+        print(f"retro state already exists: {state_path}", file=sys.stderr)
+        print("  use a different --retro-id or remove the existing state",
+              file=sys.stderr)
+        return 1
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    state: dict[str, Any] = {
+        "@context": {"retro": "urn:fnsr:retro:"},
+        "@id": f"urn:fnsr:retro:{args.retro_id}",
+        "retro": {
+            "id": args.retro_id,
+            "version": 0,
+            "phase": "01-gathering",
+            "status": "active",
+            "anchor_task": args.anchor_task,
+            "phase_origin": args.phase_origin,
+            "initialized_at": timestamp,
+            "initialized_by": args.operator,
+        },
+        "issues": [],
+        "actions": [],
+        "risks": [],
+        "votes": [],
+        "decisions": [],
+        "conflict_record": [],
+        "promotion_candidates": [],
+        "audit": [],
+    }
+    payload: dict[str, Any] = {
+        "retro_id": args.retro_id,
+        "anchor_task": args.anchor_task,
+        "phase_origin": args.phase_origin,
+        "operator": args.operator,
+    }
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_retro_audit(state, "retro_initialized", payload)
+    _save_retro_state(state_path, state)
+    print(f"retro initialized: {args.retro_id}  (phase=01-gathering, "
+          f"state={state_path})")
+    print(f"  next: queue the marep-orchestrator dispatch chain via "
+          f"`state_admin append-tasks`")
+    return 0
+
+
+def cmd_retro_phase_transition(args: argparse.Namespace) -> int:
+    """Commit a retro phase transition.
+
+    The MAREP-Orchestrator BAO PROPOSES transitions via its
+    `phase-transition` mode; the operator REVIEWS the proposal and
+    runs this command to COMMIT. Per the BAO bound #4 (no
+    substrate-level privilege), the orchestrator cannot commit
+    transitions itself — the substrate enforces operator mediation
+    on every phase advancement.
+
+    The transition_kind defaults to "advance" but may be "stay" (re-
+    enter the same phase) or "rollback" (revert to a prior phase).
+    Rollback is rare; supported for completeness when phase-exit
+    criteria were prematurely declared met.
+    """
+    state_path = _retro_state_path_for(args.retro_id, args.retros_dir)
+    state = _load_retro_state(state_path)
+    current_phase = state.get("retro", {}).get("phase", "?")
+    if current_phase == args.to_phase and args.transition_kind == "advance":
+        print(f"retro {args.retro_id} already in phase {current_phase}; "
+              f"no-op", file=sys.stderr)
+        return 1
+    if not args.rationale or not args.rationale.strip():
+        print("--rationale is required (operator's stated justification "
+              "for committing the phase transition)", file=sys.stderr)
+        return 1
+    payload: dict[str, Any] = {
+        "retro_id": args.retro_id,
+        "from_phase": current_phase,
+        "to_phase": args.to_phase,
+        "transition_kind": args.transition_kind,
+        "rationale": args.rationale.strip(),
+        "operator": args.operator,
+    }
+    if args.proposing_task:
+        payload["proposing_task"] = args.proposing_task
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_retro_audit(state, "phase_transition_committed", payload)
+    state["retro"]["phase"] = args.to_phase
+    _save_retro_state(state_path, state)
+    print(f"phase-transition: {args.retro_id}  "
+          f"{current_phase} -> {args.to_phase}  ({args.transition_kind})")
+    return 0
+
+
+def cmd_retro_vote(args: argparse.Namespace) -> int:
+    """Record an operator-mediated vote on a retro issue per MAREP
+    v2.2 §15.
+
+    Voting is the consensus-resolution mechanism: when conflict-
+    detection surfaces unresolved positions, the operator collects
+    votes from named roles (typically via dispatched agents whose
+    outputs include vote casts in their proposals). This command
+    records the operator's authoritative vote on behalf of a role
+    binding when consensus is being resolved outside an agent
+    dispatch path.
+
+    Each vote becomes a chain-hashed audit event AND lands in the
+    retro's votes[] section so future readers can re-derive the
+    consensus state at any point.
+    """
+    state_path = _retro_state_path_for(args.retro_id, args.retros_dir)
+    state = _load_retro_state(state_path)
+    if not args.rationale and args.vote == "contest":
+        print("--rationale is required when --vote=contest (contesting "
+              "votes must document the dissent)", file=sys.stderr)
+        return 1
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    votes = state.setdefault("votes", [])
+    vote_id = f"vote-{args.retro_id}-{len(votes) + 1}"
+    vote_entry: dict[str, Any] = {
+        "@id": vote_id,
+        "issue_id": args.issue_id,
+        "voter": args.voter,
+        "vote": args.vote,
+        "timestamp": timestamp,
+    }
+    if args.rationale:
+        vote_entry["rationale"] = args.rationale.strip()
+    votes.append(vote_entry)
+    payload = {
+        "retro_id": args.retro_id,
+        "vote_id": vote_id,
+        "issue_id": args.issue_id,
+        "voter": args.voter,
+        "vote": args.vote,
+        "operator": args.operator,
+    }
+    if args.rationale:
+        payload["rationale"] = args.rationale.strip()
+    _append_retro_audit(state, "vote_recorded", payload)
+    _save_retro_state(state_path, state)
+    print(f"vote recorded: {vote_id}  issue={args.issue_id}  "
+          f"voter={args.voter}  vote={args.vote}")
+    return 0
+
+
+def cmd_retro_archive(args: argparse.Namespace) -> int:
+    """Archive a retro: promote the final RETRO_STATE.jsonld to
+    episodic memory at `<archive>/retrospectives/<retro-id>.jsonld`,
+    mark the active retro status=archived, and surface any
+    promotion_candidates[] for operator review.
+
+    Per the Episodic→Semantic discipline (surfaces/_primitives/
+    episodic-to-semantic-promotion.md): the working→episodic boundary
+    is AUTOMATIC at retro close (this command). The episodic→semantic
+    boundary is DELIBERATE — promotion candidates from this retro
+    require separate `state_admin promote-candidate` dispatches and
+    the standard ratification chain.
+
+    The active retro state file is NOT deleted; it is left in place
+    with status=archived for audit. The archive copy is the canonical
+    episodic-memory entry going forward.
+    """
+    active_path = _retro_state_path_for(args.retro_id, args.retros_dir)
+    state = _load_retro_state(active_path)
+    if state.get("retro", {}).get("status") == "archived":
+        print(f"retro {args.retro_id} already archived", file=sys.stderr)
+        return 1
+    archive_base = Path(
+        args.archive_path
+        or os.environ.get("FNSR_RETRO_ARCHIVE_DIR")
+        or _DEFAULT_RETRO_ARCHIVE_DIR
+    )
+    archive_path = archive_base / f"{args.retro_id}.jsonld"
+    payload: dict[str, Any] = {
+        "retro_id": args.retro_id,
+        "archive_path": str(archive_path),
+        "operator": args.operator,
+    }
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_retro_audit(state, "retro_archived", payload)
+    state["retro"]["status"] = "archived"
+    state["retro"]["archived_at"] = time.strftime(
+        "%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    state["retro"]["archive_path"] = str(archive_path)
+    # Write to BOTH the active path (with new audit entry + status) and
+    # the archive location (canonical episodic copy).
+    _save_retro_state(active_path, state)
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = archive_path.with_suffix(archive_path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp, archive_path)
+    # Surface promotion candidates for operator review (Episodic→Semantic
+    # boundary; deliberate-not-automatic).
+    candidates = state.get("promotion_candidates", []) or []
+    print(f"archived: {args.retro_id}  -> {archive_path}")
+    if candidates:
+        print(f"  {len(candidates)} promotion candidate(s) surfaced for "
+              f"operator review:")
+        for c in candidates:
+            print(f"    - {c.get('@id', '?')}  to={c.get('to_semantic', '?')}  "
+                  f"{c.get('description', '')[:60]}")
+        print(f"  next: run `state_admin promote-candidate --from-retro "
+              f"{args.retro_id} --candidate-id <id>` for each candidate "
+              f"to deliberate, OR document `--no-promote` rationale for "
+              f"those not promoted.")
+    return 0
+
+
+def cmd_retro_verify(args: argparse.Namespace) -> int:
+    """Verify chain integrity of a retro's audit chain (RETRO_STATE.audit).
+    Same algorithm as `state_admin verify` for state.jsonld."""
+    state_path = _retro_state_path_for(args.retro_id, args.retros_dir)
+    state = _load_retro_state(state_path)
+    ok = True
+    prev = "0" * 64
+    total = 0
+    for i, h in enumerate(state.get("audit", [])):
+        total += 1
+        if h.get("prev_hash") != prev:
+            ok = False
+            print(f"BREAK  {args.retro_id}  audit[{i}]  prev_hash mismatch "
+                  f"(expected {prev[:16]}..., got "
+                  f"{(h.get('prev_hash') or 'missing')[:16]}...)",
+                  file=sys.stderr)
+            break
+        recomputed = d.hiri_sign(prev,
+                                   {"event": h["event"], "payload": h["payload"]})
+        actual = h.get("chain_hash")
+        if recomputed != actual:
+            ok = False
+            print(f"MISMATCH  {args.retro_id}  audit[{i}]  chain_hash "
+                  f"mismatch (recomputed {recomputed[:16]}..., stored "
+                  f"{(actual or 'missing')[:16]}...)", file=sys.stderr)
+            break
+        prev = recomputed
+    if not args.quiet:
+        print(f"verified {total} retro audit entries: "
+              f"{'PASS' if ok else 'FAIL'}")
+    return 0 if ok else 1
+
+
+def cmd_retro_list(args: argparse.Namespace) -> int:
+    """List known retros (active + archived) with phase/version/status.
+    Walks the `retros/` directory for active state files and
+    `archive/retrospectives/` for archived ones."""
+    rows = []
+    retros_dir = Path(args.retros_dir
+                       or os.environ.get("FNSR_RETRO_DIR")
+                       or _DEFAULT_RETRO_DIR)
+    if retros_dir.exists():
+        for retro_dir in sorted(retros_dir.iterdir()):
+            state_file = retro_dir / "RETRO_STATE.jsonld"
+            if not state_file.exists():
+                continue
+            try:
+                with open(state_file, encoding="utf-8") as f:
+                    s = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            retro_meta = s.get("retro", {})
+            rows.append({
+                "retro_id": retro_meta.get("id", retro_dir.name),
+                "phase": retro_meta.get("phase", "?"),
+                "version": retro_meta.get("version", 0),
+                "status": retro_meta.get("status", "?"),
+                "location": str(state_file),
+            })
+    if args.include_archived:
+        archive_dir = Path(
+            args.archive_path
+            or os.environ.get("FNSR_RETRO_ARCHIVE_DIR")
+            or _DEFAULT_RETRO_ARCHIVE_DIR
+        )
+        if archive_dir.exists():
+            for f in sorted(archive_dir.glob("*.jsonld")):
+                try:
+                    with open(f, encoding="utf-8") as fp:
+                        s = json.load(fp)
+                except (OSError, json.JSONDecodeError):
+                    continue
+                retro_meta = s.get("retro", {})
+                rows.append({
+                    "retro_id": retro_meta.get("id", f.stem),
+                    "phase": retro_meta.get("phase", "?"),
+                    "version": retro_meta.get("version", 0),
+                    "status": retro_meta.get("status", "archived"),
+                    "location": str(f),
+                })
+    if args.status:
+        rows = [r for r in rows if r["status"] == args.status]
+    if not rows:
+        print("(no retros match the given filters)")
+        return 0
+    for r in rows:
+        print(f"  {r['retro_id']}  phase={r['phase']}  "
+              f"v{r['version']}  status={r['status']}  "
+              f"({r['location']})")
+    print(f"total: {len(rows)} retro(s)")
+    return 0
+
+
+# ---------- promote-candidate (v3.0 final; Episodic→Semantic) ----------
+
+def cmd_promote_candidate(args: argparse.Namespace) -> int:
+    """Emit a deliberate Episodic→Semantic promotion candidacy event per
+    surfaces/_primitives/episodic-to-semantic-promotion.md.
+
+    This command does NOT mutate semantic memory. It records a
+    forward_track event with subject.type=candidacy declaring that
+    the operator intends to promote a specific candidate (typically
+    surfaced at retro phase-exit per MAREP §16.4) to a specific
+    semantic-memory destination via the standard ratification chain
+    (reconnaissance → ratification → commit-finalize).
+
+    Per Aaron's CP3 observation #3: this command makes the
+    deliberate-promotion moment **explicit and citable** in the audit
+    chain. The synthetic moral person project will reference this
+    pattern as canonical for tacit-to-formal transitions; the audit
+    event shape matters beyond MAREP.
+
+    The candidacy event lives on state.jsonld (anchored to a
+    substrate task — typically the retro's anchor-task). The actual
+    semantic-memory mutation, when ratified, lands via the standard
+    ratification chain that the operator queues separately.
+
+    Audit event payload includes:
+    - forward_track_id (auto-generated; ft-promotion-<retro-id>-<n>)
+    - subject: {type: candidacy, id: candidate-id, description: ...}
+    - to_semantic: the destination path (CLAUDE.md, PLAYBOOK.md, etc.)
+    - from_episodic: the retro-id (provenance)
+    - sub_surface: internal-methodology-refinement (per Spec 07)
+    - promotion_rationale: operator's stated rationale
+    - surfacing_task_id: the retro's anchor-task or named candidacy
+    - declaration_kind: operator_deliberate_promotion
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    # Resolve the anchor task: if --anchor-task given, use it.
+    # Otherwise, attempt to look up the retro's anchor_task from
+    # RETRO_STATE.jsonld.
+    anchor_task_id = args.anchor_task
+    if not anchor_task_id and args.from_retro:
+        retro_path = _retro_state_path_for(args.from_retro, args.retros_dir)
+        if retro_path.exists():
+            try:
+                with open(retro_path, encoding="utf-8") as f:
+                    retro_state = json.load(f)
+                anchor_task_id = retro_state.get("retro", {}).get("anchor_task")
+            except (OSError, json.JSONDecodeError):
+                pass
+    if not anchor_task_id:
+        print("either --anchor-task or --from-retro (with a resolvable "
+              "anchor_task) must be provided", file=sys.stderr)
+        return 1
+    task = _find_task(state, anchor_task_id)
+    if task is None:
+        print(f"anchor task not found: {anchor_task_id}", file=sys.stderr)
+        return 1
+    if not args.promotion_rationale or not args.promotion_rationale.strip():
+        print("--promotion-rationale is required (operator's stated "
+              "rationale for deliberate promotion; recorded as citable "
+              "audit evidence)", file=sys.stderr)
+        return 1
+    # Generate ft-id with promotion-specific tag for searchability
+    promotion_seq = sum(
+        1 for h in task.get("history", [])
+        if h.get("event") == "forward_track"
+        and (h.get("payload") or {}).get("declaration_kind")
+        == "operator_deliberate_promotion"
+    )
+    ft_id = args.ft_id or (
+        f"ft-promotion-{args.from_retro or 'adhoc'}-{promotion_seq + 1}"
+    )
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    payload: dict[str, Any] = {
+        "forward_track_id": ft_id,
+        "state": "A",
+        "sub_surface": "internal-methodology-refinement",
+        "subject": {
+            "type": "candidacy",
+            "id": args.candidate_id,
+            "description": (
+                args.description
+                or f"Promote {args.candidate_id} to semantic memory at "
+                f"{args.to_semantic}"
+            ),
+        },
+        "to_semantic": args.to_semantic,
+        "from_episodic": args.from_retro,
+        "named_deliberation_cycle": args.deliberation_cycle or "phase-exit-retro",
+        "phase_origin": args.phase_origin or "phase-exit-retro",
+        "inherited_through_phases": [],
+        "transition_history": [
+            {
+                "state": "A",
+                "timestamp": timestamp,
+                "transitioning_cycle": args.deliberation_cycle
+                or "phase-exit-retro",
+            }
+        ],
+        "promotion_rationale": args.promotion_rationale.strip(),
+        "declaration_kind": "operator_deliberate_promotion",
+        "surfacing_task_id": args.surfacing_task_id or anchor_task_id,
+        "operator": args.operator,
+    }
+    _append_audit(task, "forward_track", payload)
+    _save_state(state_path, state)
+    print(f"promotion candidate recorded: {ft_id}")
+    print(f"  candidate={args.candidate_id}  to={args.to_semantic}")
+    if args.from_retro:
+        print(f"  from_retro={args.from_retro}")
+    print(f"  next: queue the ratification chain "
+          f"(reconnaissance -> ratification -> commit-finalize) for the "
+          f"semantic-memory update; the substrate enforces deliberate "
+          f"promotion via _check_no_semantic_memory_mutation.")
+    return 0
+
+
 # ---------- template-sync (v2.9.0) ---------------------------------------
 #
 # Automates the dual-track-workflow manifest's "files that must stay
@@ -996,6 +1511,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "surfaces/verification/categories/cat-10-type-field-structure.py",
     "surfaces/_primitives/bounded-authority-orchestrator.md",
     "surfaces/_primitives/episodic-to-semantic-promotion.md",
+    "surfaces/_primitives/anti-pattern-enforcement.md",
     "surfaces/retro/surface-spec.md",
     "surfaces/retro/agents/orchestrator.md",
     "surfaces/retro/agents/architect.md",
@@ -1024,6 +1540,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "tests/test_reconciliation.py",
     "tests/test_retro_surface_foundation.py",
     "tests/test_v3_alpha_2_substrate.py",
+    "tests/test_v3_final_substrate.py",
     "tests/test_routing.py",
     "tests/test_state_admin.py",
     "tests/test_test_runner.py",
@@ -1416,6 +1933,171 @@ def _build_parser() -> argparse.ArgumentParser:
                                 "each aging warning")
     p_ft_age.add_argument("--operator", default="operator")
     p_ft_age.set_defaults(func=cmd_forward_track_aging)
+
+    # ---- retro family (v3.0 final) ----
+    p_retro = sub.add_parser(
+        "retro",
+        help="retro-surface operations (v3.0 final; MAREP v2.2)",
+    )
+    retro_sub = p_retro.add_subparsers(dest="retro_cmd", required=True)
+
+    p_retro_init = retro_sub.add_parser(
+        "init",
+        help="initialize a new RETRO_STATE.jsonld for a retro instance",
+    )
+    p_retro_init.add_argument("retro_id",
+                               help="retro identifier (e.g., phase-3-exit-retro)")
+    p_retro_init.add_argument("--anchor-task", required=True,
+                               help="substrate task @id that anchors the retro "
+                                    "(typically the phase-complete-declaration "
+                                    "task that surfaced the retro)")
+    p_retro_init.add_argument("--phase-origin", required=True,
+                               help="phase identifier the retro reflects on "
+                                    "(e.g., phase-3)")
+    p_retro_init.add_argument("--retros-dir", default=None,
+                               help="directory containing per-retro state "
+                                    "(default: ./retros or FNSR_RETRO_DIR)")
+    p_retro_init.add_argument("--notes", default=None,
+                               help="optional operator notes")
+    p_retro_init.add_argument("--operator", default="operator")
+    p_retro_init.set_defaults(func=cmd_retro_init)
+
+    p_retro_pt = retro_sub.add_parser(
+        "phase-transition",
+        help="commit a retro phase transition (operator-mediated; "
+             "marep-orchestrator proposes, operator commits)",
+    )
+    p_retro_pt.add_argument("retro_id")
+    p_retro_pt.add_argument("--to-phase", required=True,
+                             help="target phase (e.g., 02-merge)")
+    p_retro_pt.add_argument(
+        "--transition-kind", default="advance",
+        choices=("advance", "stay", "rollback"),
+        help="kind of transition (default: advance)"
+    )
+    p_retro_pt.add_argument("--rationale", required=True,
+                             help="operator's stated justification for "
+                                  "committing the transition")
+    p_retro_pt.add_argument(
+        "--proposing-task", default=None,
+        help="marep-orchestrator task @id that proposed this transition "
+             "(if any); recorded for provenance"
+    )
+    p_retro_pt.add_argument("--retros-dir", default=None)
+    p_retro_pt.add_argument("--notes", default=None)
+    p_retro_pt.add_argument("--operator", default="operator")
+    p_retro_pt.set_defaults(func=cmd_retro_phase_transition)
+
+    p_retro_vote = retro_sub.add_parser(
+        "vote",
+        help="record an operator-mediated vote on a retro issue",
+    )
+    p_retro_vote.add_argument("retro_id")
+    p_retro_vote.add_argument("--issue-id", required=True,
+                               help="retro issue @id being voted on")
+    p_retro_vote.add_argument("--voter", required=True,
+                               help="role binding casting the vote "
+                                    "(e.g., @QA, @Architect)")
+    p_retro_vote.add_argument(
+        "--vote", required=True,
+        choices=("confirm", "reject", "contest"),
+        help="the vote cast"
+    )
+    p_retro_vote.add_argument("--rationale", default=None,
+                               help="vote rationale (required for "
+                                    "--vote=contest)")
+    p_retro_vote.add_argument("--retros-dir", default=None)
+    p_retro_vote.add_argument("--operator", default="operator")
+    p_retro_vote.set_defaults(func=cmd_retro_vote)
+
+    p_retro_arch = retro_sub.add_parser(
+        "archive",
+        help="archive a retro: promote RETRO_STATE.jsonld to episodic "
+             "memory + surface promotion candidates",
+    )
+    p_retro_arch.add_argument("retro_id")
+    p_retro_arch.add_argument(
+        "--archive-path", default=None,
+        help="archive directory (default: ./archive/retrospectives "
+             "or FNSR_RETRO_ARCHIVE_DIR)"
+    )
+    p_retro_arch.add_argument("--retros-dir", default=None)
+    p_retro_arch.add_argument("--notes", default=None)
+    p_retro_arch.add_argument("--operator", default="operator")
+    p_retro_arch.set_defaults(func=cmd_retro_archive)
+
+    p_retro_verify = retro_sub.add_parser(
+        "verify",
+        help="verify a retro's audit chain integrity",
+    )
+    p_retro_verify.add_argument("retro_id")
+    p_retro_verify.add_argument("--retros-dir", default=None)
+    p_retro_verify.add_argument("--quiet", action="store_true")
+    p_retro_verify.set_defaults(func=cmd_retro_verify)
+
+    p_retro_list = retro_sub.add_parser(
+        "list",
+        help="list known retros (active + optionally archived)",
+    )
+    p_retro_list.add_argument("--status", default=None,
+                               choices=("active", "archived"),
+                               help="filter by status")
+    p_retro_list.add_argument("--include-archived", action="store_true",
+                               help="also walk the archive directory")
+    p_retro_list.add_argument("--retros-dir", default=None)
+    p_retro_list.add_argument("--archive-path", default=None)
+    p_retro_list.set_defaults(func=cmd_retro_list)
+
+    # ---- promote-candidate (v3.0 final; Episodic→Semantic) ----
+    p_promote = sub.add_parser(
+        "promote-candidate",
+        help=("emit a deliberate Episodic→Semantic promotion candidacy "
+              "event (v3.0 final; the audit-citable moment per the "
+              "E→S discipline)"),
+    )
+    p_promote.add_argument("--candidate-id", required=True,
+                            help="identifier of the candidate being promoted "
+                                 "(typically from promotion_candidates[] "
+                                 "in the retro state)")
+    p_promote.add_argument("--to-semantic", required=True,
+                            help="destination semantic-memory path "
+                                 "(e.g., PLAYBOOK.md, project/DECISIONS.md)")
+    p_promote.add_argument(
+        "--promotion-rationale", required=True,
+        help="operator's stated rationale for deliberate promotion; "
+             "recorded as citable audit evidence"
+    )
+    p_promote.add_argument("--from-retro", default=None,
+                            help="retro-id this candidate came from "
+                                 "(if applicable; substrate looks up the "
+                                 "retro's anchor_task automatically)")
+    p_promote.add_argument(
+        "--anchor-task", default=None,
+        help="explicit substrate task @id to anchor the forward_track "
+             "event against (overrides --from-retro lookup)"
+    )
+    p_promote.add_argument(
+        "--surfacing-task-id", default=None,
+        help="task @id that surfaced this candidacy (default: anchor-task)"
+    )
+    p_promote.add_argument("--description", default=None,
+                            help="human-readable description of the "
+                                 "promotion (default: auto-generated)")
+    p_promote.add_argument(
+        "--deliberation-cycle", default=None,
+        help="named cycle at which the ratification will run "
+             "(default: phase-exit-retro)"
+    )
+    p_promote.add_argument(
+        "--phase-origin", default=None,
+        help="phase that surfaced the candidacy "
+             "(default: phase-exit-retro)"
+    )
+    p_promote.add_argument("--ft-id", default=None,
+                            help="optional explicit forward_track_id")
+    p_promote.add_argument("--retros-dir", default=None)
+    p_promote.add_argument("--operator", default="operator")
+    p_promote.set_defaults(func=cmd_promote_candidate)
 
     p_sync = sub.add_parser(
         "template-sync",

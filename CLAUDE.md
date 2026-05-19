@@ -36,7 +36,7 @@ Two kinds of agents:
 |---|---|
 | [spec-reviewer](.claude/agents/spec-reviewer.md) | Structural, ontological, conformance review of specifications |
 | [synthesist](.claude/agents/synthesist.md) | Two modes (`default_mode: classic`): `classic` (existing v2.5.0 reviewer+critic reconciliation) and `generalized` (new in v3.0-alpha.1; N-stream synthesis as a **Bounded-Authority Orchestrator (BAO)** instance over the synthesis surface — first concrete BAO instance per [surfaces/_primitives/bounded-authority-orchestrator.md](surfaces/_primitives/bounded-authority-orchestrator.md)). |
-| [marep-orchestrator](.claude/agents/marep-orchestrator.md) | v3.0-alpha.2. **Second BAO instance** (over the retro surface). Four modes: `phase-transition`, `conflict-detection`, `consensus-summary`, `final-compression`. End-to-end LLM dispatch at v3.0 final. |
+| [marep-orchestrator](.claude/agents/marep-orchestrator.md) | v3.0-alpha.2 contract; v3.0 final operationalized. **Second BAO instance** (over the retro surface). Four modes: `phase-transition`, `conflict-detection`, `consensus-summary`, `final-compression`. Dispatched by operator-composed chain via `state_admin retro` family. |
 | [qa](.claude/agents/qa.md) | v3.0-alpha.2. Retro-surface read-only-by-contract agent. QA/verification perspective: test coverage gaps, regression patterns, defect distribution, verification-scope drift. |
 | [delivery-manager](.claude/agents/delivery-manager.md) | v3.0-alpha.2. Retro-surface read-only-by-contract agent. Sprint predictability, throughput, blockers, coordination overhead, dependency thrash. |
 | [risk-analyst](.claude/agents/risk-analyst.md) | v3.0-alpha.2. Retro-surface read-only-by-contract agent. Hidden failure modes, systemic fragility, operational exposure. Distinct from `adversarial-critic` (which challenges findings) — surfaces latent risks under named trigger conditions. |
@@ -90,7 +90,7 @@ The conversational personas exist for fast, in-context work. The dispatched agen
 
 **Validation.** Two tracks, by scope of change:
 
-- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + `default_mode` mechanism + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier system agent, the ADR-012 ghost fixture (FNSR Spec 06), the verification-ritual machinery (category-spec loader; predicate resolver; subject-project hook loader; Cat 1–8 predicates + Cat 10 stub; orchestrator with four-class miss taxonomy and two-cadence dispatch), and the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / forward-track create / inherit / transition / list / aging). Every daemon change MUST keep the suite green.
+- **Barcode orchestrator** (Python): `python -m unittest discover tests` from the project root. The suite covers routing, the output extractor, CPS (null + structured error + required-keys + multi-mode required-keys + `default_mode` mechanism + ADR-citation registry + awaiting-decision shape + reconnaissance/architect ratification contracts + retro-surface anti-pattern enforcement + semantic-memory immutability), audit-trail hashing, upstream resolution, in-progress reconciliation + daemon lock, the applier + retro-applier system agents, the ADR-012 ghost fixture (FNSR Spec 06), the verification-ritual machinery (category-spec loader; predicate resolver; subject-project hook loader; Cat 1–8 predicates + Cat 10 stub; orchestrator with four-class miss taxonomy and two-cadence dispatch), the v3.0 retro family (init / phase-transition / vote / archive / verify / list) + promote-candidate (E→S deliberate promotion), and the rest of the state_admin operator CLI (reset / abandon / append / verify / status / resolve / bank / transition-banking / phase-boundary / phase-complete-declaration / forward-track create / inherit / transition / list / aging / template-sync). Every daemon change MUST keep the suite green.
 - **GraphWrite subject** (TypeScript): every change MUST pass
   - `npm run build` — no TypeScript errors
   - `npm test` — all spec tests pass
@@ -387,6 +387,63 @@ commit-finalize              (Pass 2b; applier; verification-ritual gating
 
 Operator queues `verification-ritual` upstream of `ratification`; the architect reads UPSTREAM for verification-ritual results and refuses ratification on `overall_status: veto` (and refuses on `needs_llm_judgment` without the LLM-side chain in UPSTREAM). See PLAYBOOK.md §4.9 for the operator-decision workflow when LLM categories surface vetoes or new_candidacies.
 
+## 7.12 Retro Surface and the Episodic→Semantic Promotion Path (v3.0 final)
+
+The retro surface (`surfaces/retro/`) is the substrate's deliberative-reflection mechanism per MAREP v2.2. A retro instance has six phases (`01-gathering` → `06-compression`) plus an archive step. Per-retro state lives in `retros/<retro-id>/RETRO_STATE.jsonld` (chain-hashed via the substrate's `hiri_sign`); archived retros land at `archive/retrospectives/<retro-id>.jsonld`.
+
+### Retro operator commands
+
+```
+python state_admin.py retro init <retro-id> \
+    --anchor-task <task-id> --phase-origin <phase-id>
+python state_admin.py retro phase-transition <retro-id> \
+    --to-phase <phase> --rationale "..."
+python state_admin.py retro vote <retro-id> \
+    --issue-id <id> --voter <role> --vote {confirm|reject|contest} \
+    [--rationale "..."]
+python state_admin.py retro archive <retro-id> \
+    [--archive-path <dir>]
+python state_admin.py retro verify <retro-id>
+python state_admin.py retro list [--include-archived]
+```
+
+The retro's MAREP-Orchestrator (BAO instance per `surfaces/_primitives/bounded-authority-orchestrator.md`) PROPOSES phase transitions in its `phase-transition` mode; the operator REVIEWS and COMMITS via `state_admin retro phase-transition`. Per BAO bound #4, the orchestrator cannot commit transitions itself.
+
+### Episodic→Semantic promotion path (deliberate, not automatic)
+
+Per `surfaces/_primitives/episodic-to-semantic-promotion.md`: closing a retro promotes its state to **episodic memory automatically** (via `state_admin retro archive`). Promoting any insight from that retro to **semantic memory** (CLAUDE.md / PLAYBOOK.md / ADRs / spec files / primitive docs) requires deliberate operator action via `state_admin promote-candidate`:
+
+```
+python state_admin.py promote-candidate \
+    --candidate-id <id> --to-semantic <path> \
+    --promotion-rationale "..." \
+    [--from-retro <retro-id>] [--anchor-task <task-id>]
+```
+
+This emits a `forward_track` event with `subject.type: candidacy`, `declaration_kind: operator_deliberate_promotion`, and provenance back to the originating retro. The audit event is the citable moment of deliberate promotion — per Aaron's CP3 observation, the FNSR moral-person project will cite this pattern as canonical for tacit-to-formal transitions.
+
+The actual semantic-memory mutation goes through the standard ratification chain (reconnaissance → ratification → commit-finalize). The substrate's `_check_no_semantic_memory_mutation` CPS check refuses any retro-surface task that attempts to mutate semantic-memory paths directly — the promotion path is the only path.
+
+### Anti-pattern enforcement on the retro surface
+
+Per `surfaces/_primitives/anti-pattern-enforcement.md`, five anti-patterns fire on retro-surface tasks (`inputs.surface: "retro"`):
+
+- `_check_no_persona_theater` — `@<agent>` patterns in free-text outside designated reference fields
+- `_check_no_redundant_affirmation` — Levenshtein similarity ≥ 0.85 vs prior turn body
+- `_check_no_freeform_brainstorm` — length-budget overruns + forbidden conversational connectives
+- `_check_no_semantic_memory_mutation` — direct mutation of canonical paths (CLAUDE.md, PLAYBOOK.md, ADRs, surfaces/, .claude/agents/, etc.)
+- Permitted-sections enforcement via `retro-applier` system agent — refuses out-of-scope mutations per role binding
+
+### Substrate primitives this surface uses
+
+- **Bounded-Authority Orchestrator (BAO)** — `surfaces/_primitives/bounded-authority-orchestrator.md`. MAREP-Orchestrator is the retro-surface BAO instance.
+- **Episodic→Semantic Promotion** — `surfaces/_primitives/episodic-to-semantic-promotion.md`. The promotion path operationalized in v3.0 final.
+- **Anti-Pattern Enforcement** — `surfaces/_primitives/anti-pattern-enforcement.md`. Five anti-pattern detectors fire on retro tasks.
+
+### Operator-review-before-queuing pattern
+
+Per PLAYBOOK §4.10: `state_admin retro init` queues a multi-agent deliberation chain whose outputs eventually land as an archive entry + semantic-memory promotions. Same pattern as the v2.9.0 git-committer agent — externally-visible side effects warrant operator review of the chain composition (which roles, what AGENTS.md mapping, what anchor task) BEFORE queuing. The substrate enforces dispatch ordering; the operator owns the chain composition.
+
 ## 8. Session Workflow
 
 ### Starting a session
@@ -441,11 +498,15 @@ Layer 2: src/adapters/        <- Optional. Infrastructure integration.
 | File | Purpose |
 |---|---|
 | [fnsr_daemon.py](fnsr_daemon.py) | The orchestrator — single-file Python stdlib. |
-| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation. v2.6.0 subcommands: `reset`, `abandon`, `append-tasks`, `verify`, `status`, `resolve`, `bank`. v2.7.0 subcommands: `transition-banking`, `phase-boundary`, `forward-track create` / `inherit`. v2.8.0 forward-track subcommands: `transition`, `list`, `aging`. v2.9.0 subcommand: `template-sync` (automates the dual-track-workflow `cp -f` sync from source repo to target repo(s); modes: `verify` reports drift only, `sync` copies source → targets then verifies; manifest configurable via `--manifest` or `FNSR_TEMPLATE_SYNC_MANIFEST` env var). Run `python state_admin.py --help`. |
+| [state_admin.py](state_admin.py) | Operator CLI for state.jsonld manipulation. v2.6.0 subcommands: `reset`, `abandon`, `append-tasks`, `verify`, `status`, `resolve`, `bank`. v2.7.0 subcommands: `transition-banking`, `phase-boundary`, `forward-track create` / `inherit`. v2.8.0 forward-track subcommands: `transition`, `list`, `aging`. v2.9.0 subcommand: `template-sync` (automates the dual-track-workflow `cp -f` sync from source repo to target repo(s)). v3.0-alpha.2 subcommand: `phase-complete-declaration` (operator-authoritative). v3.0 final subcommand groups: `retro init` / `phase-transition` / `vote` / `archive` / `verify` / `list` (retro-surface operations per MAREP v2.2) + `promote-candidate` (deliberate Episodic→Semantic promotion audit event). Run `python state_admin.py --help`. |
 | [state.jsonld](state.jsonld) | JSON-LD work queue with hash-chained audit trail. |
 | `state.jsonld.lock` | OS-level lock for state I/O (auto-created, gitignored). |
 | `fnsr.pid` | OS-level daemon-instance lock (auto-created, gitignored). |
+| `retros/<retro-id>/RETRO_STATE.jsonld` | Per-retro state with chain-hashed `audit[]` array. v3.0 final. Override directory via `FNSR_RETRO_DIR` env var. |
+| `archive/retrospectives/<retro-id>.jsonld` | Archived retros (episodic memory per Spec 01 + MAREP §16). v3.0 final. Override via `FNSR_RETRO_ARCHIVE_DIR` env var. |
 | [.claude/agents/](.claude/agents/) | Agent contracts (worker + system) with frontmatter + body. |
+| [surfaces/_primitives/](surfaces/_primitives/) | Substrate primitive docs: `bounded-authority-orchestrator.md` (v3.0-alpha.1), `episodic-to-semantic-promotion.md` (v3.0-alpha.2), `anti-pattern-enforcement.md` (v3.0 final). |
+| [surfaces/retro/](surfaces/retro/) | Retro surface: `surface-spec.md`, per-phase specs (`phases/`), per-role bindings (`agents/`). |
 | [tests/](tests/) | Python `unittest` suite. Run `python -m unittest discover tests`. |
 | [PLAYBOOK.md](PLAYBOOK.md) | Operator playbook: failure-mode recognition + recovery patterns from real-world runs. Read this when a chain stalls. |
 
