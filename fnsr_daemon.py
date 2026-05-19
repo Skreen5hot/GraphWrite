@@ -266,6 +266,293 @@ def _agent_required_outputs(
     return []
 
 
+# ---- Anti-pattern enforcement framework (v3.0-alpha.2) -------------------
+#
+# Substrate-mechanical enforcement of generalizable behavioral constraints.
+# Each check pairs a forbidden-behavior pattern with structural detection
+# and a structured-error veto. CP3 will produce the canonical substrate-
+# primitive documentation at surfaces/_primitives/anti-pattern-enforcement.md
+# anchored on the four checks below.
+#
+# First explicit instance: MAREP §17 retro-surface anti-pattern detection.
+# Pattern generalizes beyond retros — any surface where LLM agents
+# collaborate via shared state can adopt these checks.
+
+# Designated reference fields where @-prefixed agent references ARE
+# permitted (vote casts, conflict positions, ownership annotations).
+# Per MAREP §17.1 + Aaron's CP3 observation: persona theater is
+# @<agent> patterns OUTSIDE these designated fields.
+_DESIGNATED_REFERENCE_FIELDS = (
+    "confirmed_by", "contested_by", "owner",
+    "supporting_sources", "dissenting_sources",
+)
+_PERSONA_ADDR_RE = re.compile(r"@[A-Z][a-zA-Z0-9_-]*")
+
+# Conversational connectives forbidden in free-text retro outputs per
+# MAREP §17.3. Substrate default; agents may extend via frontmatter.
+_DEFAULT_FORBIDDEN_CONNECTIVES = (
+    "as we discussed",
+    "circling back",
+    "to your point",
+    "building on what you said",
+    "as you mentioned",
+)
+
+
+def _collect_free_text_fields(
+    outputs: Any, prefix: str = "",
+    exclude_paths: tuple = _DESIGNATED_REFERENCE_FIELDS,
+) -> dict[str, str]:
+    """Walk an outputs dict and return a {path: text} dict of every
+    free-text field encountered. Excludes designated reference fields
+    (where @-agent patterns are legitimate, e.g., vote casts) by name
+    match on any path component.
+
+    Used by _check_no_persona_theater and _check_no_freeform_brainstorm.
+    """
+    found: dict[str, str] = {}
+    def walk(value: Any, path: str) -> None:
+        if isinstance(value, dict):
+            for k, v in value.items():
+                # Skip if this key matches a designated reference field
+                if k in exclude_paths:
+                    continue
+                walk(v, f"{path}.{k}" if path else k)
+        elif isinstance(value, list):
+            for i, v in enumerate(value):
+                walk(v, f"{path}[{i}]")
+        elif isinstance(value, str):
+            found[path] = value
+    walk(outputs, prefix)
+    return found
+
+
+def _normalized_levenshtein(a: str, b: str) -> float:
+    """Compute normalized Levenshtein similarity in [0, 1]. 1.0 = identical.
+    Pure-Python stdlib; quadratic time, fine for v1 redundant-affirmation
+    detection at the scale of single-turn outputs (~few KB).
+    """
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    # Compact representation: skip if lengths differ by more than 50%
+    if abs(len(a) - len(b)) > max(len(a), len(b)) // 2:
+        return 0.0
+    m, n = len(a), len(b)
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        curr = [i] + [0] * n
+        for j in range(1, n + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            curr[j] = min(
+                curr[j - 1] + 1,        # insertion
+                prev[j] + 1,            # deletion
+                prev[j - 1] + cost,     # substitution
+            )
+        prev = curr
+    distance = prev[n]
+    max_len = max(m, n)
+    return 1.0 - (distance / max_len)
+
+
+def _check_no_persona_theater(
+    task: dict[str, Any], outputs: dict[str, Any],
+) -> None:
+    """Per MAREP §17.1. Scan free-text fields for @<agent> patterns
+    outside designated reference fields. Raise ContainmentVeto with
+    error: persona_theater_detected on hit.
+    """
+    text_fields = _collect_free_text_fields(outputs)
+    hits = []
+    for path, text in text_fields.items():
+        for m in _PERSONA_ADDR_RE.finditer(text):
+            hits.append({"path": path, "match": m.group(0),
+                          "snippet": text[max(0, m.start() - 30):m.end() + 30]})
+    if hits:
+        raise ContainmentVeto(
+            f"persona_theater_detected: agent addresses outside "
+            f"designated reference fields: {hits[:5]}"
+        )
+
+
+def _check_no_redundant_affirmation(
+    task: dict[str, Any], outputs: dict[str, Any],
+    prior_turn_outputs: Optional[dict[str, Any]] = None,
+    threshold: float = 0.85,
+) -> None:
+    """Per MAREP §17.2. Compare current turn's free-text body to the
+    prior turn's body via normalized Levenshtein similarity. Reject
+    when similarity >= threshold.
+
+    The prior_turn_outputs argument is operator-supplied (typically
+    UPSTREAM[prior_turn_id].outputs). When None, the check is a no-op
+    (no prior turn to compare against).
+    """
+    if not prior_turn_outputs:
+        return
+    current_body = "\n".join(_collect_free_text_fields(outputs).values())
+    prior_body = "\n".join(_collect_free_text_fields(prior_turn_outputs).values())
+    if not current_body or not prior_body:
+        return
+    similarity = _normalized_levenshtein(current_body, prior_body)
+    if similarity >= threshold:
+        raise ContainmentVeto(
+            f"redundant_affirmation: similarity {similarity:.2f} >= "
+            f"threshold {threshold:.2f} vs prior turn; output appears "
+            f"to substantively echo the prior turn rather than advance "
+            f"the analysis"
+        )
+
+
+def _check_no_freeform_brainstorm(
+    task: dict[str, Any], outputs: dict[str, Any],
+    length_budgets: Optional[dict[str, int]] = None,
+    forbidden_connectives: Optional[list[str]] = None,
+) -> None:
+    """Per MAREP §17.3. Two-pass check:
+    1. Walk outputs against per-field max_length budgets; reject overruns.
+    2. Scan free-text fields for forbidden conversational connectives.
+
+    Both length_budgets and forbidden_connectives come from agent
+    frontmatter (length_budgets dict; conversational_connectives_forbidden
+    list). When unset, substrate defaults apply (no length budgets;
+    _DEFAULT_FORBIDDEN_CONNECTIVES list).
+    """
+    text_fields = _collect_free_text_fields(outputs)
+    # Length-budget enforcement
+    budgets = length_budgets or {}
+    overruns = []
+    for pattern, limit in budgets.items():
+        # Patterns may use [*] wildcards per MAREP_INTEGRATION_SPEC §5.2
+        for path, text in text_fields.items():
+            if not _section_pattern_matches(path, pattern):
+                continue
+            if len(text) > limit:
+                overruns.append({
+                    "path": path, "pattern": pattern,
+                    "limit": limit, "actual": len(text),
+                })
+    if overruns:
+        raise ContainmentVeto(
+            f"freeform_brainstorm_drift: length-budget overruns: "
+            f"{overruns[:3]}"
+        )
+    # Conversational-connective scan
+    forbidden = forbidden_connectives or list(_DEFAULT_FORBIDDEN_CONNECTIVES)
+    hits = []
+    for path, text in text_fields.items():
+        text_lower = text.lower()
+        for phrase in forbidden:
+            if phrase.lower() in text_lower:
+                hits.append({"path": path, "phrase": phrase})
+    if hits:
+        raise ContainmentVeto(
+            f"freeform_brainstorm_drift: conversational connectives: "
+            f"{hits[:3]}"
+        )
+
+
+def _section_pattern_matches(actual_path: str, pattern: str) -> bool:
+    """JSONPath-subset matcher per MAREP_INTEGRATION_SPEC §5.2.
+
+    Supported forms (formally specified in the spec; recapped here):
+    - `<key>` — top-level subtree (greedy)
+    - `<key>.<subkey>` — traverse one level (strict)
+    - `<key>[*]` — array wildcard (any index, full subtree)
+    - `<key>[*]/<subkey>` — array wildcard + scoped subkey (strict on subkey)
+
+    NOT supported: `..` deep traversal, `[<n>]` numeric indices,
+    `[?pred]` predicates, `[a,b]` slicing.
+
+    Pure-Python stdlib; deterministic; same inputs always produce same
+    matches. No LLM in the matching path.
+    """
+    # Normalize separators: convert '/' to '.' for uniform traversal
+    pattern_normalized = pattern.replace("/", ".")
+    actual_normalized = actual_path.replace("/", ".")
+    pattern_segs = pattern_normalized.split(".")
+    actual_segs = actual_normalized.split(".")
+    # actual must have at least as many segments as pattern (subtree-greedy)
+    if len(actual_segs) < len(pattern_segs):
+        return False
+    for p_seg, a_seg in zip(pattern_segs, actual_segs):
+        # Strip "[N]" or "[*]" from actual segment for base comparison
+        a_base = re.sub(r"\[\d+\]|\[\*\]", "", a_seg)
+        # Wildcard segment ([*] matches any array index)
+        if p_seg.endswith("[*]"):
+            p_base = p_seg[:-3]
+            if p_base != a_base:
+                return False
+        elif "[" in p_seg:
+            # Pattern has explicit indexer (rare; e.g., "issues[0]") — strict
+            if p_seg != a_seg:
+                return False
+        else:
+            # Bare key in pattern: matches the base (with or without index)
+            # of the actual segment. This implements the "<key> matches
+            # subtree (greedy) including any array indexing" semantics
+            # documented in MAREP_INTEGRATION_SPEC §5.2.
+            if p_seg != a_base:
+                return False
+    return True
+
+
+def _is_retro_surface_task(task: dict[str, Any]) -> bool:
+    """Detect whether a task is part of a retro-surface workflow per
+    MAREP_INTEGRATION_SPEC §7.5: explicit operator-set surface attribution
+    via inputs.surface = "retro"."""
+    inputs = task.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        return False
+    return inputs.get("surface") == "retro"
+
+
+def _agent_anti_pattern_config(agent_name: str) -> dict[str, Any]:
+    """Read agent's frontmatter for length_budgets + forbidden_connectives
+    + similarity_threshold. Returns empty dict when agent file missing
+    or frontmatter doesn't declare them."""
+    agent_path = AGENTS_DIR / f"{agent_name}.md"
+    if not agent_path.exists():
+        return {}
+    try:
+        text = agent_path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    if not text.startswith("---"):
+        return {}
+    end = text.find("---", 3)
+    if end < 0:
+        return {}
+    frontmatter = text[3:end]
+    config: dict[str, Any] = {}
+    # length_budgets: dict literal in frontmatter
+    # We parse a flat per-line "<path>: <int>" form under a length_budgets:
+    # block (similar to required_outputs multi-mode parsing).
+    lb_block = re.search(
+        r"^length_budgets:\s*\n((?:[ \t]+\S+:\s*\d+\s*\n)+)",
+        frontmatter, re.MULTILINE,
+    )
+    if lb_block:
+        budgets = {}
+        for m in re.finditer(
+            r"^[ \t]+(\S+):\s*(\d+)\s*$", lb_block.group(1), re.MULTILINE,
+        ):
+            budgets[m.group(1).strip()] = int(m.group(2))
+        config["length_budgets"] = budgets
+    # forbidden_connectives: simple list syntax
+    fc_match = re.search(
+        r"^conversational_connectives_forbidden:\s*\[(.*?)\]",
+        frontmatter, re.MULTILINE | re.DOTALL,
+    )
+    if fc_match:
+        config["forbidden_connectives"] = [
+            s.strip().strip('"').strip("'")
+            for s in fc_match.group(1).split(",") if s.strip()
+        ]
+    return config
+
+
 def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
     if proposed_outputs is None:
         raise ContainmentVeto("null outputs not permitted")
@@ -288,6 +575,26 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
                 raise ContainmentVeto(
                     f"agent {agent_name!r} missing required output keys: "
                     f"{missing}"
+                )
+        # Anti-pattern enforcement (v3.0-alpha.2): scoped to retro-surface
+        # tasks per the explicit inputs.surface attribution.
+        if _is_retro_surface_task(task) and agent_name:
+            config = _agent_anti_pattern_config(agent_name)
+            _check_no_persona_theater(task, proposed_outputs)
+            _check_no_freeform_brainstorm(
+                task, proposed_outputs,
+                length_budgets=config.get("length_budgets"),
+                forbidden_connectives=config.get("forbidden_connectives"),
+            )
+            # Redundant-affirmation check requires prior_turn_outputs;
+            # passed via task.inputs.prior_turn_outputs when the operator
+            # composes a multi-turn chain. No-op when absent.
+            prior = inputs.get("prior_turn_outputs") if isinstance(inputs, dict) else None
+            if prior:
+                threshold = float(inputs.get("redundant_affirmation_threshold", 0.85))
+                _check_no_redundant_affirmation(
+                    task, proposed_outputs,
+                    prior_turn_outputs=prior, threshold=threshold,
                 )
 
 
@@ -2492,6 +2799,192 @@ def _git_committer(task: dict[str, Any],
     }, "", "")
 
 
+# ---- retro-applier (v3.0-alpha.2) ---------------------------------------
+#
+# Deterministic merger of analytical-agent proposals into RETRO_STATE.jsonld.
+# Same pattern as v2.6.0 applier for code changes; scoped to retro state.
+# Per MAREP v2.2 §11 update semantics: deterministic + localized + idempotent
+# + schema-compliant.
+
+_RETRO_STATE_LOCK_TIMEOUT_S = 30
+
+
+def _retro_state_load(path: str) -> Optional[dict]:
+    """Load RETRO_STATE.jsonld; return None on failure."""
+    p = Path(path)
+    if not p.exists():
+        return None
+    try:
+        with p.open(encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _retro_state_chain_hash(state: dict, payload: dict) -> tuple[str, str]:
+    """Compute the next chain_hash for a retro-state audit entry per
+    MAREP v2.2 §7.4 (reuses substrate hiri_sign mechanism).
+    Returns (prev_hash, new_hash)."""
+    audit = state.get("audit") or []
+    if audit:
+        prev = audit[-1].get("chain_hash") or ("0" * 64)
+    else:
+        prev = "0" * 64
+    return prev, hiri_sign(prev, payload)
+
+
+def _retro_collect_proposals(proposals_input: dict) -> dict[str, list]:
+    """Group proposals from multiple upstream tasks by section.
+
+    proposals_input is {source-task-@id: outputs-envelope-dict}.
+    Returns {section: [{@id, source_task_id, item}]}.
+    """
+    by_section: dict[str, list] = {
+        "issues": [], "actions": [], "risks": [], "votes": [],
+        "decisions": [],
+    }
+    for source_task_id, envelope in (proposals_input or {}).items():
+        if not isinstance(envelope, dict):
+            continue
+        outputs = envelope.get("outputs") or envelope
+        if not isinstance(outputs, dict):
+            continue
+        for sec, key in (
+            ("issues", "proposed_issues"),
+            ("actions", "proposed_actions"),
+            ("risks", "proposed_risks"),
+            ("votes", "proposed_votes"),
+            ("decisions", "proposed_decisions"),
+        ):
+            items = outputs.get(key) or []
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                by_section[sec].append({
+                    "source_task_id": source_task_id,
+                    "item": item,
+                })
+    return by_section
+
+
+def _retro_apply(task: dict[str, Any],
+                  upstream: dict[str, Any]) -> WorkerResult:
+    """Merge analytical-agent proposals into RETRO_STATE.jsonld per
+    MAREP_INTEGRATION_SPEC §8.
+
+    Inputs:
+      retro_state_path: str (required)
+      proposals: dict[source-task-@id, envelope]  (or pulled from UPSTREAM)
+      version_read: int (CAS check; reject on mismatch)
+      surface: "retro" (per anti-pattern enforcement scoping)
+    """
+    inputs = task.get("inputs") or {}
+    state_path = inputs.get("retro_state_path")
+    if not state_path:
+        return WorkerResult(True, {
+            "error": "retro_state_path_missing",
+            "details": "inputs.retro_state_path is required",
+        }, "", "")
+    state = _retro_state_load(state_path)
+    if state is None:
+        return WorkerResult(True, {
+            "error": "retro_state_unreadable",
+            "path": state_path,
+            "details": "RETRO_STATE.jsonld does not exist or is not valid JSON",
+        }, "", "")
+    expected_version = inputs.get("version_read")
+    current_version = state.get("retro", {}).get("version", 0)
+    if expected_version is not None and current_version != expected_version:
+        return WorkerResult(True, {
+            "error": "version_mismatch",
+            "details": (f"current_version={current_version}, "
+                         f"expected_version={expected_version}"),
+            "current_version": current_version,
+            "expected_version": expected_version,
+        }, "", "")
+    # Proposals come from inputs.proposals OR from upstream
+    proposals_input = inputs.get("proposals") or upstream or {}
+    by_section = _retro_collect_proposals(proposals_input)
+    applied: list[dict] = []
+    failed: list[dict] = []
+    # Idempotent merge: skip when @id already present in target section
+    for section, items in by_section.items():
+        if not items:
+            continue
+        target = state.setdefault(section, [])
+        existing_ids = {
+            it.get("@id") or it.get("id") for it in target
+            if isinstance(it, dict)
+        }
+        for entry in items:
+            item = entry["item"]
+            source_task_id = entry["source_task_id"]
+            item_id = item.get("@id") or item.get("id")
+            if not item_id:
+                failed.append({
+                    "section": section,
+                    "source_task_id": source_task_id,
+                    "reason": "schema_violation",
+                    "details": "proposal missing @id/id field",
+                })
+                continue
+            if item_id in existing_ids:
+                # Idempotent: already merged
+                continue
+            target.append(item)
+            existing_ids.add(item_id)
+            applied.append({
+                "section": section,
+                "@id": item_id,
+                "source_task_id": source_task_id,
+            })
+    # Increment version + audit entry per accepted mutation (even when
+    # all proposals were idempotent no-ops, the dispatch still records).
+    new_version = current_version + 1
+    state.setdefault("retro", {})["version"] = new_version
+    audit_payload = {
+        "event": "retro_mutation",
+        "task_id": task.get("@id"),
+        "version": new_version,
+        "diff_summary": (
+            f"merged {len(applied)} proposal(s) from "
+            f"{len(proposals_input)} source task(s); "
+            f"{len(failed)} failed"
+        ),
+        "affected_sections": sorted({a["section"] for a in applied}),
+    }
+    prev_hash, new_hash = _retro_state_chain_hash(state, audit_payload)
+    state.setdefault("audit", []).append({
+        "version": new_version,
+        "prev_hash": prev_hash,
+        "chain_hash": new_hash,
+        "timestamp": time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **audit_payload,
+    })
+    # Atomic write via the substrate's _atomic_write helper
+    try:
+        _atomic_write(Path(state_path),
+                       json.dumps(state, indent=2, sort_keys=False))
+    except OSError as e:
+        return WorkerResult(True, {
+            "error": "retro_state_write_failed",
+            "details": str(e),
+        }, "", "")
+    return WorkerResult(True, {
+        "applied": applied,
+        "failed": failed,
+        "retro_state_version": new_version,
+        "summary": (
+            f"applied {len(applied)} proposal(s) from "
+            f"{len(proposals_input)} source task(s); "
+            f"{len(failed)} failed; retro state at version {new_version}"
+        ),
+    }, "", "")
+
+
 SYSTEM_AGENTS = {
     "applier": _apply_changes,
     "mojibake-repair": _mojibake_repair,
@@ -2499,6 +2992,7 @@ SYSTEM_AGENTS = {
     "verification-ritual": _verification_ritual,
     "test-runner": _test_runner,
     "git-committer": _git_committer,
+    "retro-applier": _retro_apply,
 }
 
 

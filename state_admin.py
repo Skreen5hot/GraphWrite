@@ -505,6 +505,67 @@ def cmd_phase_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_phase_complete_declaration(args: argparse.Namespace) -> int:
+    """Emit a phase_complete_declared audit event (v3.0-alpha.2).
+
+    Operator-authoritative declaration that a phase has met its
+    acceptance criteria. NOT a predicate-derived assertion — the
+    operator names the phase and certifies completion; the substrate
+    records it. Future automation hook (AC-pass rollup via test-runner
+    or similar) remains future work; v3.0-alpha.2 ships only the
+    operator-declared event mechanism per Aaron's CP2 observation #4.
+
+    Typical use sequence:
+        state_admin phase-complete-declaration phase-3 \\
+            --anchor-task <id> \\
+            --acceptance-criteria-met AC-3.1,AC-3.2,AC-3.3 \\
+            --rationale "Operator-reviewed; all ACs verified; ready for phase-4 entry"
+        state_admin phase-boundary phase-3 phase-4 --anchor-task <id>
+        state_admin forward-track inherit --from-phase phase-3 --to-phase phase-4
+
+    The three commands are deliberately separate — the operator may
+    declare phase-complete without immediately transitioning the
+    boundary (e.g., to allow phase-exit retro deliberation first).
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.anchor_task)
+    if task is None:
+        print(f"anchor task not found: {args.anchor_task}", file=sys.stderr)
+        return 1
+    if not args.rationale or not args.rationale.strip():
+        print("--rationale is required (operator's stated justification "
+              "for declaring phase complete)", file=sys.stderr)
+        return 1
+    acs_met = []
+    if args.acceptance_criteria_met:
+        acs_met = [
+            ac.strip() for ac in args.acceptance_criteria_met.split(",")
+            if ac.strip()
+        ]
+    payload: dict[str, Any] = {
+        "phase": args.phase,
+        "acceptance_criteria_met": acs_met,
+        "rationale": args.rationale.strip(),
+        "declared_by": args.declared_by,
+        "declaration_kind": "operator_authoritative",
+    }
+    if args.acceptance_criteria_pending:
+        payload["acceptance_criteria_pending"] = [
+            ac.strip()
+            for ac in args.acceptance_criteria_pending.split(",")
+            if ac.strip()
+        ]
+    if args.notes:
+        payload["notes"] = args.notes
+    _append_audit(task, "phase_complete_declared", payload)
+    _save_state(state_path, state)
+    print(f"phase-complete-declared: {args.phase}  "
+          f"(anchored on {args.anchor_task})  "
+          f"{len(acs_met)} AC(s) certified met")
+    return 0
+
+
 def _forward_track_id(task: dict[str, Any]) -> str:
     """Generate a forward_track_id stable to the anchor task + sequence."""
     task_id = task.get("@id", "unknown")
@@ -903,12 +964,17 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     ".claude/agents/adversarial-critic.md",
     ".claude/agents/applier.md",
     ".claude/agents/architect.md",
+    ".claude/agents/delivery-manager.md",
     ".claude/agents/developer.md",
     ".claude/agents/git-committer.md",
+    ".claude/agents/marep-orchestrator.md",
     ".claude/agents/mojibake-repair.md",
     ".claude/agents/planner.md",
+    ".claude/agents/qa.md",
     ".claude/agents/question-resolver.md",
     ".claude/agents/reconnaissance.md",
+    ".claude/agents/retro-applier.md",
+    ".claude/agents/risk-analyst.md",
     ".claude/agents/semantic-sme.md",
     ".claude/agents/spec-reviewer.md",
     ".claude/agents/synthesist.md",
@@ -929,12 +995,16 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "surfaces/verification/categories/cat-10-type-field-structure.md",
     "surfaces/verification/categories/cat-10-type-field-structure.py",
     "surfaces/_primitives/bounded-authority-orchestrator.md",
+    "surfaces/_primitives/episodic-to-semantic-promotion.md",
     "surfaces/retro/surface-spec.md",
     "surfaces/retro/agents/orchestrator.md",
     "surfaces/retro/agents/architect.md",
     "surfaces/retro/agents/developer.md",
     "surfaces/retro/agents/user-advocate.md",
     "surfaces/retro/agents/skeptic.md",
+    "surfaces/retro/agents/qa.md",
+    "surfaces/retro/agents/delivery-manager.md",
+    "surfaces/retro/agents/risk-analyst.md",
     "surfaces/retro/phases/01-gathering.md",
     "surfaces/retro/phases/02-merge.md",
     "surfaces/retro/phases/03-analysis.md",
@@ -953,6 +1023,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "tests/test_question_resolver.py",
     "tests/test_reconciliation.py",
     "tests/test_retro_surface_foundation.py",
+    "tests/test_v3_alpha_2_substrate.py",
     "tests/test_routing.py",
     "tests/test_state_admin.py",
     "tests/test_test_runner.py",
@@ -1198,6 +1269,31 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="optional operator notes")
     p_phase.add_argument("--declared-by", default="operator")
     p_phase.set_defaults(func=cmd_phase_boundary)
+
+    p_pc = sub.add_parser(
+        "phase-complete-declaration",
+        help=("emit a phase_complete_declared audit event "
+              "(v3.0-alpha.2; operator-authoritative)"),
+    )
+    p_pc.add_argument("phase",
+                       help="phase identifier being declared complete "
+                            "(e.g., phase-3)")
+    p_pc.add_argument("--anchor-task", required=True,
+                       help="task @id to anchor the audit event against")
+    p_pc.add_argument("--rationale", required=True,
+                       help="operator's stated justification for declaring "
+                            "the phase complete; recorded in audit chain")
+    p_pc.add_argument("--acceptance-criteria-met", default=None,
+                       help="comma-separated list of AC identifiers the "
+                            "operator certifies as met (e.g., AC-3.1,AC-3.2)")
+    p_pc.add_argument("--acceptance-criteria-pending", default=None,
+                       help="comma-separated list of AC identifiers known "
+                            "incomplete at declaration time (operator "
+                            "acknowledges; documented for audit)")
+    p_pc.add_argument("--notes", default=None,
+                       help="optional operator notes")
+    p_pc.add_argument("--declared-by", default="operator")
+    p_pc.set_defaults(func=cmd_phase_complete_declaration)
 
     p_ft = sub.add_parser("forward-track",
                            help="forward-track surface operations (Spec 07)")

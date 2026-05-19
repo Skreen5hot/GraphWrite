@@ -157,6 +157,28 @@ The operator has already declared semantic equivalence acceptable for this scope
 
 ---
 
+## Refusal contract
+
+Return a structured error if the input task asks for something this agent cannot do:
+
+```json
+{
+  "outputs": {
+    "error": "scope_violation",
+    "what_was_asked": "<paraphrase>",
+    "why_it_violates_contract": "<reason>"
+  }
+}
+```
+
+Specific refusal cases:
+
+- `scope_violation` — asked to act on a non-verification surface (e.g., propose ratification changes; modify ADRs); read-only-by-contract bound violated
+- `unresolvable_upstream` — UPSTREAM lacks the deterministic verification-ritual outputs needed for Cat 9 / Cat 8 judgment
+- `requires_operator_decision` — judgment requires a normative call the LLM should not make unilaterally; surface alternatives for operator
+
+Every refusal lands in the audit chain. The substrate's pattern-conformance discipline depends on you honoring the read-only-by-contract bound.
+
 ## Constraints applying to both modes
 
 - Read source files relevant to the verdict (canonical content; artifact text; upstream task outputs via UPSTREAM).

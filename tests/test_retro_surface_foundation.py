@@ -62,12 +62,12 @@ class TestRetroSurfaceFoundation(unittest.TestCase):
 
     def test_role_bindings_load(self):
         bindings = d._load_retro_role_bindings()
-        # v3.0-alpha.1 ships 5 role stubs:
-        # @Orchestrator, @Architect, @Developer, @UserAdvocate, @Skeptic.
-        # @QA, @DeliveryManager, @RiskAnalyst land v3.0-alpha.2.
-        self.assertEqual(len(bindings), 5)
+        # v3.0-alpha.1 shipped 5 role stubs; v3.0-alpha.2 added
+        # @QA, @DeliveryManager, @RiskAnalyst. Total: 8.
+        self.assertEqual(len(bindings), 8)
         for role in ("@Orchestrator", "@Architect", "@Developer",
-                     "@UserAdvocate", "@Skeptic"):
+                     "@UserAdvocate", "@Skeptic",
+                     "@QA", "@DeliveryManager", "@RiskAnalyst"):
             self.assertIn(role, bindings,
                           f"role {role!r} stub missing")
 
