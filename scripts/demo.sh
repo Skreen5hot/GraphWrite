@@ -5,6 +5,12 @@
 
 set +e
 
+# Optional: --no-cleanup to leave emitted artifacts on disk for inspection
+NO_CLEANUP=0
+for arg in "$@"; do
+    [ "$arg" = "--no-cleanup" ] && NO_CLEANUP=1
+done
+
 heading() {
     printf "\n\033[36m=== %s ===\033[0m\n" "$1"
 }
@@ -15,10 +21,18 @@ cmd() {
     printf "\n\033[90m(exit code: %d)\033[0m\n" "$?"
 }
 
+# Setup: ensure node_modules exists (fresh-clone reviewers may not have run npm install)
+if [ ! -d node_modules ]; then
+    heading "Setup (first-time only)"
+    cmd "Install dependencies (node_modules missing)" "npm install"
+fi
+
 heading "Build"
 cmd "Compile TypeScript" "npm run build"
 
 heading "Validate a clean v0.4 fixture"
+# Phase 1 task 1.3 ships 2 of 26 SPEC-declared validation codes (MISSING_REALIST_ANCHOR + INVALID_SPEC_VERSION);
+# remaining 24 codes are forward-tracked at ft-097-test-validator-2 (see V3.2-GAP-REGISTRY.md).
 cmd "Validate minimal canonical v0.4 (expect 0 hard errors)" \
     "node dist/cli/index.js validate test/fixtures/canonical-v0.4/minimal.jsonld"
 
@@ -46,6 +60,10 @@ cmd "export --format zip stub (Phase 4)" \
     "node dist/cli/index.js export test/fixtures/canonical-v0.4/minimal.jsonld --format zip --out demo.zip"
 
 heading "Deterministic flag"
+# Deterministic mode produces byte-identical output across runs/machines. Load-bearing for:
+# - audit chain reproducibility
+# - cross-substrate-revision drift detection (byte-comparison against golden files)
+# - any future cross-instance verification (FNSR-relevance: reproducibility is the basis of audit-trail honesty at scale)
 cmd "Export with --deterministic --seed --clock (UUIDv5 + frozen clock)" \
     "node dist/cli/index.js export test/fixtures/canonical-v0.4/minimal.jsonld --format turtle --out demo-deterministic.ttl --deterministic --seed myseed --clock 2026-01-01T00:00:00Z"
 
@@ -53,8 +71,12 @@ heading "Run the spec test suite"
 cmd "npm test (expect 106/106 passing across 14 files)" "npm test"
 
 heading "Cleanup"
-rm -f demo-output.ttl demo-output.nt demo-deterministic.ttl merged.jsonld demo.zip
-printf "\033[90mdemo artifacts removed\033[0m\n"
+if [ "$NO_CLEANUP" = "1" ]; then
+    printf "\033[90mCleanup skipped (--no-cleanup); inspect demo-output.ttl, demo-output.nt, demo-deterministic.ttl\033[0m\n"
+else
+    rm -f demo-output.ttl demo-output.nt demo-deterministic.ttl merged.jsonld demo.zip
+    printf "\033[90mdemo artifacts removed (re-run with --no-cleanup to inspect emitted output)\033[0m\n"
+fi
 
 printf "\n\033[36m=== Phase 1 CLI demo complete ===\033[0m\n"
 printf "\033[90mSee project/IMPLEMENTATION_PLAN.md for the 12 Phase 1 tasks; V3.2-GAP-REGISTRY.md for substrate observations.\033[0m\n"
