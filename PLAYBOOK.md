@@ -942,6 +942,88 @@ The state.jsonld is operator-mutable. Sometimes the right move is to surgically 
 
 ---
 
+## 7.5 Substrate properties worth knowing (Phase 1 surfaced)
+
+These are emergent properties the substrate provides — not designed-in invariants explicitly documented in earlier releases, but properties that surfaced when the substrate operated in production conditions (subject-project mode dispatching subject-project work through the Pass 2a chain). Operators can rely on these properties; future substrate work should preserve them.
+
+### Property 1: Character-level fidelity preservation against LLM-output corruption
+
+The applier's strict `before`-match-before-write discipline operates as **semantic-memory integrity preservation**, not just as change-correctness checking. When a developer agent emits output containing undecodable bytes (e.g., U+FFFD Unicode replacement character from a JSON-decoding mishap on the dispatch boundary), the applier's `before`-snippet match check refuses to write the corrupted content unless `before` happens to match disk — which it typically won't for corrupted output.
+
+**Mechanism:** [`_apply_changes`](fnsr_daemon.py) reads the target file with explicit UTF-8 decoding and matches the developer-proposed `before` snippet via Python's `string.find()`. If the developer's output contains corrupted bytes that don't appear at the expected location on disk, the count returns 0 and the change vetoes with `before_not_found`. The corruption never lands.
+
+**Operator-relevant implication:** Operators don't need to manually screen every developer-shaped agent output for character-level corruption — the strict before-match acts as a circuit breaker. The protection is structural; it operates whenever a developer-shaped agent's output is the source of a state mutation. Future operators reviewing audit history for `before_not_found` failures should consider that some of those failures are the substrate catching real corruption, not just developer scope-framing mistakes.
+
+**Generalizes to:** Any future subject-project work where developer-shaped agents produce output that mutates canonical state. Character-level fidelity is preserved by the applier's match-before-write check; corruption in the developer's output gets caught before it lands.
+
+### Property 2: Partial-application graceful degradation
+
+When a developer-proposed `changes[]` contains N changes and some subset fails to apply (e.g., `before_not_found`, `before_not_unique`), the applier preserves the successful changes on disk while documenting both `applied[]` and `failed[]` lists in the audit chain via the `apply_partial_failure` structured-error path. The CPS veto fires on the task overall (status: `blocked`), but the substantive work that landed is **NOT rolled back**. Operators inspect the audit chain to see exactly what landed and what didn't.
+
+**Mechanism:** The applier processes each change in lexicographic-by-`id` order, computing positions against the original file content. Successful changes are written; failed ones are recorded in the `failed[]` list of the structured-error output. The audit chain entry includes both lists, so a future operator can re-derive the partial state precisely.
+
+**Operator-relevant implication:** The substrate doesn't go from "working" to "broken" when individual changes fail. It goes from "fully-applied" to "partially-applied with full documentation of what landed and what didn't." Recovery from partial failure is **composable with the rest of the substrate's discipline** — operators see what's needed via audit inspection and dispatch follow-up chains for the remainder. The partial state itself is a first-class operational state, not an error to be cleaned up before continuing.
+
+**Generalizes to:** Any multi-change operation where individual changes may fail for various reasons (drift between proposal and disk; non-unique before-snippets; encoding-corrupted developer output). The substrate's graceful degradation means partial success carries forward.
+
+### Property 3: Drift detection across template-sync manifest members
+
+The `template-sync` command's verify mode operates as **substrate self-state-corruption detection** — surfacing accumulated drift between substrate-shared files across the template-sync manifest's targets (typically: subject-project repos, substrate template repos, third-tier template-template repos) without auto-correcting. The detection produces structured per-file / per-target output (`content_differs` or `absent_from_target`). Operators review the structured drift report; bulk correction requires explicit `--mode sync` operator action gated by operator-review-before-queuing per §4.10.
+
+**Mechanism:** `template-sync --mode verify` walks the manifest (substrate-shared file paths declared in `_DEFAULT_TEMPLATE_SYNC_MANIFEST` or via `--manifest`), reads each file's bytes from source and each target, and reports any byte-level mismatch. The check is deterministic; no LLM in the path; no auto-correction without operator opt-in.
+
+**Operator-relevant implication:** Drift detection is a circuit breaker against silent state-corruption across the substrate's multi-repo footprint. Without periodic `template-sync --mode verify`, drift can accumulate invisibly until a downstream operation surfaces confusion about which substrate version applies. Operators should treat verify-mode as **substrate hygiene** — run it not only at sync time but also as a discovery step before any cross-repo work, and as part of routine release checklists. The substrate surfaces; the operator decides; bulk correction goes through the operator-review-before-queuing pattern, not auto-application.
+
+**Generalizes to:** Any future substrate-canonical set where the substrate spans multiple file-system locations. The substrate-vs-procedure distinction holds at the synchronization layer: the substrate's job is to detect; the operator's job is to deliberate on the detected delta and authorize bulk action.
+
+### Property 4: Defer rather than degrade when discipline cannot operate cleanly
+
+The substrate is **willing to leave canonical state in a known-deferred condition rather than land degraded content** when its discipline cannot operate cleanly through the chain machinery. This applies at both the per-change level (Property 1: refused U+FFFD-bearing developer output) and the per-chain level (closure canonical-doc chain refused to land when the reconnaissance LLM systematically failed contract-compliance across two dispatches; the chain deferred to a future substrate release rather than route around the discipline).
+
+**Mechanism:** When a chain's required upstream step (e.g., reconnaissance for substantive changes per Spec 03) cannot produce contract-compliant output across operator-refined dispatch attempts, the operator's recovery path is **NOT** to bypass the chain (manual edit; routing as editorial; ad-hoc operator action). The substrate-discipline-preserving recovery is to:
+
+1. Document the discipline-boundary blocker explicitly (banking event + gap registry entry)
+2. Commit the deferred work to a named future deliberation cycle via forward-track event (Spec 07)
+3. Leave the canonical state unchanged until the substrate refinement that resolves the blocker lands
+
+The audit chain captures: chain attempted; chain blocked; explicit deferral commitment; deferred re-dispatch as one of the future substrate release's first validation tasks. Every step is citable.
+
+**Operator-relevant implication:** When operators encounter a chain that won't complete because the substrate's discipline can't operate cleanly, the impulse to "ship-anyway via manual operator action" is the wrong impulse. The substrate's discipline is more valuable preserved than violated for one-off cases. The deferred state IS the operating state; the deferral IS the substrate's discipline operating; the next substrate release that resolves the blocker provides the natural re-dispatch moment. Future operators reading the audit chain see explicit deferral commitments rather than retroactively-explained shortcuts.
+
+**Generalizes to:** Any future work where the substrate's discipline cannot operate cleanly under current substrate state. Common-case examples: a CPS check correctly catches non-compliant LLM output across multiple retries; a chain step requires substrate functionality that doesn't yet exist; an LLM-instruction-fidelity boundary surfaces that substrate clarity refinements would resolve. In every such case, the substrate's defer-rather-than-degrade property keeps canonical state trustworthy.
+
+**Why this matters for FNSR-larger-scope work:** The synthetic moral person project will require substrate that defers rather than degrades at every normative boundary where degradation would compromise audit-chain honesty. Normative apparatus producing degraded outputs because "shipping-anyway" felt easier than waiting for the substrate refinement is exactly the failure mode FNSR work cannot afford. The substrate's discipline of defer-rather-than-degrade is the architectural answer — and the property is now demonstrated under production conditions, not just designed-in.
+
+**Two modes (reactive and preventive):** The property operates in both retrospective and pattern-recognized forms:
+
+- **Reactive mode** (first demonstration via Phase 1 task 1.1 R9): chain attempted; chain failed at a substrate-discipline boundary the substrate couldn't operate through; operator adjudicated deferral after the failure surfaced. Audit chain shows: attempted → failed → adjudicated → deferred.
+- **Preventive mode** (subsequent demonstrations via Phase 1 task 1.2 H2 + task 1.3 H2): pattern recognized from prior empirical evidence (gap-11 scope-dependent failure across two task-1.1-closure attempts); operator applied deferral pre-emptively without spending dispatches to confirm predictable failure. Audit chain shows: pattern-recognized → deferred → re-dispatch-committed-to-future-cycle.
+
+The preventive mode requires informed-operator pattern recognition. The reactive mode requires only the substrate's CPS catching the failure. Both modes are valid; the preventive mode is more efficient when conditions reliably produce degradation. The substrate's audit chain documents both modes identically — the deferral is the same audit event whether triggered by failure or by pattern recognition. The discipline is the same; the cost is lower in preventive mode.
+
+This distinction is empirically grounded by three demonstrations across Phase 1 tasks 1.1, 1.2, 1.3 (one reactive + two preventive). Operators recognizing reliably-failing conditions in subject-project work should apply preventive H2 / R9 when the pattern is established; otherwise reactive R9 is the recovery shape.
+
+**Downstream-task cleanup is part of the deferral, not a separate step.** When R9 / H2 deferral applies to a chain whose downstream tasks are still in `ready` state (waiting on the blocked upstream), the deferral process MUST include abandoning those downstream tasks with `replaced_by` pointing at the forward-track event. Failing to do this leaves "ready-but-unreachable" remnants — tasks the daemon will never dispatch (their `depends_on` chain is broken) but that clutter the `ready` count and produce misleading operator-status output.
+
+Concrete pattern when applying R9:
+
+1. Bank the deferral observation on the closure-relevant anchor task (e.g., test-runner verdict task)
+2. Update gap registry with the consequence of the deferral
+3. Create the forward-track event committing the deferred work to a future cycle
+4. **Abandon any downstream tasks in the deferred chain that are still `ready`**, with `--replaced-by <forward-track-id>` citing the forward-track from step 3 as their replacement
+
+The fourth step is administrative but load-bearing: without it, `state_admin status` and any downstream operator queries against the substrate's introspection produce confusing output (apparent ready-tasks that the daemon won't pick up). The audit chain stays honest only when all blocked downstream tasks have explicit `operator_reset` events documenting why they're inert.
+
+This refinement was surfaced during Phase 1 task 1.1 closure cleanup (after-the-fact correction); subsequent R9 / H2 deferrals should include downstream-cleanup-as-part-of-deferral by default.
+
+### Why these properties are documented here
+
+All four properties were present in the substrate code from earlier releases (Property 1 + 2 since v2.6.0 applier; Property 3 since v2.9.0 template-sync; Property 4 since v2.7.0 Spec 03 ratification refusal contract + Spec 07 forward-track surface) but were not explicitly named — they were assumed, not advertised. Documenting them here makes them citable: future operators planning subject-project work can rely on these properties; future substrate refinements should not regress them.
+
+The pattern surfacing them was Phase 1 task 1.1 dispatch + recovery under real conditions where the developer's LLM-mediated output had encoding mishaps (Properties 1+2), a routine cross-repo sync surfaced accumulated drift (Property 3), and the reconnaissance LLM systematically failed contract-compliance across two dispatches (Property 4 via R9 deferral). The substrate handled all four cases gracefully — refused corrupt writes, degraded partial-application cleanly, surfaced drift for operator review, deferred a stalled chain to a future release — without auto-correcting beyond what operators authorized and without degrading canonical state via operator-ad-hoc shortcuts. That's the substrate-as-substrate property holding in its actual intended configuration: detection without overreach; structured observation without silent action; **deferral without degradation**.
+
+---
+
 ## 8. Cross-platform gotchas
 
 ### Windows + OneDrive

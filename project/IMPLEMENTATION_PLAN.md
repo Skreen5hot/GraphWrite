@@ -16,6 +16,8 @@ This document is the per-phase tactical companion to ROADMAP.md. It provides sub
 
 **Depends on:** No predecessors.
 
+**Status:** Substantively Complete — all 12 Phase 1 tasks (1.1–1.12) shipped at substrate-side with 106/106 tests passing across 14 spec test files. Per-task closure canonical-doc updates (this section's per-task Status reflections) deferred to v3.2 via the H2 preventive-deferral pattern per PLAYBOOK §7.5 Property 4; the canonical-doc closure chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. Known follow-ups tracked in [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md): per-code fixtures for structural-validator's remaining 24 codes (ft-097-test-validator-2); emitter scope-split for semantic-jsonld + mermaid + markdown (ft-112-test-emitter-typefix-2); OED-303 + OED-313 closure pending; coverage AC (§21.2) wired to CI when CI lands.
+
 **OED gates:**
 - OED-306 must close before Phase 1 golden files are committed.
 - OED-307 must close before CLI integration tests for stub commands are authored.
@@ -275,7 +277,8 @@ All must be true before Phase 2 begins:
 2. Each §17.2 error code unit-tested against its dedicated malformed fixture.
 3. Each §17.3 warning and §17.4 info code has at least one unit test.
 4. All golden Turtle and N-Triples files parse cleanly under N3.js in CI.
-5. Canonical round-trip bytewise for all conformance fixtures.
+5. Canonic
+al round-trip bytewise for all conformance fixtures.
 6. All four property-based invariants pass.
 7. CLI integration tests pass for `validate`, `export` (non-stub formats), `migrate`, `refactor-iri`.
 8. Deterministic CI job passes (§21.4).

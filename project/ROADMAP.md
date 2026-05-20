@@ -33,7 +33,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Goal:** Deliver the deterministic Node.js core that validates VMP projects and emits every required artifact.
 
-**Status:** Not Started
+**Status:** Substantively Complete (12 of 12 P1 tasks; 106/106 tests passing across 14 spec test files). Per-task closure canonical-doc updates (this section's per-task status reflections) deferred to v3.2 via the H2 preventive-deferral pattern documented in PLAYBOOK §7.5 Property 4; canonical-doc chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. See [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md) for the 14 gaps surfaced and the 12 forward-tracks at v3.2-design cycle. Phase 1 exit-gate items (OED-303, OED-313) remain open; per-code fixtures + comprehensive golden files + emitter scope-split follow-ups (semantic-jsonld, mermaid, markdown) also pending per the audit chain.
 
 **Scope:**
 - VMP profile and canonical serializer (§5, §5.3).

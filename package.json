@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/kernel/index.js",
   "types": "dist/kernel/index.d.ts",
+  "bin": {
+    "graphwrite": "dist/cli/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "build:tests": "tsc -p tsconfig.test.json",
@@ -29,9 +32,12 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@types/n3": "^1.26.1",
     "@types/node": "^22.0.0",
-    "rimraf": "^6.0.0"
+    "fast-check": "^3.0.0",
+    "n3": "^1.21.0",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=22.0.0"

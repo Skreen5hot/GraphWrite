@@ -97,3 +97,20 @@
 - Phase 4 exit gate will not close until all Phase 4 fixtures in OED-313 have passing golden files
 - Fixture scope is now an explicit, auditable decision rather than an implicit engineering choice
 - The OED-313 resolution task must be queued before either Phase 1 or Phase 4 can be declared complete
+
+---
+
+## ADR-006: VMP Canonical Serializer Uses Custom Recursive Key-Sorter
+
+**Date:** 2026-05-19
+
+**Decision:** Implement the VMP canonical serializer (`serializeVmp`) as a custom recursive key-sorter operating on plain JS objects, not via JSON-LD library expansion/compaction.
+
+**Context:** SPEC.md §5.3 defines a deterministic serialization form requiring positional top-level key ordering, named-array sorting by element `id`, IRI-array lexicographic sorting, and ISO 8601 timestamp normalization. Two strategies were available: (1) use a `jsonld` npm library expansion/compaction pipeline; (2) implement a purpose-built recursive sorter over plain JS objects. Option 1 adds a runtime dependency, carries remote-context-fetch risk (mitigated by the bundled context, but the library's compaction pipeline may emit non-deterministic key orderings across versions), and diverges from the zero-runtime-dependency constraint established by ADR-001. Option 2 requires no new dependency, is fully transparent, and produces stable output entirely determined by this codebase. IMPLEMENTATION_PLAN.md §1.1 explicitly constrains the approach: "Implement as a custom recursive key-sorter on plain JS objects, not via JSON-LD expansion/compaction. Use the JSON-LD library only at the semantic-export boundary."
+
+**Consequences:**
+- Zero runtime dependency added; the kernel zero-dependency constraint (ADR-001) is preserved
+- The normative §5.2 `@context` is bundled as `VMP_CONTEXT` in `src/kernel/canonicalize.ts` — no remote fetch occurs at any point in the serialization path
+- Serialization output is fully determined by `serializeVmp`; no library-version variance
+- Timestamp normalization (strip fractional seconds, replace offsets with `Z`) is the serializer's responsibility, not the caller's; callers may pass non-canonical timestamps and receive normalized output
+- The JSON-LD library (if adopted) is deferred to Phase 1 task 1.5 (semantic-export boundary) where expansion/compaction semantics are required

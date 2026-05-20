@@ -1,0 +1,85 @@
+﻿{
+  "@context": {
+    "cco": "https://www.commoncoreontologies.org/",
+    "ecm": "https://edgecanonical.org/ns/modeler#",
+    "ecm:classIris": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "ecm:instances": {
+      "@container": "@set"
+    },
+    "ecm:isSerializationOf": {
+      "@type": "@id"
+    },
+    "ecm:layouts": {
+      "@container": "@set"
+    },
+    "ecm:literalAssertions": {
+      "@container": "@set"
+    },
+    "ecm:objectIri": {
+      "@type": "@id"
+    },
+    "ecm:ontologies": {
+      "@container": "@set"
+    },
+    "ecm:predicateIri": {
+      "@type": "@id"
+    },
+    "ecm:relations": {
+      "@container": "@set"
+    },
+    "ecm:serializations": {
+      "@container": "@set"
+    },
+    "ecm:snapshots": {
+      "@container": "@set"
+    },
+    "ecm:subjectIri": {
+      "@type": "@id"
+    },
+    "ecm:terms": {
+      "@container": "@set"
+    },
+    "iao": "http://purl.obolibrary.org/obo/iao#",
+    "iao:isAbout": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "id": "@id",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "rdfs:subClassOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "rdfs:subPropertyOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "type": "@type",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  },
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
+  "type": [
+    "ecm:Project",
+    "iao:OntologyDesignPattern"
+  ],
+  "ecm:specVersion": "0.4",
+  "ecm:createdAt": "2026-01-01T00:00:00Z",
+  "ecm:instances": [],
+  "ecm:layouts": [],
+  "ecm:literalAssertions": [],
+  "ecm:name": "Minimal v0.4 Project",
+  "ecm:ontologies": [],
+  "ecm:relations": [],
+  "ecm:serializations": [],
+  "ecm:snapshots": [],
+  "ecm:terms": [],
+  "ecm:updatedAt": "2026-01-01T00:00:00Z",
+  "iao:isAbout": [
+    "https://example.org/subjects/CustomerOrders"
+  ]
+}

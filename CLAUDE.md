@@ -219,13 +219,26 @@ reconnaissance → ratification → operator-applier (v2.7.0)
                               → commit-finalize  (v2.8.0+)
 ```
 
-**Editorial-correction chain** (typo fixes, formatting consistency, terminology tightening that preserves semantics, citation format updates):
+**Editorial-correction chain** (typo fixes, formatting consistency, terminology tightening that preserves semantics, citation format updates, mojibake repair preserving semantics):
 
 ```
 ratification → operator-applier
 ```
 
 Reconnaissance is bypassed. The architect's `editorial_verdict: editorial` classification permits this.
+
+### Chain-shape variation by artifact kind (gap-3 amendment, Phase 1 surfaced)
+
+The default-substantive and editorial-correction chains above describe the **structural shape** of Pass 2a sequencing. Operators selecting which auxiliary system agents to compose into the chain MUST consider the artifact kind of the proposal:
+
+| Artifact kind | Operator chain composition |
+|---|---|
+| **Canonical-doc** (`project/DECISIONS.md`, `project/SPEC.md`, `project/ROADMAP.md`, `surfaces/...`, `.claude/agents/...`, `arc/...`) | Include `verification-ritual` upstream of ratification when the proposal contains ADR / spec-section / Q-ruling / reason-code citations. The ritual's categories (Cat 1–10) are designed for canonical-doc citation verification. Include `mojibake-repair` between developer and applier when the developer produces new content with non-ASCII characters on a Windows-encoded operator environment. |
+| **Code** (TypeScript / Python source files; tests; build configuration) | Skip `verification-ritual` — its categories are canonical-doc-shaped (citations into SPEC sections, ADRs, etc.); TypeScript code carries no equivalent citation density. Include `mojibake-repair` between developer and applier when the developer produces new content with non-ASCII characters (comments, JSDoc, string literals). The substrate's `test-runner` is the verification step for code; queue it downstream of applier. |
+| **Mojibake-recovery editorial-correction** (in-place edits where disk already contains mojibake) | Do NOT include `mojibake-repair` in the chain — it cleans both `before` AND `after` uniformly, which breaks the applier's `before`-snippet match against mojibake-laden disk content. Use ASCII-only developer instructions with `\uXXXX` escape guidance for non-ASCII characters in `after` content. Gap-7 + gap-8 v3.2 refinement candidates will lift this restriction (e.g., `clean_before: false` flag; BOM-on-edit applier behavior). |
+| **External-side-effect** (`git-committer` and future analogous agents) | Per PLAYBOOK §4.10: operator-review-before-queuing pattern; safety-defaulted refusals with explicit `bypass_reason` opt-in; do not chain to subsequent external operations. |
+
+The substrate's `surfaces/verification/` categories define the verification surface for canonical-doc artifacts; subject-project code has a separate verification path via `test-runner`. This artifact-kind distinction is operator-discipline at v3.0 / v3.1.0; v3.2 candidates include append-time substrate validation to recommend or enforce chain composition by detected artifact kind.
 
 **Brief-confirmation chain** (follow-up commit for an amendment to a prior ratified change):
 

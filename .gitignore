@@ -19,3 +19,8 @@ raw_output.txt
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Operator scratch workitems (task chain dispatch JSONs; not project artifacts)
+# Phase 1 used phase1-task-*-chain.json + variants for dispatch payloads.
+# These are operator-side workitems; the canonical record is in state.jsonld's audit chain.
+phase*-task-*.json

@@ -1,0 +1,17 @@
+﻿{
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000030",
+  "type": ["ecm:Project", "iao:OntologyDesignPattern"],
+  "ecm:specVersion": "0.5",
+  "ecm:name": "Malformed: INVALID_SPEC_VERSION (0.5 exceeds max 0.4)",
+  "ecm:createdAt": "2026-01-01T00:00:00Z",
+  "ecm:updatedAt": "2026-01-01T00:00:00Z",
+  "iao:isAbout": ["https://example.org/subjects/CustomerOrders"],
+  "ecm:ontologies": [],
+  "ecm:terms": [],
+  "ecm:instances": [],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:layouts": [],
+  "ecm:snapshots": [],
+  "ecm:serializations": []
+}

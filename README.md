@@ -1,24 +1,12 @@
-# JSON-LD Deterministic Service Template
+# GraphWrite
 
-A minimal template for building deterministic services that transform JSON-LD documents. The kernel is a pure function: JSON-LD in, JSON-LD out.
+Deterministic JSON-LD authoring + transformation tooling for Visual Modeler Profile (VMP) projects, anchored on a pure-kernel + adapter architecture. Built on the [JSON-LD Deterministic Service Template](https://github.com/Skreen5hot/AgenticDev).
 
-## What This Is
+## Phase 1: Core JSON-LD Engine (substantively complete)
 
-A starting point for services that need:
+All 12 Phase 1 tasks shipped at substrate-side with **106/106 tests passing across 14 spec test files**. See [project/IMPLEMENTATION_PLAN.md](project/IMPLEMENTATION_PLAN.md) for the task list + acceptance criteria, [project/ROADMAP.md](project/ROADMAP.md) for the six-phase plan, and [project/SPEC.md](project/SPEC.md) v0.4 for the normative contract.
 
-- **Deterministic, reproducible transformations** — same input always produces same output
-- **JSON-LD as the canonical data format** — semantic interoperability built in
-- **Offline-first, edge-compatible execution** — no server required
-- **No infrastructure dependencies at the core** — the kernel is pure computation
-
-This template intentionally contains: **1 kernel, 3 spec tests, 0 runtime dependencies.**
-
-## What This Is Not
-
-- A framework (no runtime, no lifecycle management)
-- An API server (adapters handle that)
-- A database (adapters handle that)
-- An opinionated application scaffold
+Phase 1 ships a Node.js CLI with: canonical VMP serializer (`§5.3`), Project TBox bundle (`§5.14`), structural validator (`§17`), semantic projection (`§6.3`), emitters (Turtle / N-Triples / Markdown / Triple Narration; semantic-jsonld + Mermaid deferred per scope-split), IRI generation (UUIDv4 + UUIDv5), cascading IRI refactor with collision detection, export manifest data structure (`§5.15`), legacy migration (v0.2 → v0.4), canonical normalization on load, CLI surface (validate / export / migrate / refactor-iri + Phase 3/4 stubs + path containment), and test harness (hand-rolled + fast-check property-based).
 
 ## Quick Start
 
@@ -27,14 +15,45 @@ This template intentionally contains: **1 kernel, 3 spec tests, 0 runtime depend
 ```bash
 npm install
 npm run build
-node dist/kernel/index.js examples/input.jsonld
+npm test                  # 106/106 expected
 ```
 
-This runs the kernel transform on the example input and prints canonicalized JSON-LD to stdout.
+### Walk the CLI surface
 
-### Event Normalization Example
+```bash
+# Windows PowerShell:
+pwsh scripts/demo.ps1
 
-See `examples/event-normalization/` for a real-world transform that normalizes Schema.org Event documents — title-casing, type inference, status mapping, and Uncertainty annotations for missing data.
+# POSIX bash:
+bash scripts/demo.sh
+```
+
+The demo validates clean + malformed fixtures, exports to Turtle and N-Triples, exercises the deterministic flag, demonstrates the Phase 3/4 stubs, and runs the full spec suite.
+
+### Manual CLI examples
+
+```bash
+# Validate a canonical v0.4 fixture (exit 0)
+node dist/cli/index.js validate test/fixtures/canonical-v0.4/minimal.jsonld
+
+# Validate a malformed fixture (exit 1; prints MISSING_REALIST_ANCHOR)
+node dist/cli/index.js validate test/fixtures/malformed/missing-realist-anchor.jsonld
+
+# Export Turtle (TBox prepended; deterministic)
+node dist/cli/index.js export test/fixtures/canonical-v0.4/minimal.jsonld --format turtle --out graph.ttl
+
+# Deterministic export with frozen clock + seed (UUIDv5)
+node dist/cli/index.js export <file> --format turtle --out graph.ttl --deterministic --seed myseed --clock 2026-01-01T00:00:00Z
+```
+
+## Phase 1 deferrals (tracked in [V3.2-GAP-REGISTRY.md](V3.2-GAP-REGISTRY.md))
+
+- Per-task closure canonical-doc updates deferred via H2 preventive-deferral pattern; 12 forward-tracks at `v3.2-design` cycle pending substrate refinement.
+- Structural validator ships MISSING_REALIST_ANCHOR + INVALID_SPEC_VERSION (2 of 26 SPEC codes); remaining 24 codes + per-code fixtures deferred (`ft-097-test-validator-2`).
+- Emitters: Turtle + N-Triples + Markdown + Triple Narration shipped; Semantic JSON-LD + Mermaid deferred (`ft-112-test-emitter-typefix-2`).
+- Comprehensive fixture set + golden file commits gated on OED-306 + OED-313.
+
+The audit chain in `state.jsonld` carries the full provenance from gap-surfacing through gap-resolution.
 
 ## Conformance Checklist
 
