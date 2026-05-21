@@ -1,0 +1,266 @@
+{
+  "@context": {
+    "cco": "https://www.commoncoreontologies.org/",
+    "ecm": "https://edgecanonical.org/ns/modeler#",
+    "ecm:classIris": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "ecm:instances": {
+      "@container": "@set"
+    },
+    "ecm:isSerializationOf": {
+      "@type": "@id"
+    },
+    "ecm:layouts": {
+      "@container": "@set"
+    },
+    "ecm:literalAssertions": {
+      "@container": "@set"
+    },
+    "ecm:objectIri": {
+      "@type": "@id"
+    },
+    "ecm:ontologies": {
+      "@container": "@set"
+    },
+    "ecm:predicateIri": {
+      "@type": "@id"
+    },
+    "ecm:relations": {
+      "@container": "@set"
+    },
+    "ecm:serializations": {
+      "@container": "@set"
+    },
+    "ecm:snapshots": {
+      "@container": "@set"
+    },
+    "ecm:subjectIri": {
+      "@type": "@id"
+    },
+    "ecm:terms": {
+      "@container": "@set"
+    },
+    "iao": "http://purl.obolibrary.org/obo/iao#",
+    "iao:isAbout": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "id": "@id",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "rdfs:subClassOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "rdfs:subPropertyOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "type": "@type",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  },
+  "id": "urn:uuid:11111111-1111-4111-8111-111111110001",
+  "type": [
+    "ecm:Project",
+    "iao:OntologyDesignPattern"
+  ],
+  "ecm:specVersion": "0.4",
+  "ecm:createdAt": "2026-05-21T12:00:00Z",
+  "ecm:instances": [
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001",
+      "type": "ecm:Instance",
+      "ecm:classIris": [
+        "urn:uuid:11111111-1111-4111-8111-cccccccc0001"
+      ],
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Dune"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0002",
+      "type": "ecm:Instance",
+      "ecm:classIris": [
+        "urn:uuid:11111111-1111-4111-8111-cccccccc0001"
+      ],
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Foundation"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0003",
+      "type": "ecm:Instance",
+      "ecm:classIris": [
+        "urn:uuid:11111111-1111-4111-8111-cccccccc0002"
+      ],
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Frank Herbert"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0004",
+      "type": "ecm:Instance",
+      "ecm:classIris": [
+        "urn:uuid:11111111-1111-4111-8111-cccccccc0002"
+      ],
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Isaac Asimov"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0005",
+      "type": "ecm:Instance",
+      "ecm:classIris": [
+        "urn:uuid:11111111-1111-4111-8111-cccccccc0003"
+      ],
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Chilton Books"
+    }
+  ],
+  "ecm:layouts": [
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb0001",
+      "type": "ecm:CanvasLayout",
+      "ecm:nodes": [
+        {
+          "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb1001",
+          "type": "ecm:CanvasNode",
+          "ecm:instanceIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001",
+          "ecm:x": 80,
+          "ecm:y": 120
+        },
+        {
+          "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb1002",
+          "type": "ecm:CanvasNode",
+          "ecm:instanceIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0002",
+          "ecm:x": 80,
+          "ecm:y": 260
+        },
+        {
+          "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb1003",
+          "type": "ecm:CanvasNode",
+          "ecm:instanceIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0003",
+          "ecm:x": 380,
+          "ecm:y": 120
+        },
+        {
+          "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb1004",
+          "type": "ecm:CanvasNode",
+          "ecm:instanceIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0004",
+          "ecm:x": 380,
+          "ecm:y": 260
+        },
+        {
+          "id": "urn:uuid:11111111-1111-4111-8111-bbbbbbbb1005",
+          "type": "ecm:CanvasNode",
+          "ecm:instanceIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0005",
+          "ecm:x": 660,
+          "ecm:y": 190
+        }
+      ]
+    }
+  ],
+  "ecm:literalAssertions": [
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-ddddddddd001",
+      "type": "ecm:LiteralAssertion",
+      "ecm:datatype": "xsd:string",
+      "ecm:language": null,
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0006",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001",
+      "ecm:value": "978-0-441-17271-9"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-ddddddddd002",
+      "type": "ecm:LiteralAssertion",
+      "ecm:datatype": "xsd:integer",
+      "ecm:language": null,
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0007",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001",
+      "ecm:value": "1965"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-ddddddddd003",
+      "type": "ecm:LiteralAssertion",
+      "ecm:datatype": "xsd:integer",
+      "ecm:language": null,
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0007",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0002",
+      "ecm:value": "1951"
+    }
+  ],
+  "ecm:name": "Library Catalog (Demo)",
+  "ecm:ontologies": [],
+  "ecm:relations": [
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-eeeeeeeee001",
+      "type": "ecm:RelationAssertion",
+      "ecm:objectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0003",
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0004",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-eeeeeeeee002",
+      "type": "ecm:RelationAssertion",
+      "ecm:objectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0004",
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0004",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0002"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-eeeeeeeee003",
+      "type": "ecm:RelationAssertion",
+      "ecm:objectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0005",
+      "ecm:predicateIri": "urn:uuid:11111111-1111-4111-8111-cccccccc0005",
+      "ecm:subjectIri": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0001"
+    }
+  ],
+  "ecm:serializations": [],
+  "ecm:snapshots": [],
+  "ecm:terms": [
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0001",
+      "type": "owl:Class",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Book"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0002",
+      "type": "owl:Class",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Author"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0003",
+      "type": "owl:Class",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "Publisher"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0004",
+      "type": "owl:ObjectProperty",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "writtenBy"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0005",
+      "type": "owl:ObjectProperty",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "publishedBy"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0006",
+      "type": "owl:DatatypeProperty",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "hasISBN"
+    },
+    {
+      "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0007",
+      "type": "owl:DatatypeProperty",
+      "ecm:source": "ecm:project-created",
+      "rdfs:label": "hasPublicationYear"
+    }
+  ],
+  "ecm:updatedAt": "2026-05-21T12:00:00Z",
+  "iao:isAbout": [
+    "https://example.org/subjects/LibraryCatalog"
+  ]
+}
