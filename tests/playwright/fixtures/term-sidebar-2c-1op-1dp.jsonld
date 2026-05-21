@@ -1,4 +1,4 @@
-{
+﻿{
   "@context": {
     "cco": "https://www.commoncoreontologies.org/",
     "ecm": "https://edgecanonical.org/ns/modeler#",
@@ -62,7 +62,7 @@
     "type": "@type",
     "xsd": "http://www.w3.org/2001/XMLSchema#"
   },
-  "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000030",
   "type": [
     "ecm:Project",
     "iao:OntologyDesignPattern"
@@ -72,14 +72,51 @@
   "ecm:instances": [],
   "ecm:layouts": [],
   "ecm:literalAssertions": [],
-  "ecm:name": "Minimal v0.4 Project",
+  "ecm:name": "Term Sidebar Fixture (2C/1OP/1DP)",
   "ecm:ontologies": [],
   "ecm:relations": [],
   "ecm:serializations": [],
   "ecm:snapshots": [],
-  "ecm:terms": [],
+  "ecm:terms": [
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/AgeProperty",
+      "rdfs:label": "Age Property",
+      "type": "owl:DatatypeProperty"
+    },
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:imported-ontology",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/HasRole",
+      "rdfs:label": "Has Role",
+      "type": "owl:ObjectProperty"
+    },
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:system-starter-example",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/Organization",
+      "rdfs:label": "Organization",
+      "type": "owl:Class"
+    },
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/Person",
+      "rdfs:label": "Person",
+      "type": "owl:Class"
+    }
+  ],
   "ecm:updatedAt": "2026-01-01T00:00:00Z",
   "iao:isAbout": [
-    "https://example.org/subjects/CustomerOrders"
+    "https://example.org/subjects/TermSidebarTest"
   ]
 }

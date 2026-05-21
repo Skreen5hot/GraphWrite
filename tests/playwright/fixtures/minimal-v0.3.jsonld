@@ -1,0 +1,39 @@
+﻿{
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000020",
+  "type": "ecm:Project",
+  "ecm:specVersion": "0.3",
+  "ecm:name": "Minimal v0.3 Project",
+  "ecm:createdAt": "2026-01-01T00:00:00Z",
+  "ecm:updatedAt": "2026-01-01T00:00:00Z",
+  "ecm:terms": [],
+  "ecm:instances": [],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:ontologies": [],
+  "ecm:layouts": [],
+  "ecm:snapshots": [],
+  "ecm:serializations": [],
+  "ecm:settings": {
+    "type": "ecm:ProjectSettings",
+    "ecm:iriGeneration": {
+      "type": "ecm:IriGenerationPolicy",
+      "ecm:mode": "ecm:uuid-urn",
+      "ecm:baseIri": "https://example.org/instances/",
+      "ecm:pattern": "{baseIri}{classSlug}_{labelSlug}_{uuid}",
+      "ecm:separator": "_",
+      "ecm:caseStyle": "lower-kebab",
+      "ecm:includeClass": true,
+      "ecm:includeLabel": true,
+      "ecm:includeUuid": true
+    },
+    "ecm:export": {
+      "ecm:defaultRdfFormat": "text/turtle",
+      "ecm:includeProjectCreatedTerms": true,
+      "ecm:includeImportedOntologyContent": false
+    },
+    "ecm:determinism": {
+      "ecm:mode": "ecm:interactive",
+      "ecm:seed": null
+    }
+  }
+}

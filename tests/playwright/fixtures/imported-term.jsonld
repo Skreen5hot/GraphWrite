@@ -1,4 +1,4 @@
-{
+﻿{
   "@context": {
     "cco": "https://www.commoncoreontologies.org/",
     "ecm": "https://edgecanonical.org/ns/modeler#",
@@ -62,7 +62,7 @@
     "type": "@type",
     "xsd": "http://www.w3.org/2001/XMLSchema#"
   },
-  "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000040",
   "type": [
     "ecm:Project",
     "iao:OntologyDesignPattern"
@@ -72,14 +72,33 @@
   "ecm:instances": [],
   "ecm:layouts": [],
   "ecm:literalAssertions": [],
-  "ecm:name": "Minimal v0.4 Project",
+  "ecm:name": "Imported Term Fixture (AC4)",
   "ecm:ontologies": [],
   "ecm:relations": [],
   "ecm:serializations": [],
   "ecm:snapshots": [],
-  "ecm:terms": [],
+  "ecm:terms": [
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:imported-ontology",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/ImportedClass",
+      "rdfs:label": "Imported Class",
+      "type": "owl:Class"
+    },
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/LocalClass",
+      "rdfs:label": "Local Class",
+      "type": "owl:Class"
+    }
+  ],
   "ecm:updatedAt": "2026-01-01T00:00:00Z",
   "iao:isAbout": [
-    "https://example.org/subjects/CustomerOrders"
+    "https://example.org/subjects/ImportedTermTest"
   ]
 }

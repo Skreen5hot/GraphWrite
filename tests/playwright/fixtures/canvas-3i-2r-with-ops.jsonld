@@ -1,0 +1,193 @@
+﻿{
+  "@context": {
+    "cco": "https://www.commoncoreontologies.org/",
+    "ecm": "https://edgecanonical.org/ns/modeler#",
+    "ecm:classIris": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "ecm:instances": {
+      "@container": "@set"
+    },
+    "ecm:isSerializationOf": {
+      "@type": "@id"
+    },
+    "ecm:layouts": {
+      "@container": "@set"
+    },
+    "ecm:literalAssertions": {
+      "@container": "@set"
+    },
+    "ecm:objectIri": {
+      "@type": "@id"
+    },
+    "ecm:ontologies": {
+      "@container": "@set"
+    },
+    "ecm:predicateIri": {
+      "@type": "@id"
+    },
+    "ecm:relations": {
+      "@container": "@set"
+    },
+    "ecm:serializations": {
+      "@container": "@set"
+    },
+    "ecm:snapshots": {
+      "@container": "@set"
+    },
+    "ecm:subjectIri": {
+      "@type": "@id"
+    },
+    "ecm:terms": {
+      "@container": "@set"
+    },
+    "iao": "http://purl.obolibrary.org/obo/iao#",
+    "iao:isAbout": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "id": "@id",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "rdfs:subClassOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "rdfs:subPropertyOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "type": "@type",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  },
+  "id": "urn:uuid:c3000000-0000-0000-0000-000000000050",
+  "type": [
+    "ecm:Project",
+    "iao:OntologyDesignPattern"
+  ],
+  "ecm:specVersion": "0.4",
+  "ecm:createdAt": "2026-01-01T00:00:00Z",
+  "ecm:instances": [
+    {
+      "ecm:classIris": [
+        "https://example.org/ontology/Thing"
+      ],
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000001",
+      "type": "ecm:Instance"
+    },
+    {
+      "ecm:classIris": [
+        "https://example.org/ontology/Thing"
+      ],
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000002",
+      "type": "ecm:Instance"
+    },
+    {
+      "ecm:classIris": [
+        "https://example.org/ontology/Thing"
+      ],
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000003",
+      "type": "ecm:Instance"
+    }
+  ],
+  "ecm:layouts": [
+    {
+      "ecm:edges": [
+        {
+          "ecm:relationId": "urn:uuid:c3000000-0000-0000-0000-000000000011",
+          "ecm:sourceHandle": "default-source",
+          "ecm:targetHandle": "default-target",
+          "type": "ecm:CanvasEdge"
+        },
+        {
+          "ecm:relationId": "urn:uuid:c3000000-0000-0000-0000-000000000012",
+          "ecm:sourceHandle": "default-source",
+          "ecm:targetHandle": "default-target",
+          "type": "ecm:CanvasEdge"
+        }
+      ],
+      "ecm:name": "Default Layout",
+      "ecm:nodes": [
+        {
+          "ecm:height": 120,
+          "ecm:instanceIri": "urn:uuid:c3000000-0000-0000-0000-000000000001",
+          "ecm:width": 220,
+          "ecm:x": 100,
+          "ecm:y": 100,
+          "type": "ecm:CanvasNode"
+        },
+        {
+          "ecm:height": 120,
+          "ecm:instanceIri": "urn:uuid:c3000000-0000-0000-0000-000000000002",
+          "ecm:width": 220,
+          "ecm:x": 400,
+          "ecm:y": 100,
+          "type": "ecm:CanvasNode"
+        },
+        {
+          "ecm:height": 120,
+          "ecm:instanceIri": "urn:uuid:c3000000-0000-0000-0000-000000000003",
+          "ecm:width": 220,
+          "ecm:x": 700,
+          "ecm:y": 100,
+          "type": "ecm:CanvasNode"
+        }
+      ],
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000020",
+      "type": "ecm:CanvasLayout"
+    }
+  ],
+  "ecm:literalAssertions": [],
+  "ecm:name": "Canvas Fixture (3 instances, 2 relations, 2 ObjectProperties)",
+  "ecm:ontologies": [],
+  "ecm:relations": [
+    {
+      "ecm:objectIri": "urn:uuid:c3000000-0000-0000-0000-000000000002",
+      "ecm:predicateIri": "https://example.org/ontology/relatesTo",
+      "ecm:subjectIri": "urn:uuid:c3000000-0000-0000-0000-000000000001",
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000011",
+      "type": "ecm:RelationAssertion"
+    },
+    {
+      "ecm:objectIri": "urn:uuid:c3000000-0000-0000-0000-000000000003",
+      "ecm:predicateIri": "https://example.org/ontology/relatesTo",
+      "ecm:subjectIri": "urn:uuid:c3000000-0000-0000-0000-000000000002",
+      "id": "urn:uuid:c3000000-0000-0000-0000-000000000012",
+      "type": "ecm:RelationAssertion"
+    }
+  ],
+  "ecm:serializations": [],
+  "ecm:snapshots": [],
+  "ecm:terms": [
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/HasRole",
+      "rdfs:label": "Has Role",
+      "type": "owl:ObjectProperty"
+    },
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/relatesTo",
+      "rdfs:label": "Relates To",
+      "type": "owl:ObjectProperty"
+    }
+  ],
+  "ecm:updatedAt": "2026-01-01T00:00:00Z",
+  "iao:isAbout": [
+    "https://example.org/subjects/CanvasTest"
+  ]
+}

@@ -1,4 +1,4 @@
-{
+﻿{
   "@context": {
     "cco": "https://www.commoncoreontologies.org/",
     "ecm": "https://edgecanonical.org/ns/modeler#",
@@ -62,24 +62,44 @@
     "type": "@type",
     "xsd": "http://www.w3.org/2001/XMLSchema#"
   },
-  "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000031",
   "type": [
     "ecm:Project",
     "iao:OntologyDesignPattern"
   ],
   "ecm:specVersion": "0.4",
   "ecm:createdAt": "2026-01-01T00:00:00Z",
-  "ecm:instances": [],
+  "ecm:instances": [
+    {
+      "ecm:classIris": [
+        "https://example.org/ontology/Person"
+      ],
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "urn:uuid:00000000-0000-0000-0000-000000000032",
+      "type": "ecm:Instance"
+    }
+  ],
   "ecm:layouts": [],
   "ecm:literalAssertions": [],
-  "ecm:name": "Minimal v0.4 Project",
+  "ecm:name": "Cross-Reference Fixture (AC3)",
   "ecm:ontologies": [],
   "ecm:relations": [],
   "ecm:serializations": [],
   "ecm:snapshots": [],
-  "ecm:terms": [],
+  "ecm:terms": [
+    {
+      "ecm:createdAt": "2026-01-01T00:00:00Z",
+      "ecm:ontologyId": null,
+      "ecm:source": "ecm:project-created",
+      "ecm:updatedAt": "2026-01-01T00:00:00Z",
+      "id": "https://example.org/ontology/Person",
+      "rdfs:label": "Person",
+      "type": "owl:Class"
+    }
+  ],
   "ecm:updatedAt": "2026-01-01T00:00:00Z",
   "iao:isAbout": [
-    "https://example.org/subjects/CustomerOrders"
+    "https://example.org/subjects/CrossRefTest"
   ]
 }

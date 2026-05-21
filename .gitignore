@@ -24,3 +24,10 @@ __pycache__/
 # Phase 1 used phase1-task-*-chain.json + variants for dispatch payloads.
 # These are operator-side workitems; the canonical record is in state.jsonld's audit chain.
 phase*-task-*.json
+
+# Playwright run artifacts (screenshots / traces on failure; per-run; not source-of-truth)
+test-results/
+playwright-report/
+
+# Internal operator scratch
+.claude/scheduled_tasks.lock

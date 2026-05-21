@@ -1,0 +1,17 @@
+﻿{
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000030",
+  "type": ["ecm:Project", "iao:OntologyDesignPattern"],
+  "ecm:specVersion": "0.4",
+  "ecm:name": "Fixture: validation panel (MISSING_REALIST_ANCHOR error + NORMALIZED_ON_SAVE info; warning severity deferred pending warning-code implementation)",
+  "ecm:createdAt": "2026-01-01T00:00:00Z",
+  "ecm:updatedAt": "2026-01-01T00:00:00Z",
+  "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
+  "ecm:ontologies": [],
+  "ecm:terms": [],
+  "ecm:instances": [],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:layouts": [],
+  "ecm:snapshots": [],
+  "ecm:serializations": []
+}

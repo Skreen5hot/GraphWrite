@@ -1,0 +1,31 @@
+# GraphWrite line-ending policy.
+#
+# SPEC v0.4 §5.3 rules 7-8 require canonical-form files to use LF line endings
+# and UTF-8 without BOM. On Windows, git's `core.autocrlf=true` default converts
+# LF→CRLF on checkout, which breaks bytewise-identical comparisons in tests
+# (e.g., tests/playwright/new-open-save.spec.ts AC3). This file freezes the
+# line-ending behavior repo-wide so canonical-form fixtures stay canonical
+# across all platforms.
+
+# JSON-LD documents are canonical-form artifacts: always LF.
+*.jsonld text eol=lf
+
+# TypeScript / JavaScript / JSON / markdown sources: always LF.
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.js      text eol=lf
+*.cjs     text eol=lf
+*.mjs     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+
+# Test corpora + ontology files: always LF.
+*.ttl     text eol=lf
+*.nq      text eol=lf
+*.nt      text eol=lf
+
+# PowerShell scripts: CRLF is canonical for PowerShell on Windows.
+*.ps1     text eol=crlf
+
+# Shell scripts: always LF (otherwise bash misreads them).
+*.sh      text eol=lf
