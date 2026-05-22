@@ -7,7 +7,7 @@
  *   1. Calls projectSemantic(project) to obtain canonical JSON-LD string.
  *   2. Parses the @graph array from that document.
  *   3. Converts each node to N3 Quads via graphToQuads() (TBox nodes skipped).
- *   4. Serializes quads via N3.js Writer (Turtle, full-IRI notation).
+ *   4. Serializes quads via N3.js Writer (Turtle, short-form prefix notation).
  *   5. Prepends getProjectTBoxTurtle() to the Writer output.
  *
  * graphToQuads(graphNodes): exported for reuse by n-triples.ts (FR-C004).
@@ -241,11 +241,15 @@ export function graphToQuads(graphNodes: unknown[]): Quad[] {
  * Emits a Turtle serialization of the project's semantic content (FR-C003).
  *
  * Prepends getProjectTBoxTurtle() to the N3.js-serialized non-TBox triples.
- * N3.js Writer emits full-IRI Turtle (no additional prefix declarations) to
- * avoid duplicating the prefix declarations in the TBox prepend block.
+ * The N3.js Writer is initialized with PREFIX_MAP so all body IRIs are
+ * compressed to short form (e.g., ecm:Project, rdf:type, xsd:string).
+ * The Writer emits its own @prefix block for all 7 SPEC section 5.2 prefixes
+ * (ecm, rdf, rdfs, owl, xsd, iao, cco); five of those duplicate the TBox
+ * prepend declarations. Duplicate @prefix lines are valid Turtle
+ * (K1 accepted-duplicate strategy; rdf: and xsd: are net-new vs the TBox).
  *
  * @param project - Parsed canonical VMP project document.
- * @returns Turtle string; TBox prefix declarations appear at the top.
+ * @returns Turtle string: TBox block, then Writer prefix block, then body.
  */
 export function emitTurtle(project: Record<string, unknown>): string {
   const semanticDoc = JSON.parse(projectSemantic(project)) as Record<string, unknown>;
@@ -255,7 +259,7 @@ export function emitTurtle(project: Record<string, unknown>): string {
 
   const quads = graphToQuads(graphArr);
   let body = "";
-  const writer = new Writer();
+  const writer = new Writer({ prefixes: PREFIX_MAP });
   writer.addQuads(quads);
   writer.end((_err, r) => { body = r; });
 

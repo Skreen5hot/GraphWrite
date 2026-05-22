@@ -97,7 +97,7 @@ export function ProjectSettingsDialog({
         data-testid="gw-form-project-settings"
       >
         <div className="gw-form-label">
-          Subject IRIs (<code>iao:isAbout</code>)
+          Subject of the graph
         </div>
         {isAbout.length === 0 ? (
           <p className="gw-placeholder" data-testid="gw-isabout-empty">

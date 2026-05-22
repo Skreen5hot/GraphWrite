@@ -22,8 +22,12 @@ __pycache__/
 
 # Operator scratch workitems (task chain dispatch JSONs; not project artifacts)
 # Phase 1 used phase1-task-*-chain.json + variants for dispatch payloads.
+# Phase 3 uses phase3-*-chain.json / phase3-*-chain-*.json / feedback-response-chain.json patterns.
 # These are operator-side workitems; the canonical record is in state.jsonld's audit chain.
 phase*-task-*.json
+phase*-chain*.json
+phase*-*.json
+feedback-response-chain.json
 
 # Playwright run artifacts (screenshots / traces on failure; per-run; not source-of-truth)
 test-results/

@@ -1,6 +1,9 @@
 ﻿import { useState } from "react";
+import { Dialog } from "./Dialog.js";
+import { deleteInstance } from "../kernel/delete-instance.js";
 import { AddLiteralDialog } from "./AddLiteralDialog.js";
 import { narrateTriple } from "../emit/triple-narration.js";
+import { buildInstanceLabelMap, iriTail, resolveInstanceDisplay } from "./label-resolution.js";
 
 // ---------------------------------------------------------------------------
 // Domain types (local to Inspector; shared extraction is a future refactor)
@@ -66,24 +69,17 @@ function isEcmInstance(v: unknown): v is EcmInstance {
   );
 }
 
-/** Extract the IRI tail (fragment after last '#' or last path segment). */
-function iriTail(iri: string): string {
-  const hash = iri.lastIndexOf("#");
-  const slash = iri.lastIndexOf("/");
-  const idx = Math.max(hash, slash);
-  return idx >= 0 ? iri.slice(idx + 1) : iri;
-}
-
 /**
  * Resolve the FR-C008 narration for a single selected relation (FR-U020).
  * Label-resolution mirrors narrateProject() in triple-narration.ts but scoped
  * to one EcmRelation (narrateProject returns no per-relation ID -- recon F2).
+ * Uses buildInstanceLabelMap from label-resolution for the instance label map.
  */
 function resolveRelationNarration(
   rel: EcmRelation,
   project: Record<string, unknown>,
 ): string {
-  const instanceLabel = new Map<string, string>();
+  const instanceLabel = buildInstanceLabelMap(project);
   const instanceClass = new Map<string, string>();
   const termLabel = new Map<string, string>();
 
@@ -94,7 +90,6 @@ function resolveRelationNarration(
       const inst = item as Record<string, unknown>;
       const id = inst["id"];
       if (typeof id !== "string") continue;
-      instanceLabel.set(id, typeof inst["rdfs:label"] === "string" ? inst["rdfs:label"] : id);
       const classIris = inst["ecm:classIris"];
       if (Array.isArray(classIris) && classIris.length > 0 && typeof classIris[0] === "string") {
         instanceClass.set(id, String(classIris[0]));
@@ -237,6 +232,7 @@ export function Inspector({
   onProjectChange,
 }: InspectorProps) {
   const [addLiteralOpen, setAddLiteralOpen] = useState(false);
+  const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);
   const [selectedAddClassIri, setSelectedAddClassIri] = useState<string>("");
 
   if ((selectedRelationId === null && selectedInstanceId === null) || project === null) {
@@ -310,6 +306,52 @@ export function Inspector({
         };
       });
       onProjectChange({ ...project, "ecm:instances": updatedInstances });
+    }
+
+    // Guard: instance was just deleted -- selected IRI no longer exists in the project.
+    // Mirrors the rel===undefined guard in relation mode (Inspector.tsx relation section).
+    if (selectedInstance === null) {
+      return (
+        <p className="gw-placeholder" data-testid="gw-inspector-empty">
+          Select a node or relation to inspect.
+        </p>
+      );
+    }
+
+    // Pre-compute cascade preview counts for the confirmation dialog message.
+    const previewRelationsCount = (
+      Array.isArray(project["ecm:relations"])
+        ? (project["ecm:relations"] as unknown[])
+        : []
+    ).filter((r) => {
+      if (typeof r !== "object" || r === null) return false;
+      const rel = r as Record<string, unknown>;
+      return (
+        rel["ecm:subjectIri"] === selectedInstanceId ||
+        rel["ecm:objectIri"] === selectedInstanceId
+      );
+    }).length;
+
+    const previewLiteralsCount = (
+      Array.isArray(project["ecm:literalAssertions"])
+        ? (project["ecm:literalAssertions"] as unknown[])
+        : []
+    ).filter((la) => {
+      if (typeof la !== "object" || la === null) return false;
+      return (la as Record<string, unknown>)["ecm:subjectIri"] === selectedInstanceId;
+    }).length;
+
+    const instanceLabel =
+      typeof selectedInstance["rdfs:label"] === "string" &&
+      selectedInstance["rdfs:label"].length > 0
+        ? selectedInstance["rdfs:label"]
+        : iriTail(selectedInstanceId);
+
+    function handleDeleteInstance() {
+      if (onProjectChange === undefined || project === null) return;
+      const { document: updated } = deleteInstance(project, selectedInstanceId);
+      onProjectChange(updated);
+      setDeleteInstanceConfirmOpen(false);
     }
 
     return (
@@ -445,6 +487,16 @@ export function Inspector({
           >
             Add literal
           </button>
+          <div style={{ marginTop: "1.25rem", paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
+            <button
+              type="button"
+              data-testid="gw-btn-delete-instance"
+              onClick={() => { setDeleteInstanceConfirmOpen(true); }}
+              style={{ width: "100%", color: "#dc2626" }}
+            >
+              Delete Instance
+            </button>
+          </div>
         </div>
         {addLiteralOpen && (
           <AddLiteralDialog
@@ -464,6 +516,39 @@ export function Inspector({
             }}
             onClose={() => { setAddLiteralOpen(false); }}
           />
+        )}
+        {deleteInstanceConfirmOpen && (
+          <Dialog
+            title="Delete Instance"
+            onClose={() => { setDeleteInstanceConfirmOpen(false); }}
+            testId="gw-dialog-delete-instance"
+          >
+            <p style={{ marginBottom: "0.75rem" }}>
+              Delete <strong>{instanceLabel}</strong>? This removes{" "}
+              {previewRelationsCount} relation{previewRelationsCount !== 1 ? "s" : ""} +{" "}
+              {previewLiteralsCount} literal assertion{previewLiteralsCount !== 1 ? "s" : ""} +{" "}
+              the canvas position. Continue?
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="gw-btn gw-btn--secondary"
+                onClick={() => { setDeleteInstanceConfirmOpen(false); }}
+                data-testid="gw-btn-delete-instance-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="gw-btn"
+                onClick={handleDeleteInstance}
+                data-testid="gw-btn-delete-instance-confirm"
+                style={{ color: "#dc2626" }}
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog>
         )}
       </>
     );
@@ -489,6 +574,9 @@ export function Inspector({
   }
 
   const objPropOptions = getObjectPropertyOptions(project);
+
+  const subjectInfo = resolveInstanceDisplay(project, rel["ecm:subjectIri"]);
+  const objectInfo = resolveInstanceDisplay(project, rel["ecm:objectIri"]);
 
   function handlePredicateChange(newIri: string) {
     if (onProjectChange === undefined || selectedRelationId === null || project === null) return;
@@ -535,7 +623,14 @@ export function Inspector({
         }}
         data-testid="gw-inspector-subject"
       >
-        {rel["ecm:subjectIri"]}
+        {subjectInfo.displayLabel}
+        {subjectInfo.displayLabel !== rel["ecm:subjectIri"] && (
+          <span
+            style={{ display: "block", fontSize: "0.75em", color: "#64748b", marginTop: "0.125rem" }}
+          >
+            {rel["ecm:subjectIri"]}
+          </span>
+        )}
       </p>
 
       <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
@@ -566,7 +661,14 @@ export function Inspector({
         }}
         data-testid="gw-inspector-object"
       >
-        {rel["ecm:objectIri"]}
+        {objectInfo.displayLabel}
+        {objectInfo.displayLabel !== rel["ecm:objectIri"] && (
+          <span
+            style={{ display: "block", fontSize: "0.75em", color: "#64748b", marginTop: "0.125rem" }}
+          >
+            {rel["ecm:objectIri"]}
+          </span>
+        )}
       </p>
 
       <p style={{ fontWeight: 600, marginBottom: "0.5rem", marginTop: "0.75rem" }}>

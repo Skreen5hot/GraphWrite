@@ -12,6 +12,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Dialog } from "./Dialog.js";
+import { RESERVED_CANONICAL_IRIS } from "../validate/reserved-names.js";
 
 export type AddTermType =
   | "owl:Class"
@@ -32,6 +33,9 @@ const TERM_TYPE_LABEL: Record<AddTermType, string> = {
   "owl:ObjectProperty": "Object Property",
   "owl:DatatypeProperty": "Datatype Property",
 };
+
+/** O(1) lookup set for canonical reserved-name guard (SPEC section 5.7.1). */
+const RESERVED_CANONICAL_IRI_SET = new Set<string>(RESERVED_CANONICAL_IRIS);
 
 /**
  * Collect all id values from ecm:terms + ecm:instances for duplicate-IRI
@@ -78,6 +82,10 @@ export function AddTermDialog({
       setError(`IRI already exists in this project: ${iri}`);
       return;
     }
+    if (RESERVED_CANONICAL_IRI_SET.has(iri)) {
+      setError(`That IRI is canonical RDFS/OWL and cannot be used for a project-created term.`);
+      return;
+    }
     const now = new Date().toISOString();
     const newTerm: Record<string, unknown> = {
       "ecm:createdAt": now,
@@ -98,6 +106,10 @@ export function AddTermDialog({
   const isDuplicate =
     trimmedIriOverride.length > 0 &&
     collectExistingIris(project).has(trimmedIriOverride);
+  // AC (SPEC section 5.7.1): inline warning for canonical reserved-name IRI.
+  const isCanonicalReserved =
+    trimmedIriOverride.length > 0 &&
+    RESERVED_CANONICAL_IRI_SET.has(trimmedIriOverride);
 
   return (
     <Dialog
@@ -152,6 +164,15 @@ export function AddTermDialog({
             IRI already exists in this project: {trimmedIriOverride}
           </p>
         )}
+        {isCanonicalReserved && (
+          <p
+            className="gw-iri-canonical-warning"
+            role="alert"
+            data-testid="gw-iri-canonical-warning"
+          >
+            That IRI is canonical RDFS/OWL and cannot be used for a project-created term.
+          </p>
+        )}
         <div className="gw-form-actions">
           <button
             type="button"
@@ -164,7 +185,7 @@ export function AddTermDialog({
           <button
             type="submit"
             className="gw-btn"
-            disabled={isDuplicate}
+            disabled={isDuplicate || isCanonicalReserved}
             data-testid="gw-btn-term-submit"
           >
             Add {typeLabel}

@@ -14,7 +14,9 @@ import {
   INVALID_SPEC_VERSION,
   LEGACY_REALIST_ANCHOR_PLACEHOLDER,
   NORMALIZED_ON_SAVE,
+  CANONICAL_RESERVED_NAME_COLLISION,
 } from "./codes.js";
+import { RESERVED_CANONICAL_IRIS } from "./reserved-names.js";
 
 // ---------------------------------------------------------------------------
 // Types (SPEC section 5.13)
@@ -185,6 +187,36 @@ export function validate(project: Record<string, unknown>): ValidationReport {
         projectId,
       ),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // CANONICAL_RESERVED_NAME_COLLISION (SPEC section 17.2, section 5.7.1)
+  // Fires when a term with ecm:source: ecm:project-created has an id
+  // matching any IRI in RESERVED_CANONICAL_IRIS.
+  // Terms with ecm:source: ecm:imported-ontology are exempt per section 5.7.1.
+  // -------------------------------------------------------------------------
+  const reservedIriSet = new Set<string>(RESERVED_CANONICAL_IRIS);
+  const rawTerms = project["ecm:terms"];
+  if (Array.isArray(rawTerms)) {
+    for (const term of rawTerms as unknown[]) {
+      if (typeof term !== "object" || term === null) continue;
+      const t = term as Record<string, unknown>;
+      if (t["ecm:source"] !== "ecm:project-created") continue;
+      const termId = t["id"];
+      if (typeof termId !== "string") continue;
+      if (!reservedIriSet.has(termId)) continue;
+      const termLabel =
+        typeof t["rdfs:label"] === "string" ? t["rdfs:label"] : termId;
+      findings.push(
+        makeError(
+          CANONICAL_RESERVED_NAME_COLLISION,
+          `Term "${termLabel}" uses canonical IRI ${termId};` +
+            " project-created terms must not re-mint canonical names." +
+            " Imported terms (ecm:imported-ontology) are exempt.",
+          termId,
+        ),
+      );
+    }
   }
 
   // TODO (follow-up chain A): MISSING_PROJECT_ID, MISSING_PROJECT_NAME,

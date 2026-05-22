@@ -1,13 +1,13 @@
 ﻿/**
  * Validation Finding Codes (SPEC sections 17.2-17.4)
  *
- * All 26 SPEC-declared finding codes as exported string constants.
+ * All 27 SPEC-declared finding codes as exported string constants.
  * Central enumeration: prevents typos; enables exhaustive-switch checks
  * in follow-up chains that implement the remaining 24 codes.
  */
 
 // ---------------------------------------------------------------------------
-// section 17.2 Hard Errors (16 codes)
+// section 17.2 Hard Errors (17 codes)
 // ---------------------------------------------------------------------------
 
 export const MISSING_PROJECT_ID              = "MISSING_PROJECT_ID";
@@ -26,6 +26,7 @@ export const DANGLING_RELATION_OBJECT_REF    = "DANGLING_RELATION_OBJECT_REF";
 export const DANGLING_RELATION_PREDICATE_REF = "DANGLING_RELATION_PREDICATE_REF";
 export const DANGLING_LITERAL_SUBJECT_REF    = "DANGLING_LITERAL_SUBJECT_REF";
 export const DANGLING_LITERAL_PREDICATE_REF  = "DANGLING_LITERAL_PREDICATE_REF";
+export const CANONICAL_RESERVED_NAME_COLLISION = "CANONICAL_RESERVED_NAME_COLLISION";
 
 // ---------------------------------------------------------------------------
 // section 17.3 Warnings (7 codes)

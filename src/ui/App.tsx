@@ -240,16 +240,18 @@ export function App() {
             data-testid="gw-btn-save"
             onClick={handleSave}
             disabled={project === null}
+            title="Download project as canonical JSON-LD"
           >
-            Save
+            Download
           </button>
           <button
             className="gw-btn"
             data-testid="gw-btn-save-turtle"
             onClick={handleSaveTurtle}
             disabled={project === null}
+            title="Download project as Turtle (RDF)"
           >
-            Save as Turtle
+            Download Turtle
           </button>
           <button
             className="gw-btn"
@@ -294,15 +296,15 @@ export function App() {
         >
           <span className="gw-anchor-banner-text">
             {isAboutState === "missing"
-              ? "No subject declared (MISSING_REALIST_ANCHOR). Export is blocked until a real subject IRI is added."
-              : "Subject placeholder from v0.3 migration (LEGACY_REALIST_ANCHOR_PLACEHOLDER). Replace with a real subject IRI."}
+              ? "This project needs a subject — what real-world thing is it about? Export is blocked until a subject is added."
+              : "This project has a placeholder subject from v0.3 migration. Replace it with a real subject IRI."}
           </span>
           <button
             className="gw-btn gw-btn--sm gw-btn--anchor-action"
             data-testid="gw-btn-anchor-action"
             onClick={() => { setProjectSettingsOpen(true); }}
           >
-            {isAboutState === "missing" ? "Add subject IRI" : "Set real subject"}
+            {isAboutState === "missing" ? "Set subject" : "Set real subject"}
           </button>
         </div>
       )}

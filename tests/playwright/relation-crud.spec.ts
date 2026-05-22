@@ -238,22 +238,26 @@ test.describe("Relation CRUD (task 2.6 Chain B)", () => {
       await expect(page.getByTestId("gw-inspector-relation")).toBeVisible({
         timeout: 5_000,
       });
-      await expect(page.getByTestId("gw-inspector-subject")).toHaveText(
-        originalSubject,
+      // Quick-3: Subject/Object rows now show displayLabel (iriTail when no rdfs:label).
+      // Fixture has no rdfs:label on instances; iriTail falls back to the last UUID segment.
+      // iriTail("urn:uuid:c3000000-0000-0000-0000-000000000001") => "000000000001"
+      // iriTail("urn:uuid:c3000000-0000-0000-0000-000000000002") => "000000000002"
+      await expect(page.getByTestId("gw-inspector-subject")).toContainText(
+        "000000000001",
       );
-      await expect(page.getByTestId("gw-inspector-object")).toHaveText(
-        originalObject,
+      await expect(page.getByTestId("gw-inspector-object")).toContainText(
+        "000000000002",
       );
 
       // Click Reverse.
       await page.getByTestId("gw-btn-reverse").click();
 
       // Inspector must immediately reflect the swap.
-      await expect(page.getByTestId("gw-inspector-subject")).toHaveText(
-        originalObject,
+      await expect(page.getByTestId("gw-inspector-subject")).toContainText(
+        "000000000002",
       );
-      await expect(page.getByTestId("gw-inspector-object")).toHaveText(
-        originalSubject,
+      await expect(page.getByTestId("gw-inspector-object")).toContainText(
+        "000000000001",
       );
 
       // Save and verify in the parsed output.

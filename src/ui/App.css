@@ -70,7 +70,7 @@ body,
 }
 
 .gw-outputs {
-  height: 180px;
+  max-height: 75px;
   flex-shrink: 0;
   background: #f1f5f9;
   border-top: 1px solid #e2e8f0;
@@ -261,6 +261,7 @@ dialog.gw-dialog {
   padding: 0;
   width: 22rem;
   max-width: calc(100vw - 2rem);
+  margin: auto;
 }
 
 dialog.gw-dialog::backdrop {

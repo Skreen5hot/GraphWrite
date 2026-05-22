@@ -209,6 +209,33 @@ Both categories matter for v3.2+ design but they answer different questions: gap
 
 **Banking-as-data discipline:** Even after role-reframing, every Event-class snag stays banked + logged. The point is v3.2 trajectory data, not halting the train. Future sessions: handle silently; bank without surfacing; only escalate the genuinely-outside-scope.
 
+### Event 11: Architect ratification=denied did not gate applier dispatch (Pass 2a gating gap)
+
+- **Type:** Substrate-discipline-refinement gap discovered during execution
+- **When:** 2026-05-21, Phase 3 UI Polish Chain A (tasks 265-269)
+- **What happened:** Task 267 (architect ratification) returned `ruling: "denied"` with detailed rationale (developer's Item C implementation missed touchpoint 2 — App.tsx:305 button text — despite recon F12 explicit enumeration). The CPS check passed because the architect's `required_outputs` were all present (ruling + editorial_verdict + editorial_verdict_reason + rationale + referenced_evidence + bankings). Task 267 → status=done. Task 268 (applier) had `depends_on: [267, 266]`. When both deps reached status=done, daemon's `next_ready_task` dispatched 268. **The applier ran despite architect's denial** — the daemon checks `status` not `outputs.ruling`. 10 changes landed; architect's specific objection was operator-action-corrected after the fact.
+- **Why substrate machinery could not proceed autonomously:** Per CLAUDE.md §7.8 + FNSR Spec 03, Pass 2a (ratification) is supposed to GATE Pass 2b (commit-finalize). The spec describes the flow as "ratification → commit-finalize" with the architect's ruling as the gate. **The daemon's dispatch logic does not enforce this gate.** Three reasonable fix shapes:
+  - (a) CPS check on applier dispatch: refuse if any upstream architect task has `outputs.ruling == "denied"`
+  - (b) Daemon-side `next_ready_task` predicate: skip tasks whose upstream architect denied
+  - (c) Architect emits a CPS-veto-style structured failure when denying, blocking the chain via the existing `outputs.error` veto mechanism
+- **Operator-mediated resolution:** The architect's specific objection was small (one missed touchpoint at App.tsx:305). I operator-edited the file: `"Add subject IRI"` → `"Set subject"`. Re-ran Playwright (39/39 pass; no regression). The remaining 9 changes were architect-confirmed-technically-sound. Net effect: chain succeeded with one operator-action editorial follow-up.
+- **Could substrate have handled it autonomously with a documented default?** **Yes — substrate refactor candidate (v3.2 gap-16):** Pass 2a gating enforcement at the daemon. Option (c) is the least-invasive — architect contract adds: "On `ruling: denied`, ALSO emit `outputs.error: 'ratification_denied'` so CPS vetoes the architect's own task, blocking downstream by the standard depends_on-on-blocked mechanism." That's a one-line architect contract change + zero daemon change. Same shape as the Event 9 developer `task_too_broad` pattern, applied to the architect.
+- **Outcome category if autonomous:** **Outcome 2** — substrate could absorb this via small contract refinement; not inherently orchestrator-level. v3.2 candidate; adds to the verification-step + escalation-shape cluster (Events 4-11; cluster is now 8 entries).
+
+**Additional observation:** This is the FIRST time the architect denied in this session. All prior 24+ architect ratifications were `ruling: ratified`. The denial wasn't catastrophic — it was a real catch of a real developer miss. The substrate's discipline produced exactly the right finding; the daemon machinery just didn't act on it. This strengthens the v3.2 framing hypothesis ("substrate clarity refinements rather than capability expansions"): the substrate already has the correct content; it needs cleaner enforcement plumbing.
+
+### Event 12: CPS required_outputs check fires despite awaiting_operator_decision bypass (substrate inconsistency)
+
+- **Type:** Substrate-discipline inconsistency — two CPS check rules collide
+- **When:** 2026-05-22, BL1 chain task 299-dev-bl1
+- **What happened:** Developer agent received scope-too-broad task. Per my updated dispatch instruction (Event 9 lesson + role-memory update) and the developer.md contract refinement that's been blocked by permission classifier, the developer correctly used `outputs.status: "awaiting_operator_decision"` shape with structured `options[]` + `recommendation`. **CPS still vetoed** with reason: "agent 'developer' missing required output keys: ['changes', 'summary', 'self_assessment']" — the developer's `required_outputs` from frontmatter fired DESPITE the awaiting_operator_decision presence.
+- **Why substrate machinery could not proceed autonomously:** Per CLAUDE.md §7.6: "When this shape is recognized, the daemon commits the task with `status=awaiting_operator_decision` ... no CPS veto for the missing `required_outputs`, since the agent is explicitly handing back to the operator." But the actual daemon behavior: required_outputs check fires regardless of awaiting_operator_decision shape. The spec says bypass; the implementation doesn't bypass. This is a substrate-implementation-vs-spec mismatch.
+- **Operator-mediated resolution:** Abandoned downstream BL1 tasks (300/301/302); BL1 deferred to next session. Phase 3 close-out proceeds without BL1 — substantial Phase 3 work (UI Polish A+B, K1, A2, FR-deltas batch+fix, G1, J1) is committed; BL1 is reattempted later with narrower chains per developer's suggested split.
+- **Could substrate have handled it autonomously with a documented default?** **Yes — daemon-side fix:** the CPS check order needs adjusting. Currently: required_outputs check → ... → awaiting_operator_decision recognition. Should be: awaiting_operator_decision recognition (with shape validation) → if valid, skip required_outputs check; otherwise apply normal CPS. Small daemon refactor; one branch in `_check_required_outputs`. v3.2 substrate fix candidate.
+- **Outcome category if autonomous:** **Outcome 2** — substrate could absorb via small daemon refactor; not inherently orchestrator-level. Adds to the escalation-shape gap cluster (Events 8-12 now; 5 entries).
+
+**Sibling-to-Event-9 observation:** Event 9 said "developer used wrong shape (error: task_too_broad) — needs developer-contract refinement." Now in Event 12, the developer used the RIGHT shape (awaiting_operator_decision) but the substrate's CPS check sequence doesn't honor the bypass. So both shapes are blocked by different substrate gaps — Event 9 by spec design (`error` shape is CPS-veto-by-design); Event 12 by spec-implementation mismatch (`awaiting_operator_decision` bypass not implemented in CPS sequence). Cluster strengthens.
+
 ---
 
 (Subsequent events logged during Phase 2 dispatch.)

@@ -5,10 +5,12 @@ import {
   Background,
   Controls,
   useReactFlow,
+  MarkerType,
   type Node,
   type Edge,
   type Connection,
 } from "@xyflow/react";
+import { iriTail } from "./label-resolution.js";
 
 // ---------------------------------------------------------------------------
 // VMP domain types (SPEC section 5.8 / 5.11)
@@ -18,6 +20,7 @@ import {
 interface EcmInstance {
   id: string;
   "ecm:classIris": string[];
+  "rdfs:label"?: string;
 }
 
 /** Minimal shape of ecm:RelationAssertion for canvas binding. */
@@ -45,6 +48,7 @@ interface EcmCanvasNode {
 interface InstanceNodeData extends Record<string, unknown> {
   instanceIri: string;
   classIris: string[];
+  label: string;
 }
 
 /** Data bag for a React Flow edge derived from ecm:RelationAssertion. */
@@ -144,7 +148,14 @@ function deriveNodes(project: Record<string, unknown>): InstanceNode[] {
       {
         id: inst.id,
         position,
-        data: { instanceIri: inst.id, classIris: inst["ecm:classIris"] },
+        data: {
+          instanceIri: inst.id,
+          classIris: inst["ecm:classIris"],
+          label:
+            typeof inst["rdfs:label"] === "string" && inst["rdfs:label"].length > 0
+              ? inst["rdfs:label"]
+              : iriTail(inst.id),
+        },
       },
     ];
   });
@@ -167,6 +178,7 @@ function deriveEdges(project: Record<string, unknown>): RelationEdge[] {
         source: rel["ecm:subjectIri"],
         target: rel["ecm:objectIri"],
         data: { relationId: rel.id, predicateIri: rel["ecm:predicateIri"] },
+        markerEnd: { type: MarkerType.ArrowClosed },
       },
     ];
   });

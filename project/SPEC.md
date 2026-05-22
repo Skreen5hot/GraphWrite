@@ -466,6 +466,10 @@ Allowed `ecm:source` values: `ecm:imported-ontology`, `ecm:project-created`, `ec
 
 `rdfs:subClassOf` is permitted on classes; `rdfs:subPropertyOf` is permitted on properties. These are preserved on round-trip but not reasoned over in v0.3.
 
+#### 5.7.1 Canonical Reserved Names
+
+The following property IRIs are CANONICAL and MUST NOT be re-minted as project-created terms within a v0.4 project document: `rdfs:label`, `rdfs:comment`, `rdfs:seeAlso`, `rdfs:isDefinedBy`, `owl:sameAs`, `owl:differentFrom`, `owl:equivalentClass`, `owl:equivalentProperty`. The validator MUST emit a `CANONICAL_RESERVED_NAME_COLLISION` finding (severity: error) when a project-created term has an IRI matching this list. The UI MUST prevent creation of a term whose user-entered IRI override matches an entry in this list. The semantic-jsonld and Turtle emitters MUST use these canonical IRIs directly (not via the project ecm:terms array).
+
 ### 5.8 Instance Object
 
 ```json
@@ -1257,6 +1261,7 @@ Three severities: **error**, **warning**, **info**.
 | `DANGLING_RELATION_PREDICATE_REF` | A relation's `ecm:predicateIri` references no known object property. |
 | `DANGLING_LITERAL_SUBJECT_REF` | A literal assertion's subject references no known instance. |
 | `DANGLING_LITERAL_PREDICATE_REF` | A literal assertion's predicate references no known datatype property. |
+| `CANONICAL_RESERVED_NAME_COLLISION` | A project-created term has an IRI matching the canonical reserved-name list (see §5.7.1). Emitted when a term with `ecm:source: ecm:project-created` has `id` matching any IRI in the §5.7.1 list. |
 
 ### 17.3 Warnings
 
@@ -1317,7 +1322,7 @@ The project document is structurally validated against the VMP profile on load a
 
 | ID | Requirement |
 |----|-------------|
-| FR-U001 | Create a new project. |
+| FR-U001 | Create a new project. When a new project is created via FR-U001, the UI SHOULD prompt the user to declare iao:isAbout BEFORE the project is considered usable. Acceptable default during the prompt is ecm:UnspecifiedSubjectMatter, which the validator treats per §17.2 (MISSING_REALIST_ANCHOR). The UI MAY defer the prompt to first save attempt; the choice between block-at-creation vs nag-until-save is implementation-determined. |
 | FR-U002 | Open a project JSON-LD file. |
 | FR-U003 | Save the active project as `project.jsonld` in canonical form. |
 | FR-U004 | Display a term sidebar with classes, object properties, and datatype properties. |
@@ -1327,7 +1332,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-U008 | Add a project-created datatype property. |
 | FR-U009 | Edit project-created terms (label, comment, IRI). |
 | FR-U010 | Prevent direct editing of imported ontology terms (§13.3). |
-| FR-U011 | Create an instance on the canvas. |
+| FR-U011 | Create an instance on the canvas. Instance creation MAY be triggered by drag-from-sidebar (drag a class entry from the Term Sidebar onto the canvas) in addition to double-click on the canvas pane. Both interactions produce the same canonical result. The dragged-from class is auto-assigned to the new instance via ecm:classIris. When an instance is created via FR-U011, the user MUST be prompted to select at least one owl:Class for ecm:classIris assignment, unless no owl:Class terms exist in the project — in which case the instance MAY be created class-less and the user prompted to add a class assignment later via the Inspector. |
 | FR-U012 | Edit an instance (label, IRI, class assignments, comment). |
 | FR-U013 | Provide auto-generate, manual override, preview, regenerate, and duplicate-warning behavior on the IRI field. |
 | FR-U014 | Draw a directed object-property relation between two instances. |
@@ -1348,6 +1353,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-U029 | Show "Project was migrated from v0.X" notice on legacy load (§10.4). |
 | FR-U030 | Show stale-save warning when the on-disk file has been updated since load (§11.2). |
 | FR-U031 | Declare and edit the project's `iao:isAbout` (one or more subject IRIs). The UI must surface `MISSING_REALIST_ANCHOR` and `LEGACY_REALIST_ANCHOR_PLACEHOLDER` findings prominently and provide an obvious affordance to resolve them. |
+| FR-U032 | Delete an instance: removes the ecm:Instance entry from ecm:instances + all ecm:CanvasNode entries referencing it from ecm:CanvasLayout.ecm:nodes + all ecm:LiteralAssertion entries with the deleted instance as ecm:subjectIri + all ecm:RelationAssertion entries with the deleted instance as either ecm:subjectIri or ecm:objectIri. The cascade is atomic — all four removals happen as a single document-level state transition. Implementation: a deleteInstance() kernel function in src/kernel/ that returns the updated document. The UI delete affordance calls this function; CLI + future API consumers reuse the same function. |
 
 ### 18.3 State Adapters
 
