@@ -10,7 +10,7 @@ import {
   type Edge,
   type Connection,
 } from "@xyflow/react";
-import { iriTail } from "./label-resolution.js";
+import { iriTail, resolveTermLabel } from "./label-resolution.js";
 
 // ---------------------------------------------------------------------------
 // VMP domain types (SPEC section 5.8 / 5.11)
@@ -179,8 +179,9 @@ function deriveEdges(project: Record<string, unknown>): RelationEdge[] {
       const term = item as Record<string, unknown>;
       const id = term["id"];
       if (typeof id !== "string") continue;
-      if (typeof term["rdfs:label"] === "string" && (term["rdfs:label"] as string).length > 0) {
-        termLabelMap.set(id, term["rdfs:label"] as string);
+      const termLabelText = resolveTermLabel(term["rdfs:label"]);
+      if (termLabelText.length > 0) {
+        termLabelMap.set(id, termLabelText);
       }
     }
   }

@@ -205,8 +205,15 @@ export function validate(project: Record<string, unknown>): ValidationReport {
       const termId = t["id"];
       if (typeof termId !== "string") continue;
       if (!reservedIriSet.has(termId)) continue;
+      const rawLabel = t["rdfs:label"];
       const termLabel =
-        typeof t["rdfs:label"] === "string" ? t["rdfs:label"] : termId;
+        typeof rawLabel === "string"
+          ? rawLabel
+          : typeof rawLabel === "object" &&
+            rawLabel !== null &&
+            typeof (rawLabel as Record<string, unknown>)["text"] === "string"
+          ? ((rawLabel as Record<string, unknown>)["text"] as string)
+          : termId;
       findings.push(
         makeError(
           CANONICAL_RESERVED_NAME_COLLISION,

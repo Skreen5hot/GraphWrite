@@ -84,7 +84,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/AgeProperty",
-      "rdfs:label": "Age Property",
+      "rdfs:label": { "text": "Age Property", "lang": "en" },
       "type": "owl:DatatypeProperty"
     },
     {
@@ -93,7 +93,7 @@
       "ecm:source": "ecm:imported-ontology",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/HasRole",
-      "rdfs:label": "Has Role",
+      "rdfs:label": { "text": "Has Role", "lang": "en" },
       "type": "owl:ObjectProperty"
     },
     {
@@ -102,7 +102,7 @@
       "ecm:source": "ecm:system-starter-example",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/Organization",
-      "rdfs:label": "Organization",
+      "rdfs:label": { "text": "Organization", "lang": "en" },
       "type": "owl:Class"
     },
     {
@@ -111,7 +111,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/Person",
-      "rdfs:label": "Person",
+      "rdfs:label": { "text": "Person", "lang": "en" },
       "type": "owl:Class"
     }
   ],

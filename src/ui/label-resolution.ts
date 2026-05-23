@@ -13,6 +13,23 @@ export function iriTail(iri: string): string {
 }
 
 /**
+ * Resolve the display text from a term's rdfs:label value.
+ * Handles both plain-string (legacy) and {text, lang} (ADR-008) shapes.
+ * Returns empty string for absent or malformed values.
+ */
+export function resolveTermLabel(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    typeof (raw as Record<string, unknown>)["text"] === "string"
+  ) {
+    return (raw as Record<string, unknown>)["text"] as string;
+  }
+  return "";
+}
+
+/**
  * Build a map from instance IRI to display label by scanning the project's
  * ecm:instances array. Falls back to the IRI itself when rdfs:label is absent.
  */

@@ -161,7 +161,7 @@ test.describe("GraphWrite shell (task 2.1 AC2 + AC3 + AC4)", () => {
   );
 
   test(
-    "S4-02: New project has starter terms pre-populated (ecm:terms.length >= 15)",
+    "S4-02: New project has starter terms pre-populated (3 annotation properties per R4)",
     async ({ page }) => {
       await page.goto("/");
 
@@ -183,15 +183,20 @@ test.describe("GraphWrite shell (task 2.1 AC2 + AC3 + AC4)", () => {
       const content = fs.readFileSync(downloadPath!, "utf-8");
       const parsed = JSON.parse(content) as Record<string, unknown>;
 
-      // S4-02: new project must include STARTER_TERMS in ecm:terms
+      // S4-02 (Round 4 corrected): new project includes 3 annotation-property
+      // starter terms (rdfs:label, rdfs:comment, rdfs:seeAlso) per SPEC §5.7.
+      // Round 3's 16-entry list was reduced per Aaron's R4-STARTER-1/2/4/5 +
+      // SME verification (only canonical annotation properties belong here).
       expect(
         Array.isArray(parsed["ecm:terms"]),
         "ecm:terms must be an array",
       ).toBe(true);
-      expect(
-        (parsed["ecm:terms"] as unknown[]).length,
-        "ecm:terms must have at least 15 starter entries",
-      ).toBeGreaterThanOrEqual(15);
+      const terms = parsed["ecm:terms"] as unknown[];
+      expect(terms.length, "ecm:terms must have 3 annotation-property starter entries").toBe(3);
+      const annotationProps = terms.filter((t): t is Record<string, unknown> => {
+        return typeof t === "object" && t !== null && (t as Record<string, unknown>)["type"] === "owl:AnnotationProperty";
+      });
+      expect(annotationProps.length, "all starter terms must be owl:AnnotationProperty").toBe(3);
     },
   );
 });

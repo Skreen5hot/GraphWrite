@@ -173,7 +173,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/HasRole",
-      "rdfs:label": "Has Role",
+      "rdfs:label": { "text": "Has Role", "lang": "en" },
       "type": "owl:ObjectProperty"
     },
     {
@@ -182,7 +182,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/relatesTo",
-      "rdfs:label": "Relates To",
+      "rdfs:label": { "text": "Relates To", "lang": "en" },
       "type": "owl:ObjectProperty"
     }
   ],

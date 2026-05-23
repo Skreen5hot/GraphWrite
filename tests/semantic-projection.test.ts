@@ -451,6 +451,46 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+// Bonus: owl:AnnotationProperty term retained in semantic projection (SA3)
+// Verifies SEMANTIC_TYPE_ALLOWLIST includes owl:AnnotationProperty so that
+// user-created annotation-property terms are not silently dropped.
+// ---------------------------------------------------------------------------
+console.log("\nBonus: owl:AnnotationProperty term retained by semantic projection (SA3)");
+
+try {
+  const AP_TERM_IRI = "urn:term:myAnnotationProp";
+  const projectWithAP: Record<string, unknown> = {
+    ...BASE_PROJECT,
+    id: "urn:uuid:00000000-0000-0000-0000-000000000004",
+    "ecm:terms": [
+      ...((BASE_PROJECT["ecm:terms"] as unknown[]) ?? []),
+      {
+        id: AP_TERM_IRI,
+        type: ["owl:AnnotationProperty"],
+        "rdfs:label": "My Annotation Prop",
+      },
+    ],
+  };
+  const output = projectSemantic(projectWithAP);
+  const graph = parseGraph(output);
+  const apNode = graph.find((n) => n["id"] === AP_TERM_IRI);
+  ok(
+    apNode !== undefined,
+    `owl:AnnotationProperty term "${AP_TERM_IRI}" not found in @graph -- SA3 regression`,
+  );
+  const apTypes = nodeTypes(apNode as GraphNode);
+  ok(
+    apTypes.includes("owl:AnnotationProperty"),
+    `retained node for "${AP_TERM_IRI}" must be typed owl:AnnotationProperty; got ${JSON.stringify(apTypes)}`,
+  );
+  pass(
+    `owl:AnnotationProperty term "${AP_TERM_IRI}" retained in @graph (SA3; SEMANTIC_TYPE_ALLOWLIST)`,
+  );
+} catch (e) {
+  fail("owl:AnnotationProperty term must be retained by semantic projection (SA3)", e);
+}
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log(`\n  ${passed} passed, ${failed} failed`);

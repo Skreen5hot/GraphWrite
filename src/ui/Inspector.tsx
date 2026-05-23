@@ -3,7 +3,7 @@ import { Dialog } from "./Dialog.js";
 import { deleteInstance } from "../kernel/delete-instance.js";
 import { AddLiteralDialog } from "./AddLiteralDialog.js";
 import { narrateTriple } from "../emit/triple-narration.js";
-import { buildInstanceLabelMap, iriTail, resolveInstanceDisplay } from "./label-resolution.js";
+import { buildInstanceLabelMap, iriTail, resolveInstanceDisplay, resolveTermLabel } from "./label-resolution.js";
 
 // ---------------------------------------------------------------------------
 // Domain types (local to Inspector; shared extraction is a future refactor)
@@ -104,7 +104,8 @@ function resolveRelationNarration(
       const term = item as Record<string, unknown>;
       const id = term["id"];
       if (typeof id !== "string") continue;
-      termLabel.set(id, typeof term["rdfs:label"] === "string" ? term["rdfs:label"] : id);
+      const tl = resolveTermLabel(term["rdfs:label"]);
+      termLabel.set(id, tl.length > 0 ? tl : id);
     }
   }
 
@@ -140,10 +141,8 @@ function getObjectPropertyOptions(project: Record<string, unknown>): ObjPropOpti
     if (typeof obj["id"] !== "string") continue;
     if (obj["type"] !== "owl:ObjectProperty") continue;
     const iri = obj["id"] as string;
-    const label =
-      typeof obj["rdfs:label"] === "string" && obj["rdfs:label"].length > 0
-        ? (obj["rdfs:label"] as string)
-        : iriTail(iri);
+    const labelText = resolveTermLabel(obj["rdfs:label"]);
+    const label = labelText.length > 0 ? labelText : iriTail(iri);
     result.push({ iri, label });
   }
   return result;
@@ -166,10 +165,8 @@ function getDatatypePropertyOptions(project: Record<string, unknown>): DatatypeP
     if (typeof obj["id"] !== "string") continue;
     if (obj["type"] !== "owl:DatatypeProperty") continue;
     const iri = obj["id"] as string;
-    const label =
-      typeof obj["rdfs:label"] === "string" && (obj["rdfs:label"] as string).length > 0
-        ? (obj["rdfs:label"] as string)
-        : iriTail(iri);
+    const labelText = resolveTermLabel(obj["rdfs:label"]);
+    const label = labelText.length > 0 ? labelText : iriTail(iri);
     result.push({ iri, label });
   }
   return result;
@@ -192,10 +189,8 @@ function getOwlClassOptions(project: Record<string, unknown>): OwlClassOption[] 
     if (typeof obj["id"] !== "string") continue;
     if (obj["type"] !== "owl:Class") continue;
     const iri = obj["id"] as string;
-    const label =
-      typeof obj["rdfs:label"] === "string" && (obj["rdfs:label"] as string).length > 0
-        ? (obj["rdfs:label"] as string)
-        : iriTail(iri);
+    const labelText = resolveTermLabel(obj["rdfs:label"]);
+    const label = labelText.length > 0 ? labelText : iriTail(iri);
     result.push({ iri, label });
   }
   return result;

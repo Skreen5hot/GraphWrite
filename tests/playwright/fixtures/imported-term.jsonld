@@ -84,7 +84,7 @@
       "ecm:source": "ecm:imported-ontology",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/ImportedClass",
-      "rdfs:label": "Imported Class",
+      "rdfs:label": { "text": "Imported Class", "lang": "en" },
       "type": "owl:Class"
     },
     {
@@ -93,7 +93,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/LocalClass",
-      "rdfs:label": "Local Class",
+      "rdfs:label": { "text": "Local Class", "lang": "en" },
       "type": "owl:Class"
     }
   ],

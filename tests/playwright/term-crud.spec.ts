@@ -89,10 +89,19 @@ test.describe("Term CRUD (task 2.3 Chain A)", () => {
       ).toBe(5);
 
       // Locate the new entry by label + source + type.
+      // Post R4-3a: rdfs:label is { text, lang } object shape.
+      const labelText = (t: Record<string, unknown>): string => {
+        const l = t["rdfs:label"];
+        if (typeof l === "string") return l;
+        if (l !== null && typeof l === "object" && typeof (l as { text?: unknown }).text === "string") {
+          return (l as { text: string }).text;
+        }
+        return "";
+      };
       const newClass = termArray.find(
         (t) =>
           t["type"] === "owl:Class" &&
-          t["rdfs:label"] === "Test Class" &&
+          labelText(t) === "Test Class" &&
           t["ecm:source"] === "ecm:project-created",
       );
       expect(newClass, "new owl:Class entry must be in ecm:terms").toBeDefined();
@@ -154,10 +163,10 @@ test.describe("Term CRUD (task 2.3 Chain A)", () => {
         (t) => t["id"] === "https://example.org/ontology/Person",
       );
       expect(person, "Person term must still be in ecm:terms").toBeDefined();
-      expect(
-        person!["rdfs:label"],
-        "rdfs:label must reflect the edited value",
-      ).toBe("Person (Edited)");
+      // Post R4-3a: rdfs:label is { text, lang } object shape.
+      const lbl = person!["rdfs:label"] as { text?: string } | string;
+      const labelTextEdited = typeof lbl === "string" ? lbl : lbl?.text ?? "";
+      expect(labelTextEdited, "rdfs:label.text must reflect the edited value").toBe("Person (Edited)");
     },
   );
 

@@ -94,7 +94,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/Person",
-      "rdfs:label": "Person",
+      "rdfs:label": { "text": "Person", "lang": "en" },
       "type": "owl:Class"
     }
   ],

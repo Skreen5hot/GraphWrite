@@ -198,6 +198,26 @@ function migrateV3toV4(
     added.push("ecm:serializations");
   }
 
+  // ADR-008: Coerce plain-string rdfs:label values on ecm:terms to
+  // the canonical {text, lang: 'en'} shape. Idempotent: already-shaped
+  // values pass through unchanged.
+  const termsForLabel = result["ecm:terms"];
+  if (Array.isArray(termsForLabel)) {
+    let labelCoerced = false;
+    result["ecm:terms"] = (termsForLabel as unknown[]).map((term) => {
+      if (typeof term !== "object" || term === null) return term;
+      const t = { ...(term as Record<string, unknown>) };
+      if (typeof t["rdfs:label"] === "string") {
+        t["rdfs:label"] = { text: t["rdfs:label"] as string, lang: "en" };
+        labelCoerced = true;
+      }
+      return t;
+    });
+    if (labelCoerced) {
+      transformed.push("ecm:terms[*].rdfs:label");
+    }
+  }
+
   // ft-097-test-validator-3 Option A: marker tells validate() to emit
   // LEGACY_REALIST_ANCHOR_PLACEHOLDER info finding instead of MISSING_REALIST_ANCHOR
   // error. Not listed in migration report (implementation detail).

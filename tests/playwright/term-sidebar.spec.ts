@@ -33,10 +33,12 @@ test.describe("TermSidebar (task 2.2)", () => {
     const classesSec = page.getByTestId("gw-term-section-classes");
     const opSec = page.getByTestId("gw-term-section-object-properties");
     const dpSec = page.getByTestId("gw-term-section-datatype-properties");
+    const apSec = page.getByTestId("gw-term-section-annotation-properties");
 
     await expect(classesSec.getByTestId("gw-term-item")).toHaveCount(2);
     await expect(opSec.getByTestId("gw-term-item")).toHaveCount(1);
     await expect(dpSec.getByTestId("gw-term-item")).toHaveCount(1);
+    await expect(apSec.getByTestId("gw-term-item")).toHaveCount(0);
   });
 
   test("AC2: ecm:project-created term shows project-created source indicator", async ({

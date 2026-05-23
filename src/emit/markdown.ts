@@ -90,9 +90,14 @@ export function emitMarkdown(project: Record<string, unknown>): string {
     for (const item of terms as unknown[]) {
       if (!item || typeof item !== "object" || Array.isArray(item)) continue;
       const t = item as Record<string, unknown>;
+      const rawTLabel = t["rdfs:label"];
       const label =
-        typeof t["rdfs:label"] === "string"
-          ? t["rdfs:label"]
+        typeof rawTLabel === "string"
+          ? rawTLabel
+          : typeof rawTLabel === "object" &&
+            rawTLabel !== null &&
+            typeof (rawTLabel as Record<string, unknown>)["text"] === "string"
+          ? ((rawTLabel as Record<string, unknown>)["text"] as string)
           : typeof t["id"] === "string"
           ? t["id"]
           : "";

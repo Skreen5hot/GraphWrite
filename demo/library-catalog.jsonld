@@ -77,7 +77,7 @@
         "urn:uuid:11111111-1111-4111-8111-cccccccc0001"
       ],
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Dune"
+      "rdfs:label": { "text": "Dune", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0002",
@@ -86,7 +86,7 @@
         "urn:uuid:11111111-1111-4111-8111-cccccccc0001"
       ],
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Foundation"
+      "rdfs:label": { "text": "Foundation", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0003",
@@ -95,7 +95,7 @@
         "urn:uuid:11111111-1111-4111-8111-cccccccc0002"
       ],
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Frank Herbert"
+      "rdfs:label": { "text": "Frank Herbert", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0004",
@@ -104,7 +104,7 @@
         "urn:uuid:11111111-1111-4111-8111-cccccccc0002"
       ],
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Isaac Asimov"
+      "rdfs:label": { "text": "Isaac Asimov", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-aaaaaaaa0005",
@@ -113,7 +113,7 @@
         "urn:uuid:11111111-1111-4111-8111-cccccccc0003"
       ],
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Chilton Books"
+      "rdfs:label": { "text": "Chilton Books", "lang": "en" }
     }
   ],
   "ecm:layouts": [
@@ -220,43 +220,43 @@
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0001",
       "type": "owl:Class",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Book"
+      "rdfs:label": { "text": "Book", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0002",
       "type": "owl:Class",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Author"
+      "rdfs:label": { "text": "Author", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0003",
       "type": "owl:Class",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "Publisher"
+      "rdfs:label": { "text": "Publisher", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0004",
       "type": "owl:ObjectProperty",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "writtenBy"
+      "rdfs:label": { "text": "writtenBy", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0005",
       "type": "owl:ObjectProperty",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "publishedBy"
+      "rdfs:label": { "text": "publishedBy", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0006",
       "type": "owl:DatatypeProperty",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "hasISBN"
+      "rdfs:label": { "text": "hasISBN", "lang": "en" }
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0007",
       "type": "owl:DatatypeProperty",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": "hasPublicationYear"
+      "rdfs:label": { "text": "hasPublicationYear", "lang": "en" }
     }
   ],
   "ecm:updatedAt": "2026-05-21T12:00:00Z",

@@ -199,15 +199,50 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
     }
   }
 
-  // String-literal predicates
+  // String-literal predicates (rdfs:label handled separately below)
   for (const pred of [
-    "rdfs:label", "rdfs:comment", "ecm:format", "ecm:filename",
+    "rdfs:comment", "ecm:format", "ecm:filename",
     "ecm:contentHash", "ecm:generatedAt",
   ]) {
     const val = node[pred];
     if (typeof val === "string") {
       result.push(makeQuad(subj, namedNode(expandIri(pred)), literal(val)));
     }
+  }
+
+  // rdfs:label: plain string (ecm:Instance, legacy) -> untagged literal;
+  // {text, lang} object (ecm:terms, ADR-008) -> language-tagged rdf:langString.
+  const labelVal = node["rdfs:label"];
+  if (typeof labelVal === "string") {
+    result.push(makeQuad(subj, namedNode(expandIri("rdfs:label")), literal(labelVal)));
+  } else if (
+    typeof labelVal === "object" &&
+    labelVal !== null &&
+    typeof (labelVal as Record<string, unknown>)["text"] === "string" &&
+    typeof (labelVal as Record<string, unknown>)["lang"] === "string"
+  ) {
+    const lv = labelVal as Record<string, unknown>;
+    result.push(makeQuad(
+      subj,
+      namedNode(expandIri("rdfs:label")),
+      literal(lv["text"] as string, lv["lang"] as string),
+    ));
+  }
+
+  // rdfs:seeAlso: IRI-or-literal detection (SA4).
+  // Emit as a named node when the value looks like an IRI; otherwise as a literal.
+  const seeAlsoVal = node["rdfs:seeAlso"];
+  if (typeof seeAlsoVal === "string") {
+    const isIri =
+      seeAlsoVal.startsWith("http://") ||
+      seeAlsoVal.startsWith("https://") ||
+      seeAlsoVal.startsWith("urn:") ||
+      seeAlsoVal.includes(":");
+    result.push(makeQuad(
+      subj,
+      namedNode(expandIri("rdfs:seeAlso")),
+      isIri ? namedNode(expandIri(seeAlsoVal)) : literal(seeAlsoVal),
+    ));
   }
 
   // ecm:byteLength: number -> xsd:integer typed literal

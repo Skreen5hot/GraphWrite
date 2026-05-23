@@ -2,8 +2,8 @@
  * TermSidebar -- task 2.2 Term Manager left sidebar.
  * Extended in task 2.3 Chain A: Add term (FR-U006 / FR-U007 / FR-U008).
  *
- * Renders three sections (Classes, Object Properties, Datatype Properties)
- * from the canonical project document's ecm:terms array.
+ * Renders four sections (Classes, Object Properties, Datatype Properties,
+ * Annotation Properties) from the canonical project document's ecm:terms array.
  * Source-indicator badges carry both CSS class + aria-label per AC2.
  * SPEC §5.7 / FR-U004 / FR-U005 / FR-U006 / FR-U007 / FR-U008.
  */
@@ -11,12 +11,13 @@
 import { useState } from "react";
 import { AddTermDialog, type AddTermType } from "./AddTermDialog.js";
 import { EditTermDialog } from "./EditTermDialog.js";
+import { resolveTermLabel } from "./label-resolution.js";
 
 /** Shape of a single ecm:terms entry (SPEC §5.7). */
 interface TermEntry {
   id: string;
   type: string;
-  "rdfs:label"?: string;
+  "rdfs:label"?: { text: string; lang: string } | string;
   "rdfs:comment"?: string;
   "ecm:source"?: string;
 }
@@ -51,13 +52,14 @@ function partitionTerms(project: Record<string, unknown> | null): {
   classes: TermEntry[];
   objectProperties: TermEntry[];
   datatypeProperties: TermEntry[];
+  annotationProperties: TermEntry[];
 } {
   if (project === null) {
-    return { classes: [], objectProperties: [], datatypeProperties: [] };
+    return { classes: [], objectProperties: [], datatypeProperties: [], annotationProperties: [] };
   }
   const raw = project["ecm:terms"];
   if (!Array.isArray(raw)) {
-    return { classes: [], objectProperties: [], datatypeProperties: [] };
+    return { classes: [], objectProperties: [], datatypeProperties: [], annotationProperties: [] };
   }
   const terms = (raw as unknown[])
     .map(toTermEntry)
@@ -66,6 +68,7 @@ function partitionTerms(project: Record<string, unknown> | null): {
     classes: terms.filter((t) => t.type === "owl:Class"),
     objectProperties: terms.filter((t) => t.type === "owl:ObjectProperty"),
     datatypeProperties: terms.filter((t) => t.type === "owl:DatatypeProperty"),
+    annotationProperties: terms.filter((t) => t.type === "owl:AnnotationProperty"),
   };
 }
 
@@ -140,11 +143,8 @@ function TermSection({
       ) : (
         <ul className="gw-term-list">
           {terms.map((term) => {
-            const displayLabel =
-              typeof term["rdfs:label"] === "string" &&
-              term["rdfs:label"].length > 0
-                ? term["rdfs:label"]
-                : iriTail(term.id);
+            const rawTermLabel = resolveTermLabel(term["rdfs:label"]);
+            const displayLabel = rawTermLabel.length > 0 ? rawTermLabel : iriTail(term.id);
             // Only project-created terms are clickable; imported/starter are not.
             const isClickable =
               onTermClick !== undefined &&
@@ -192,7 +192,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
   /** Term being edited; null when the Edit dialog is closed (FR-U009). */
   const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);
 
-  const { classes, objectProperties, datatypeProperties } =
+  const { classes, objectProperties, datatypeProperties, annotationProperties } =
     partitionTerms(project);
 
   /**
@@ -269,6 +269,18 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
             : undefined
         }
         addTestId="gw-btn-add-datatype-property"
+        onTermClick={canEdit ? handleTermClick : undefined}
+      />
+      <TermSection
+        title="Annotation Properties"
+        terms={annotationProperties}
+        testId="gw-term-section-annotation-properties"
+        onAddTerm={
+          canEdit
+            ? () => setAddDialogType("owl:AnnotationProperty")
+            : undefined
+        }
+        addTestId="gw-btn-add-annotation-property"
         onTermClick={canEdit ? handleTermClick : undefined}
       />
       {addDialogType !== null && project !== null && (

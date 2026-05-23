@@ -8,6 +8,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Dialog } from "./Dialog.js";
+import { resolveTermLabel } from "./label-resolution.js";
 
 /** Allowed Phase 2 datatypes per SPEC section 5.10. */
 const DATATYPE_OPTIONS = [
@@ -47,10 +48,8 @@ function getDatatypePropertyOptions(project: Record<string, unknown>): DatatypeP
     if (typeof obj["id"] !== "string") continue;
     if (obj["type"] !== "owl:DatatypeProperty") continue;
     const iri = obj["id"] as string;
-    const label =
-      typeof obj["rdfs:label"] === "string" && (obj["rdfs:label"] as string).length > 0
-        ? (obj["rdfs:label"] as string)
-        : iri;
+    const labelText = resolveTermLabel(obj["rdfs:label"]);
+    const label = labelText.length > 0 ? labelText : iri;
     result.push({ iri, label });
   }
   return result;

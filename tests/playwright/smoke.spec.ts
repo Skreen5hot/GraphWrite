@@ -178,8 +178,17 @@ test.describe("Smoke flow 1 (task 2.12)", () => {
       const terms = saved["ecm:terms"] as Record<string, unknown>[];
       expect(Array.isArray(terms), "ecm:terms must be an array").toBe(true);
 
+      // Post R4-3a: rdfs:label is { text, lang } object shape.
+      const labelText = (t: Record<string, unknown>): string => {
+        const l = t["rdfs:label"];
+        if (typeof l === "string") return l;
+        if (l !== null && typeof l === "object" && typeof (l as { text?: unknown }).text === "string") {
+          return (l as { text: string }).text;
+        }
+        return "";
+      };
       const personTerm = terms.find(
-        (t) => t["type"] === "owl:Class" && t["rdfs:label"] === "Person",
+        (t) => t["type"] === "owl:Class" && labelText(t) === "Person",
       );
       expect(
         personTerm,
@@ -189,7 +198,7 @@ test.describe("Smoke flow 1 (task 2.12)", () => {
 
       const knowsTerm = terms.find(
         (t) =>
-          t["type"] === "owl:ObjectProperty" && t["rdfs:label"] === "knows",
+          t["type"] === "owl:ObjectProperty" && labelText(t) === "knows",
       );
       expect(
         knowsTerm,
@@ -318,10 +327,10 @@ test.describe("Smoke flow 2 (task 2.12)", () => {
         personTerm,
         "Person term must still be in ecm:terms after reload",
       ).toBeDefined();
-      expect(
-        personTerm!["rdfs:label"],
-        "rdfs:label must reflect the edited value after reload",
-      ).toBe("Person (Smoke 2)");
+      // Post R4-3a: rdfs:label is { text, lang } object shape.
+      const editedLbl = personTerm!["rdfs:label"] as { text?: string } | string;
+      const editedText = typeof editedLbl === "string" ? editedLbl : editedLbl?.text ?? "";
+      expect(editedText, "rdfs:label.text must reflect the edited value after reload").toBe("Person (Smoke 2)");
     },
   );
 });

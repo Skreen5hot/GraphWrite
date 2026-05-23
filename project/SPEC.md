@@ -12,16 +12,16 @@
 
 Material reframing. Adopts a **realist anchoring** of project documents in the Common Core Ontologies (CCO) and the Information Artifact tradition.
 
-Every project document is now typed as `iao:OntologyDesignPattern`, declared in the project TBox as a subclass of `cco:InformationContentEntity` (CCO IRI `https://www.commoncoreontologies.org/ont00000958`). Each generated serialization is itself an Information Content Entity, related to the project by `ecm:isSerializationOf`. The project document becomes a node in its own Semantic Layer: it is no longer editor metadata about a graph, but an ICE that the graph is part of and that is *about* a declared portion of reality.
+Every project document is now typed as `ecm:OntologyDesignPattern`, declared in the project TBox as a subclass of `cco:InformationContentEntity` (CCO IRI `https://www.commoncoreontologies.org/ont00000958`). Each generated serialization is itself an Information Content Entity, related to the project by `ecm:isSerializationOf`. The project document becomes a node in its own Semantic Layer: it is no longer editor metadata about a graph, but an ICE that the graph is part of and that is *about* a declared portion of reality.
 
 Changes:
 
 - §1 — Executive Summary states the realist orientation.
 - §5.2 — Normative `@context` adds `iao:` and `cco:` namespaces.
-- §5.4 — Project metadata adds required `iao:isAbout` and types the project as `["ecm:Project", "iao:OntologyDesignPattern"]`.
-- §5.14 (new) — **Project TBox**. Declares `iao:OntologyDesignPattern rdfs:subClassOf cco:ont00000958` and `ecm:Project rdfs:subClassOf iao:OntologyDesignPattern`. Declares `ecm:Serialization rdfs:subClassOf cco:ont00000958`. Declares `ecm:isSerializationOf` as an object property.
+- §5.4 — Project metadata adds required `iao:isAbout` and types the project as `["ecm:Project", "ecm:OntologyDesignPattern"]`.
+- §5.14 (new) — **Project TBox**. Declares `ecm:OntologyDesignPattern rdfs:subClassOf cco:ont00000958` and `ecm:Project rdfs:subClassOf ecm:OntologyDesignPattern`. Declares `ecm:Serialization rdfs:subClassOf cco:ont00000958`. Declares `ecm:isSerializationOf` as an object property.
 - §6.1 — Semantic Layer allowlist expanded: project root, serializations, `iao:isAbout`, `ecm:isSerializationOf` are now semantic.
-- §6.3 — Semantic projection retains the project root as a node typed `iao:OntologyDesignPattern` with its `iao:isAbout` declarations.
+- §6.3 — Semantic projection retains the project root as a node typed `ecm:OntologyDesignPattern` with its `iao:isAbout` declarations.
 - §17 — New hard error `MISSING_REALIST_ANCHOR`; new info `LEGACY_REALIST_ANCHOR_PLACEHOLDER` for migrated v0.3 documents.
 - §18.2 — New FR-U031: declare and edit `iao:isAbout` on the project.
 - §19 — Export manifest now lists each serialization as a typed ICE with `ecm:isSerializationOf` linkage.
@@ -120,7 +120,7 @@ If the answer is no, the design violates this specification.
 
 The Visual RDF / Knowledge Graph Modeler is a deterministic, local-first, JSON-LD-native semantic modeling tool with browser and Node.js execution surfaces. Its purpose is to let users create, understand, persist, export, and share RDF-style knowledge graph models without requiring a server, triple store, SPARQL endpoint, database, or enterprise semantic platform.
 
-The tool is **realist-anchored**: every project document is an Information Content Entity, typed as `iao:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity` per CCO `https://www.commoncoreontologies.org/ont00000958`), about a declared portion of reality. Each generated serialization is itself an Information Content Entity related to the project by `ecm:isSerializationOf`. A project is not merely a working container; it is a model of a portion of reality, encoded in a repeatable machine-interpretable format using elements from one or more ontologies. The tool enforces this commitment in the canonical project document.
+The tool is **realist-anchored**: every project document is an Information Content Entity, typed as `ecm:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity` per CCO `https://www.commoncoreontologies.org/ont00000958`), about a declared portion of reality. Each generated serialization is itself an Information Content Entity related to the project by `ecm:isSerializationOf`. A project is not merely a working container; it is a model of a portion of reality, encoded in a repeatable machine-interpretable format using elements from one or more ontologies. The tool enforces this commitment in the canonical project document.
 
 **Edge Canonical Modeling** is the program of which this tool is the first deliverable. The program treats local-first ("edge") execution as the canonical computation site, in contrast to cloud-hosted enterprise modeling platforms. The intent is that a single user with a browser and a project file can complete a meaningful modeling task end to end.
 
@@ -320,7 +320,7 @@ Every project document must include this `@context` (or one semantically equival
 
 The aliases `id` → `@id` and `type` → `@type` are mandatory. Implementations must not emit `@id` or `@type` directly in the compact form.
 
-The `cco:` prefix resolves CCO IRIs of the form `cco:ont00000958` to `https://www.commoncoreontologies.org/ont00000958`, which is `cco:InformationContentEntity`. The `iao:` prefix is used for the project-introduced term `iao:OntologyDesignPattern` (see §5.14 — the term is shipped by this spec's TBox; core IAO does not currently define it).
+The `cco:` prefix resolves CCO IRIs of the form `cco:ont00000958` to `https://www.commoncoreontologies.org/ont00000958`, which is `cco:InformationContentEntity`. The `iao:` prefix is used for the project-introduced term `ecm:OntologyDesignPattern` (see §5.14 — the term is shipped by this spec's TBox; core IAO does not currently define it).
 
 ### 5.3 Canonical Serialization
 
@@ -342,7 +342,7 @@ A "lossless round-trip" means: `serialize(parse(file)) == file` bytewise, where 
 Required top-level fields:
 
 - `id` — project IRI, must be a `urn:uuid:` URN in v0.4;
-- `type` — an array containing **both** `"ecm:Project"` **and** `"iao:OntologyDesignPattern"`. The canonical serializer emits this as a JSON array sorted lexicographically: `["ecm:Project", "iao:OntologyDesignPattern"]`;
+- `type` — an array containing **both** `"ecm:Project"` **and** `"ecm:OntologyDesignPattern"`. The canonical serializer emits this as a JSON array sorted lexicographically: `["ecm:Project", "ecm:OntologyDesignPattern"]`;
 - `ecm:specVersion` — string, must be `"0.4"` for documents conforming to this spec;
 - `ecm:name`;
 - `ecm:createdAt`;
@@ -444,13 +444,13 @@ The `ecm:determinism` block is new in v0.3 and controls how creation-time IRIs a
 
 ### 5.7 Term Object
 
-A term represents a class, object property, or datatype property.
+A term represents a class, object property, datatype property, or annotation property.
 
 ```json
 {
   "id": "https://example.org/ontology/Person",
   "type": "owl:Class",
-  "rdfs:label": "Person",
+  "rdfs:label": { "text": "Person", "lang": "en" },
   "rdfs:comment": "A human person.",
   "rdfs:subClassOf": ["https://example.org/ontology/Agent"],
   "ecm:source": "ecm:project-created",
@@ -460,15 +460,43 @@ A term represents a class, object property, or datatype property.
 }
 ```
 
-Allowed `type` values: `owl:Class`, `owl:ObjectProperty`, `owl:DatatypeProperty`. `rdfs:Class` is normalized to `owl:Class` on import.
+Example for a `owl:DatatypeProperty` term with `rdfs:range`:
+
+```json
+{
+  "id": "http://example.org/hourlyRate",
+  "type": "owl:DatatypeProperty",
+  "rdfs:label": { "text": "Hourly Rate", "lang": "en" },
+  "rdfs:comment": "Compensation rate in currency units per hour.",
+  "rdfs:range": "http://www.w3.org/2001/XMLSchema#decimal",
+  "ecm:source": "ecm:project-created",
+  "ecm:ontologyId": null,
+  "ecm:createdAt": "2026-05-14T12:00:00Z",
+  "ecm:updatedAt": "2026-05-14T12:00:00Z"
+}
+```
+
+Allowed `type` values: `owl:Class`, `owl:ObjectProperty`, `owl:DatatypeProperty`, `owl:AnnotationProperty`. Per the OWL 2 RDF-Based Semantics specification (W3C Recommendation), `rdfs:label`, `rdfs:comment`, `rdfs:seeAlso`, and `rdfs:isDefinedBy` are canonically typed as `owl:AnnotationProperty`. Of these, `rdfs:label`, `rdfs:comment`, and `rdfs:seeAlso` appear in starter examples (`ecm:source: ecm:system-starter-example`); `rdfs:isDefinedBy` is reserved (§5.7.1) but NOT pre-populated. All four MUST NOT be re-minted as project-created terms. `rdfs:Class` is normalized to `owl:Class` on import.
 
 Allowed `ecm:source` values: `ecm:imported-ontology`, `ecm:project-created`, `ecm:system-starter-example`.
 
-`rdfs:subClassOf` is permitted on classes; `rdfs:subPropertyOf` is permitted on properties. These are preserved on round-trip but not reasoned over in v0.3.
+`rdfs:subClassOf` is permitted on classes; `rdfs:subPropertyOf` is permitted on properties. `rdfs:range` is permitted on `owl:DatatypeProperty` terms; its value MUST be an XSD datatype IRI or OWL DataRange, NOT an `owl:Class` IRI (see §7.5). These fields are preserved on round-trip.
+
+`rdfs:label` is stored as an object with shape `{ "text": <string>, "lang": <BCP-47-tag> }`. Default language tag is `"en"`. Plain-string labels from prior document versions are migrated to this shape on load (§10.4); Chain R4-3 updates all golden fixtures.
 
 #### 5.7.1 Canonical Reserved Names
 
 The following property IRIs are CANONICAL and MUST NOT be re-minted as project-created terms within a v0.4 project document: `rdfs:label`, `rdfs:comment`, `rdfs:seeAlso`, `rdfs:isDefinedBy`, `owl:sameAs`, `owl:differentFrom`, `owl:equivalentClass`, `owl:equivalentProperty`. The validator MUST emit a `CANONICAL_RESERVED_NAME_COLLISION` finding (severity: error) when a project-created term has an IRI matching this list. The UI MUST prevent creation of a term whose user-entered IRI override matches an entry in this list. The semantic-jsonld and Turtle emitters MUST use these canonical IRIs directly (not via the project ecm:terms array).
+
+#### 5.7.2 TBox Structure and ABox Exclusion Rationale
+
+GraphWrite exposes four user-facing term types: `owl:Class`, `owl:ObjectProperty`, `owl:DatatypeProperty`, and `owl:AnnotationProperty`. Several RDFS and OWL structural predicates are intentionally absent from the user-facing term vocabulary:
+
+- **`rdfs:subClassOf`** and **`rdfs:subPropertyOf`** are TBox structural predicates that appear as *fields on term objects* (§5.7), not as standalone creatable term types. They express hierarchy within the user’s TBox but are not themselves terms the user declares.
+- **`rdfs:domain`** and **`rdfs:range`** (on `owl:ObjectProperty` and `owl:AnnotationProperty`) are deferred (§7.5). `rdfs:range` on `owl:DatatypeProperty` is authorized as a term field (§7.5), not as a creatable term type.
+- **`rdf:type`**, **`owl:sameAs`**, **`owl:equivalentClass`**, and similar vocabulary are handled by the ABox assertion model (§5.9, §5.10) or are canonical reserved names (§5.7.1); they are not creatable user terms.
+
+The distinction follows the TBox/ABox split: TBox declarations describe the schema (classes and properties); ABox assertions describe individuals. GraphWrite’s Term Manager is a TBox editor; the Instance Canvas is an ABox editor. RDFS predicates that encode TBox structure appear as fields *on* Term Objects rather than as selectable term types.
 
 ### 5.8 Instance Object
 
@@ -689,19 +717,22 @@ The project document is conceptually partitioned into two layers. The layers sha
 
 The Semantic Layer is the set of project entities whose `type` is in the **semantic type allowlist**:
 
-- `ecm:Project` / `iao:OntologyDesignPattern` (the project root)
+- `ecm:Project` / `ecm:OntologyDesignPattern` (the project root)
 - `owl:Class`
 - `owl:ObjectProperty`
 - `owl:DatatypeProperty`
+- `owl:AnnotationProperty`
 - `ecm:Instance`
 - `ecm:RelationAssertion`
 - `ecm:LiteralAssertion`
 - `ecm:Serialization`
 
+**OWL 2 DL annotation/datatype/object property disjointness:** The IRI sets of `owl:AnnotationProperty`, `owl:DatatypeProperty`, and `owl:ObjectProperty` entries in `ecm:terms` MUST be pairwise-disjoint (OWL 2 DL typed-IRI restriction). A term IRI MUST NOT appear with two distinct property types. The validator MUST emit an `ANNOTATION_DATATYPE_IRI_COLLISION` finding (severity: error) on violation.
+
 The semantic predicate allowlist:
 
 - `id`, `type`, `rdfs:label`, `rdfs:comment`;
-- `rdfs:subClassOf`, `rdfs:subPropertyOf`;
+- `rdfs:subClassOf`, `rdfs:subPropertyOf`, `rdfs:range` (`rdfs:range` only on `owl:DatatypeProperty` terms; value MUST be an XSD datatype IRI or OWL DataRange per §5.7 and §7.5);
 - `ecm:classIris`, `ecm:subjectIri`, `ecm:predicateIri`, `ecm:objectIri`;
 - `ecm:value`, `ecm:datatype`, `ecm:language`;
 - `iao:isAbout`;
@@ -737,8 +768,8 @@ The semantic JSON-LD export is the project document with the Editor Layer projec
 
 The semantic JSON-LD export, when expanded, yields the RDF graph the project models, including:
 
-- the project as an `iao:OntologyDesignPattern` (and therefore an `cco:InformationContentEntity`) about the IRIs in `iao:isAbout`;
-- the TBox of project-introduced terms (`iao:OntologyDesignPattern`, `ecm:Project`, `ecm:Serialization`, `ecm:isSerializationOf`, and their CCO anchoring);
+- the project as an `ecm:OntologyDesignPattern` (and therefore an `cco:InformationContentEntity`) about the IRIs in `iao:isAbout`;
+- the TBox of project-introduced terms (`ecm:OntologyDesignPattern`, `ecm:Project`, `ecm:Serialization`, `ecm:isSerializationOf`, and their CCO anchoring);
 - the user's modeled classes, properties, instances, and assertions;
 - the serializations of this export, each typed as an ICE and linked back to the project by `ecm:isSerializationOf`.
 
@@ -760,8 +791,9 @@ Validation report VR-008 and NFR-012 reference canonical equivalence. Comparison
 ### 7.1 In Scope for v0.3
 
 - **Classes** (`owl:Class`) with labels, comments, and optional `rdfs:subClassOf`.
-- **Object properties** (`owl:ObjectProperty`) with labels, comments, optional `rdfs:subPropertyOf`. Domain and range may be modeled in the UI as informational hints but are not exported as `rdfs:domain` / `rdfs:range` triples in v0.3 unless explicitly added by the user as project-created assertions (deferred — see §7.6).
-- **Datatype properties** (`owl:DatatypeProperty`) with labels, comments, optional `rdfs:subPropertyOf`.
+- **Object properties** (`owl:ObjectProperty`) with labels, comments, optional `rdfs:subPropertyOf`. Domain and range may be modeled in the UI as informational hints but are not exported as `rdfs:domain` / `rdfs:range` triples unless explicitly added by the user as project-created assertions (deferred — see §7.5).
+- **Datatype properties** (`owl:DatatypeProperty`) with labels, comments, optional `rdfs:subPropertyOf`, and optional `rdfs:range` (see §7.5; value MUST be an XSD datatype IRI or OWL DataRange, NOT an `owl:Class` IRI).
+- **Annotation properties** (`owl:AnnotationProperty`) with labels and comments. Annotation properties carry free-form metadata values. **As a v0.4 scope decision**, `rdfs:range` is not emitted on annotation properties; OWL 2 permits `rdfs:range` on annotation properties (it is annotation-vocabulary, not consequence-bearing), but the v0.4 emitter omits it to keep annotation-property modeling minimal. Per OWL 2 DL, the IRI set of annotation properties is pairwise-disjoint from the IRI sets of object properties and datatype properties (see §6.1).
 - **Instance type assertions** via `ecm:classIris`, exported as `rdf:type` triples.
 - **Object-property assertions** between two instances (§5.9, §8).
 - **Datatype-property assertions** from an instance to a literal (§5.10).
@@ -780,9 +812,11 @@ v0.3 does not provide UI support for blank nodes. The canonical project document
 
 v0.3 produces only a single default graph. N-Quads is not an export format. Future versions may add named-graph support; the VMP reserves `ecm:graphIri` for that purpose.
 
-### 7.5 Domain and Range (Deferred)
+### 7.5 Domain and Range
 
-The MVP does not model `rdfs:domain` / `rdfs:range` as first-class TBox fields. A user who needs them can declare them via project-created assertions in v0.4. Documented as a known gap.
+`rdfs:range` is authorized as a first-class TBox field on `owl:DatatypeProperty` terms (ADR-009). The `rdfs:range` value MUST be an XSD datatype IRI (e.g., `xsd:decimal`, `xsd:string`, `xsd:boolean`) or an OWL DataRange expression. It MUST NOT reference an `owl:Class` IRI. The validator MUST emit a `RANGE_CLASS_ON_DATATYPE_PROPERTY` finding (severity: error) when an `owl:DatatypeProperty` term carries a `rdfs:range` value that resolves to an IRI typed as `owl:Class` in `ecm:terms`.
+
+`rdfs:domain`, and `rdfs:range` on `owl:ObjectProperty` and `owl:AnnotationProperty` terms, remain deferred. A user who needs them can declare them via project-created assertions. Documented as a known gap for future versions.
 
 ### 7.6 OWL Restrictions, Property Chains, Cardinality (Out of Scope)
 
@@ -889,13 +923,13 @@ Migration is non-destructive: the original document is preserved on disk under `
 
 **v0.2 documents** (missing `ecm:specVersion`, missing `ecm:literalAssertions`, missing `rdfs:subClassOf` / `rdfs:subPropertyOf` on terms) are loaded as legacy v0.2 and migrated through v0.3 to v0.4 on load.
 
-**v0.3 / v0.3.1 documents** (have `ecm:specVersion: "0.3"`, no `iao:` or `cco:` in context, no `iao:OntologyDesignPattern` type, no `iao:isAbout` field) are migrated to v0.4 on load.
+**v0.3 / v0.3.1 documents** (have `ecm:specVersion: "0.3"`, no `iao:` or `cco:` in context, no `ecm:OntologyDesignPattern` type, no `iao:isAbout` field) are migrated to v0.4 on load.
 
 The v0.3 → v0.4 migration:
 
 - updates `ecm:specVersion` to `"0.4"`;
 - expands the `@context` to include `iao:` and `cco:` prefixes per §5.2;
-- updates the project root's `type` from `"ecm:Project"` to `["ecm:Project", "iao:OntologyDesignPattern"]`;
+- updates the project root's `type` from `"ecm:Project"` to `["ecm:Project", "ecm:OntologyDesignPattern"]`;
 - initializes `iao:isAbout` to `["ecm:UnspecifiedSubjectMatter"]` (the placeholder);
 - emits a `LEGACY_REALIST_ANCHOR_PLACEHOLDER` info finding (§17.4) that persists until the user replaces the placeholder with a real subject IRI;
 - initializes `ecm:serializations` to `[]`.
@@ -1324,7 +1358,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-U001 | Create a new project. When a new project is created via FR-U001, the UI SHOULD prompt the user to declare iao:isAbout BEFORE the project is considered usable. Acceptable default during the prompt is ecm:UnspecifiedSubjectMatter, which the validator treats per §17.2 (MISSING_REALIST_ANCHOR). The UI MAY defer the prompt to first save attempt; the choice between block-at-creation vs nag-until-save is implementation-determined. |
 | FR-U002 | Open a project JSON-LD file. |
 | FR-U003 | Save the active project as `project.jsonld` in canonical form. |
-| FR-U004 | Display a term sidebar with classes, object properties, and datatype properties. |
+| FR-U004 | Display a term sidebar with four partitions: Classes, Object Properties, Datatype Properties, and Annotation Properties. |
 | FR-U005 | Visually distinguish imported, project-created, and starter-example terms. |
 | FR-U006 | Add a project-created class. |
 | FR-U007 | Add a project-created object property. |
@@ -1353,6 +1387,7 @@ The project document is structurally validated against the VMP profile on load a
 | FR-U030 | Show stale-save warning when the on-disk file has been updated since load (§11.2). |
 | FR-U031 | Declare and edit the project's `iao:isAbout` (one or more subject IRIs). The UI must surface `MISSING_REALIST_ANCHOR` and `LEGACY_REALIST_ANCHOR_PLACEHOLDER` findings prominently and provide an obvious affordance to resolve them. |
 | FR-U032 | Delete an instance: removes the ecm:Instance entry from ecm:instances + all ecm:CanvasNode entries referencing it from ecm:CanvasLayout.ecm:nodes + all ecm:LiteralAssertion entries with the deleted instance as ecm:subjectIri + all ecm:RelationAssertion entries with the deleted instance as either ecm:subjectIri or ecm:objectIri. The cascade is atomic — all four removals happen as a single document-level state transition. Implementation: a deleteInstance() kernel function in src/kernel/ that returns the updated document. The UI delete affordance calls this function; CLI + future API consumers reuse the same function. |
+| FR-U033 | Property Creation Module. A dedicated creation workflow for adding project-created annotation and datatype properties, accessible from the Term Manager sidebar. The module MUST include: **(a) Property Type Toggle** — binary radio: `AnnotationProperty` (default) or `DatatypeProperty`. Selecting `DatatypeProperty` reveals the Target Data Type Dropdown (subsection e). **(b) Prefix / Namespace Selector** — dropdown populated from the project’s registered prefixes (e.g., `foaf:`, `schema:`, `ex:`). The `rdf:` namespace MUST NOT appear; annotation and datatype property IRIs MUST NOT use the `rdf:` namespace. **(c) Local Name field** — free-text; value MUST match regex `^[a-zA-Z_][a-zA-Z0-9_.-]*$`. An async uniqueness check MUST warn (non-blocking) when the resulting IRI already exists in `ecm:terms`. Full IRI is composed as `{namespace}{localName}`. **(d) Label and Language Tag** — label text (required) and BCP 47 language tag (default `en`; free-text, pattern `^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$`); stored together as `{ "text": "<value>", "lang": "<tag>" }`. **(e) Target Data Type Dropdown (conditional)** — visible only when Property Type is `DatatypeProperty`; hidden when `AnnotationProperty`. Lists XSD primitive datatypes: `xsd:string`, `xsd:boolean`, `xsd:integer`, `xsd:decimal`, `xsd:double`, `xsd:date`, `xsd:dateTime`, `xsd:anyURI`. (Note: `rdf:langString` is an RDF type, not an XSD primitive, and is used by `ecm:LiteralAssertion.ecm:language` per §5.10; it is NOT selectable here.) Selected value is stored as the `rdfs:range` IRI on the term object. When Property Type is `AnnotationProperty`, `rdfs:range` is omitted from the term object. **JSON payload shape** (on submit): `{ "propertyType": "AnnotationProperty" or "DatatypeProperty", "namespace": "<IRI>", "prefix": "<prefix>", "localName": "<name>", "label": { "text": "<str>", "lang": "<tag>" }, "range": "<xsd-IRI>" or null }`. **Turtle serialization** — AnnotationProperty branch: `ex:myProp a owl:AnnotationProperty ; rdfs:label "My Prop"@en .` — DatatypeProperty branch: `ex:hourlyRate a owl:DatatypeProperty ; rdfs:label "Hourly Rate"@en ; rdfs:range xsd:decimal .` |
 
 ### 18.3 State Adapters
 
@@ -1400,7 +1435,7 @@ The project document is structurally validated against the VMP profile on load a
 
 The `manifest.jsonld` is itself an RDF document. It contains:
 
-- the project IRI typed as `["ecm:Project", "iao:OntologyDesignPattern"]`, with its `iao:isAbout` declarations and `ecm:name`;
+- the project IRI typed as `["ecm:Project", "ecm:OntologyDesignPattern"]`, with its `iao:isAbout` declarations and `ecm:name`;
 - one `ecm:Serialization` entry per artifact in the ZIP, each with `ecm:filename`, MIME `ecm:format`, SHA-256 `ecm:contentHash`, `ecm:byteLength`, `ecm:generatedAt`, and `ecm:isSerializationOf` pointing back to the project IRI;
 - the Project TBox declarations (or a reference to `/tbox/project-tbox.ttl`).
 
@@ -1425,7 +1460,7 @@ A consumer who reads `manifest.jsonld` alone learns, in RDF: what this package i
 | NFR-011 | Performance bounds per §14.2 and §14.3. |
 | NFR-012 | Lossless canonical round-trip per §5.3 and §6.4. |
 | NFR-013 | Two compliant implementations produce byte-identical canonical and derived artifacts per §9.1. |
-| NFR-014 | Every project document is realist-anchored: the project is typed as `iao:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity`), declares one or more `iao:isAbout` subjects, and every generated serialization is recorded as an `ecm:Serialization` linked to the project by `ecm:isSerializationOf`. The Project TBox (§5.14) is shipped with every implementation. |
+| NFR-014 | Every project document is realist-anchored: the project is typed as `ecm:OntologyDesignPattern` (a subclass of `cco:InformationContentEntity`), declares one or more `iao:isAbout` subjects, and every generated serialization is recorded as an `ecm:Serialization` linked to the project by `ecm:isSerializationOf`. The Project TBox (§5.14) is shipped with every implementation. |
 
 ---
 
@@ -1626,7 +1661,7 @@ The reference UI is non-normative guidance.
 
 **Header:** project name, save/open/export controls, validation status, migration notice if applicable.
 
-**Left sidebar — Term Manager:** classes, object properties, datatype properties, search/filter, add term, source indicator (imported / project-created / starter).
+**Left sidebar — Term Manager:** classes, object properties, datatype properties, annotation properties, search/filter, add term, source indicator (imported / project-created / starter).
 
 **Center — Instance Canvas:** instance cards, directed relations, drag/drop positioning, zoom/pan, node/edge selection. (Renamed from "ABox Canvas" for clarity.)
 
@@ -1681,7 +1716,7 @@ These genuinely remain open and should be resolved during early implementation.
 ### Phase 2: Browser UI Foundation
 
 - React UI shell;
-- term sidebar (three term types);
+- term sidebar (four term types: classes, object properties, datatype properties, annotation properties);
 - React Flow canvas bound to Editor Layer;
 - instance cards with class assignment;
 - object-property relation creation;
@@ -1768,7 +1803,7 @@ These genuinely remain open and should be resolved during early implementation.
 
 The v0.4 engineering baseline is complete when:
 
-1. A canonical project JSON-LD file in the VMP can represent the project as an `iao:OntologyDesignPattern` (with `iao:isAbout`), terms (classes, object properties, datatype properties), instances, relations, literal assertions, serializations, settings, layouts, and snapshots.
+1. A canonical project JSON-LD file in the VMP can represent the project as an `ecm:OntologyDesignPattern` (with `iao:isAbout`), terms (classes, object properties, datatype properties), instances, relations, literal assertions, serializations, settings, layouts, and snapshots.
 2. The Project TBox (§5.14) is bundled with the implementation and prepended to all semantic exports.
 3. Core computation can validate a project file in Node.js, including the realist-anchor checks.
 4. Core computation can generate Turtle, N-Triples, semantic JSON-LD, Mermaid, and Markdown in Node.js. Turtle and N-Triples include the Project TBox; semantic JSON-LD retains the project root as a typed ICE.
@@ -1789,7 +1824,7 @@ The v0.4 engineering baseline is complete when:
 
 ## 32. Summary
 
-v0.4 reframes the Visual RDF / Knowledge Graph Modeler as a **realist-anchored** modeling tool. Every project is an Information Content Entity — typed as `iao:OntologyDesignPattern`, a subclass of `cco:InformationContentEntity` (CCO `ont00000958`) — that declares what portion of reality it is about. Every generated serialization is itself an ICE recorded in the project's `ecm:serializations` array and exported as part of an RDF-typed manifest. The project document is no longer editor metadata about a graph; it is a node in its own modeled graph.
+v0.4 reframes the Visual RDF / Knowledge Graph Modeler as a **realist-anchored** modeling tool. Every project is an Information Content Entity — typed as `ecm:OntologyDesignPattern`, a subclass of `cco:InformationContentEntity` (CCO `ont00000958`) — that declares what portion of reality it is about. Every generated serialization is itself an ICE recorded in the project's `ecm:serializations` array and exported as part of an RDF-typed manifest. The project document is no longer editor metadata about a graph; it is a node in its own modeled graph.
 
 The architecture is unchanged: a deterministic JSON-LD transformation engine with browser and Node execution surfaces, a normative profile (VMP), a layered Semantic / Editor partition, an explicit determinism model, an explicit concurrency model, an explicit security model, and a conformance test strategy. What v0.4 adds is the ontological honesty about what the tool's own data is.
 

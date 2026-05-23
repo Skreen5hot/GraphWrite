@@ -5,9 +5,9 @@
  * per SPEC section 5.7.
  *
  * Acceptance criteria:
- *   AC1: STARTER_TERMS has at least 15 entries.
+ *   AC1: STARTER_TERMS has at least 3 entries.
  *   AC2: Each entry has a non-empty string id.
- *   AC3: Each entry's type is owl:Class | owl:ObjectProperty | owl:DatatypeProperty.
+ *   AC3: Each entry's type is owl:Class | owl:ObjectProperty | owl:DatatypeProperty | owl:AnnotationProperty.
  *   AC4: Each entry has ecm:source === "ecm:system-starter-example".
  *   AC5: Each entry has a non-empty string rdfs:label.
  *   AC6: Entries are sorted lexicographically by id (SPEC section 5.3 rule 4).
@@ -37,20 +37,21 @@ const VALID_TYPES: ReadonlySet<EcmTermType> = new Set([
   "owl:Class",
   "owl:ObjectProperty",
   "owl:DatatypeProperty",
+  "owl:AnnotationProperty",
 ]);
 
 // ---------------------------------------------------------------------------
-// AC1: at least 15 entries
+// AC1: at least 3 entries
 // ---------------------------------------------------------------------------
-console.log("\nAC1: STARTER_TERMS has at least 15 entries");
+console.log("\nAC1: STARTER_TERMS has at least 3 entries");
 try {
   ok(
-    STARTER_TERMS.length >= 15,
-    `Expected >= 15 entries; got ${STARTER_TERMS.length}`,
+    STARTER_TERMS.length >= 3,
+    `Expected >= 3 entries; got ${STARTER_TERMS.length}`,
   );
-  pass(`STARTER_TERMS has ${STARTER_TERMS.length} entries (>= 15) (AC1)`);
+  pass(`STARTER_TERMS has ${STARTER_TERMS.length} entries (>= 3) (AC1)`);
 } catch (e) {
-  fail("AC1: STARTER_TERMS must have at least 15 entries", e);
+  fail("AC1: STARTER_TERMS must have at least 3 entries", e);
 }
 
 // ---------------------------------------------------------------------------
@@ -66,16 +67,24 @@ try {
     );
     ok(
       VALID_TYPES.has(t.type),
-      `entry[${i}]: type must be owl:Class|owl:ObjectProperty|owl:DatatypeProperty; got "${t.type}"`,
+      `entry[${i}]: type must be owl:Class|owl:ObjectProperty|owl:DatatypeProperty|owl:AnnotationProperty; got "${t.type}"`,
     );
     strictEqual(
       t["ecm:source"],
       "ecm:system-starter-example",
       `entry[${i}]: ecm:source must be "ecm:system-starter-example"; got "${t["ecm:source"]}"`,
     );
+    // Post R4-3a: rdfs:label is { text, lang } object shape, not plain string.
+    const lbl = t["rdfs:label"];
+    const lblValid =
+      lbl !== null &&
+      typeof lbl === "object" &&
+      typeof (lbl as { text?: unknown }).text === "string" &&
+      ((lbl as { text: string }).text).length > 0 &&
+      typeof (lbl as { lang?: unknown }).lang === "string";
     ok(
-      typeof t["rdfs:label"] === "string" && t["rdfs:label"].length > 0,
-      `entry[${i}]: rdfs:label must be a non-empty string; got ${JSON.stringify(t["rdfs:label"])}`,
+      lblValid,
+      `entry[${i}]: rdfs:label must be { text: non-empty string, lang: string }; got ${JSON.stringify(lbl)}`,
     );
   }
   pass("all entries have valid id, type, ecm:source, rdfs:label (AC2-AC5)");

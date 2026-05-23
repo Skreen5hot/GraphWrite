@@ -63,6 +63,16 @@ export function narrateTriple(input: NarrationInput): string {
  * @param project - Parsed VMP project document (canonical or raw form).
  * @returns Array of narration strings; one per relation with resolvable s/p/o IRIs.
  */
+/** Resolve display text from a raw rdfs:label value (string or {text,lang} object). */
+function resolveLabel(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "object" && raw !== null) {
+    const text = (raw as Record<string, unknown>)["text"];
+    if (typeof text === "string") return text;
+  }
+  return "";
+}
+
 export function narrateProject(project: Record<string, unknown>): string[] {
   const instanceLabel = new Map<string, string>();
   const instanceClass = new Map<string, string>(); // instanceId -> first classIri
@@ -90,7 +100,8 @@ export function narrateProject(project: Record<string, unknown>): string[] {
       const term = item as Record<string, unknown>;
       const id = term["id"];
       if (typeof id !== "string") continue;
-      termLabel.set(id, typeof term["rdfs:label"] === "string" ? term["rdfs:label"] : id);
+      const tl = resolveLabel(term["rdfs:label"]);
+      termLabel.set(id, tl.length > 0 ? tl : id);
     }
   }
 

@@ -48,6 +48,7 @@
       "@type": "@id"
     },
     "id": "@id",
+    "lang": "@language",
     "obo": "http://purl.obolibrary.org/obo/",
     "owl": "http://www.w3.org/2002/07/owl#",
     "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -60,6 +61,7 @@
       "@container": "@set",
       "@type": "@id"
     },
+    "text": "@value",
     "type": "@type",
     "xsd": "http://www.w3.org/2001/XMLSchema#"
   },

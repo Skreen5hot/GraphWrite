@@ -65,7 +65,7 @@ function applyTermEdit(
     const updated: Record<string, unknown> = {
       ...obj,
       id: newIri,
-      "rdfs:label": newLabel,
+      "rdfs:label": { text: newLabel, lang: "en" },
       "ecm:updatedAt": now,
     };
     if (newComment.length > 0) {
@@ -85,7 +85,16 @@ export function EditTermDialog({
   onClose,
 }: EditTermDialogProps) {
   const originalIri = readStr(term, "id");
-  const [label, setLabel] = useState(readStr(term, "rdfs:label"));
+  const rawLabel = term["rdfs:label"];
+  const [label, setLabel] = useState(
+    typeof rawLabel === "string"
+      ? rawLabel
+      : typeof rawLabel === "object" &&
+        rawLabel !== null &&
+        typeof (rawLabel as Record<string, unknown>)["text"] === "string"
+      ? ((rawLabel as Record<string, unknown>)["text"] as string)
+      : "",
+  );
   const [comment, setComment] = useState(readStr(term, "rdfs:comment"));
   const [iri, setIri] = useState(originalIri);
   const [error, setError] = useState<string | null>(null);

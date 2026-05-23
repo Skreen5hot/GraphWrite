@@ -109,7 +109,7 @@
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": "2026-01-01T00:00:00Z",
       "id": "https://example.org/ontology/NameProperty",
-      "rdfs:label": "Name Property",
+      "rdfs:label": { "text": "Name Property", "lang": "en" },
       "type": "owl:DatatypeProperty"
     }
   ],

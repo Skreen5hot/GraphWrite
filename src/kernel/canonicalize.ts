@@ -73,6 +73,8 @@ export const VMP_CONTEXT: Record<string, unknown> = {
   cco: "https://www.commoncoreontologies.org/",
   id: "@id",
   type: "@type",
+  text: "@value",
+  lang: "@language",
   "ecm:terms":             { "@container": "@set" },
   "ecm:instances":         { "@container": "@set" },
   "ecm:relations":         { "@container": "@set" },

@@ -17,7 +17,8 @@ import { RESERVED_CANONICAL_IRIS } from "../validate/reserved-names.js";
 export type AddTermType =
   | "owl:Class"
   | "owl:ObjectProperty"
-  | "owl:DatatypeProperty";
+  | "owl:DatatypeProperty"
+  | "owl:AnnotationProperty";
 
 interface AddTermDialogProps {
   termType: AddTermType;
@@ -32,6 +33,7 @@ const TERM_TYPE_LABEL: Record<AddTermType, string> = {
   "owl:Class": "Class",
   "owl:ObjectProperty": "Object Property",
   "owl:DatatypeProperty": "Datatype Property",
+  "owl:AnnotationProperty": "Annotation Property",
 };
 
 /** O(1) lookup set for canonical reserved-name guard (SPEC section 5.7.1). */
@@ -93,7 +95,7 @@ export function AddTermDialog({
       "ecm:source": "ecm:project-created",
       "ecm:updatedAt": now,
       id: iri,
-      "rdfs:label": trimmedLabel,
+      "rdfs:label": { text: trimmedLabel, lang: "en" },
       type: termType,
     };
     onConfirm(newTerm);

@@ -131,3 +131,36 @@
 - The `iao:isAbout` property key is unchanged in all compact JSON-LD; only its RDF expansion changes (transparent to callers)
 - The Turtle emitter gains a `JSON_KEY_TO_RDF_PRED` constant mapping `"iao:isAbout"` to `"obo:IAO_0000136"` so RDF serialization uses the correct predicate IRI
 - The `iao:` prefix is removed from `VMP_CONTEXT` and `PREFIX_MAP`; no remaining term in scope uses this prefix after the OntologyDesignPattern re-homing
+
+---
+
+## ADR-008: rdfs:label Shape — { text, lang } Object
+
+**Date:** 2026-05-23
+
+**Decision:** Store `rdfs:label` on all term objects as a `{ "text": <string>, "lang": <BCP-47-tag> }` object with a default language tag of `"en"`, rather than as a plain string or via a sibling `ecm:labelLang` field.
+
+**Context:** Round 4 feedback identified that plain-string labels cannot carry language tags without a parallel field, making multi-language scaling awkward and departing from RDF’s native `rdf:langString` modeling. Two alternatives were considered: (1) keep plain strings and add a sibling `ecm:labelLang` field alongside the existing `rdfs:label`; (2) promote the label to an inline `{ text, lang }` object collocating value and tag. Option 1 requires callers to join two separate fields to reconstruct a language-tagged literal, diverges from canonical RDF langString representation, and complicates the Turtle emitter. Option 2 mirrors RDF langString structure, keeps value and tag together, and scales naturally to multi-label scenarios in future versions. The operator selected option 2 at Phase 05a adjudication.
+
+**Consequences:**
+- All term objects in `ecm:terms` store `rdfs:label` as `{ "text": <string>, "lang": <tag> }` instead of a bare string
+- The Turtle and N-Triples emitters MUST emit `rdfs:label "<text>"@<lang>` using this shape
+- Existing v0.3 fixtures with plain-string `rdfs:label` values are migrated on load via the §10.4 migration path; Chain R4-3 updates all golden fixtures to the new shape
+- The Property Creation Module (FR-U033) collects label and language tag as two separate form fields and assembles the `{ text, lang }` object before writing to the project document
+
+---
+
+## ADR-009: rdfs:range Emission Authorized on owl:DatatypeProperty
+
+**Date:** 2026-05-23
+
+**Decision:** Authorize `rdfs:range` as a first-class TBox field on `owl:DatatypeProperty` terms, with the constraint that the range value MUST be an XSD datatype IRI or OWL DataRange expression, NOT an `owl:Class` IRI.
+
+**Context:** The §7.5 deferral ("The MVP does not model rdfs:domain / rdfs:range as first-class TBox fields") was appropriate at v0.3 but blocks the Round 4 Property Creation Module (FR-U033), which must capture a target data type for datatype properties. The semantic-SME finding confirms the hard constraint: in OWL 2 DL, the range of an `owl:DatatypeProperty` must be a data range (XSD type or OWL DataRange), not a class IRI. Emitting an `owl:Class` IRI as the range of a datatype property produces an OWL 2 DL violation. Two paths were considered at Phase 05a adjudication: (1) ship the Target Data Type Dropdown in the UI immediately without amending the SPEC; (2) gate the entire item on a SPEC §7.1/§7.5 amendment first. The operator selected path 2 so that the validator constraint is normatively established before any emitter code lands. `rdfs:range` on `owl:ObjectProperty` and `owl:AnnotationProperty` terms remains deferred.
+
+**Consequences:**
+- `rdfs:range` is added to the §6.1 semantic predicate allowlist, gated to `owl:DatatypeProperty` terms
+- The validator MUST enforce the XSD/DataRange constraint and emit `RANGE_CLASS_ON_DATATYPE_PROPERTY` (severity: error) on violation (Chain R4-4)
+- The Turtle emitter must emit `rdfs:range <xsd-IRI>` for `owl:DatatypeProperty` terms that carry a non-null `rdfs:range` field (Chain R4-4: `src/emit/turtle.ts`)
+- `src/projection/index.ts` must add `rdfs:range` to `SEMANTIC_PREDICATE_ALLOWLIST` (Chain R4-4)
+- `rdfs:domain` and `rdfs:range` on `owl:ObjectProperty` and `owl:AnnotationProperty` remain deferred to a future version
