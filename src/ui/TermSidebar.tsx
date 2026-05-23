@@ -10,6 +10,10 @@
 
 import { useState } from "react";
 import { AddTermDialog, type AddTermType } from "./AddTermDialog.js";
+import {
+  PropertyCreationDialog,
+  type PropertyCreationType,
+} from "./PropertyCreationDialog.js";
 import { EditTermDialog } from "./EditTermDialog.js";
 import { resolveTermLabel } from "./label-resolution.js";
 
@@ -189,6 +193,9 @@ function TermSection({
 export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
   /** OWL type of the term being added; null when the Add dialog is closed. */
   const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);
+  /** Property type being created; null when PropertyCreationDialog is closed (FR-U033). */
+  const [propertyDialogType, setPropertyDialogType] =
+    useState<PropertyCreationType | null>(null);
   /** Term being edited; null when the Edit dialog is closed (FR-U009). */
   const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);
 
@@ -217,6 +224,30 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
     });
     onTermsChange({ ...project, "ecm:terms": sorted });
     setAddDialogType(null);
+  }
+
+  /**
+   * Append the confirmed property term to ecm:terms, sort by id (SPEC section 5.3 rule 4),
+   * propagate via onTermsChange, then close the dialog (FR-U033).
+   */
+  function handlePropertyConfirm(newTerm: Record<string, unknown>) {
+    if (project === null || onTermsChange === undefined) return;
+    const existing: unknown[] = Array.isArray(project["ecm:terms"])
+      ? (project["ecm:terms"] as unknown[])
+      : [];
+    const sorted = [...existing, newTerm].sort((a, b) => {
+      const aId =
+        typeof (a as Record<string, unknown>)["id"] === "string"
+          ? ((a as Record<string, unknown>)["id"] as string)
+          : "";
+      const bId =
+        typeof (b as Record<string, unknown>)["id"] === "string"
+          ? ((b as Record<string, unknown>)["id"] as string)
+          : "";
+      return aId < bId ? -1 : aId > bId ? 1 : 0;
+    });
+    onTermsChange({ ...project, "ecm:terms": sorted });
+    setPropertyDialogType(null);
   }
 
   /**
@@ -265,7 +296,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         testId="gw-term-section-datatype-properties"
         onAddTerm={
           canEdit
-            ? () => setAddDialogType("owl:DatatypeProperty")
+            ? () => setPropertyDialogType("owl:DatatypeProperty")
             : undefined
         }
         addTestId="gw-btn-add-datatype-property"
@@ -277,7 +308,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         testId="gw-term-section-annotation-properties"
         onAddTerm={
           canEdit
-            ? () => setAddDialogType("owl:AnnotationProperty")
+            ? () => setPropertyDialogType("owl:AnnotationProperty")
             : undefined
         }
         addTestId="gw-btn-add-annotation-property"
@@ -289,6 +320,14 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
           project={project}
           onConfirm={handleAddConfirm}
           onClose={() => setAddDialogType(null)}
+        />
+      )}
+      {propertyDialogType !== null && project !== null && (
+        <PropertyCreationDialog
+          initialType={propertyDialogType}
+          project={project}
+          onConfirm={handlePropertyConfirm}
+          onClose={() => setPropertyDialogType(null)}
         />
       )}
       {editTerm !== null && project !== null && (

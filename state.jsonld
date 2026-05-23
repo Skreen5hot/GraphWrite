@@ -51387,6 +51387,930 @@
           "chain_hash": "d366212f5af374b9e4a213de9c868602e1aa1de1e915923ff703556384b9898f"
         }
       ]
+    },
+    {
+      "@id": "urn:fnsr:task:368-recon-r4-4",
+      "agent": "reconnaissance",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "FR-U033 is fully present in SPEC.md at line 1390 and specifies all five sub-requirements (Property Type Toggle, Prefix/Namespace Selector, Local Name field, Label+Language Tag, conditional Target Data Type Dropdown) plus JSON payload shape and Turtle serialization examples.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1390",
+                "excerpt": "FR-U033 | Property Creation Module. A dedicated creation workflow for adding project-created annotation and datatype properties... (a) Property Type Toggle \u00e2\u20ac\u201d binary radio: AnnotationProperty (default) or DatatypeProperty... (b) Prefix / Namespace Selector \u00e2\u20ac\u201d dropdown populated from the project's registered prefixes (e.g., foaf:, schema:, ex:). The rdf: namespace MUST NOT appear... (c) Local Name field \u00e2\u20ac\u201d regex ^[a-zA-Z_][a-zA-Z0-9_.-]*$... (d) Label and Language Tag \u00e2\u20ac\u201d BCP 47 pattern ^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$... (e) Target Data Type Dropdown (conditional)..."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "No PropertyCreationDialog.tsx file exists under src/ui/; the glob search for that pattern returns no results.",
+            "evidence": [
+              {
+                "file": "src/ui/",
+                "lines": "N/A",
+                "excerpt": "Glob of src/ui/PropertyCreationDialog* returns no matches. Existing files: AddTermDialog.tsx, EditTermDialog.tsx, Dialog.tsx, TermSidebar.tsx, AddLiteralDialog.tsx, ProjectSettingsDialog.tsx, NewProjectDialog.tsx, App.tsx, CanvasView.tsx, Inspector.tsx, ValidationPanel.tsx, main.tsx."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "AddTermDialog.tsx receives a fixed termType prop from TermSidebar (covers all four OWL types including owl:AnnotationProperty and owl:DatatypeProperty) but its form has only two fields \u00e2\u20ac\u201d label text and IRI override \u00e2\u20ac\u201d with no Property Type Toggle, Prefix/Namespace Selector, Local Name field, Language Tag dropdown, or Target Data Type Dropdown.",
+            "evidence": [
+              {
+                "file": "src/ui/AddTermDialog.tsx",
+                "lines": "17-37",
+                "excerpt": "export type AddTermType = | 'owl:Class' | 'owl:ObjectProperty' | 'owl:DatatypeProperty' | 'owl:AnnotationProperty';"
+              },
+              {
+                "file": "src/ui/AddTermDialog.tsx",
+                "lines": "22-28",
+                "excerpt": "interface AddTermDialogProps { termType: AddTermType; project: Record<string, unknown>; onConfirm: ...; onClose: ...; }"
+              },
+              {
+                "file": "src/ui/AddTermDialog.tsx",
+                "lines": "67-101",
+                "excerpt": "const [label, setLabel] = useState(\"\"); const [iriOverride, setIriOverride] = useState(\"\"); ... newTerm: { 'ecm:createdAt': now, 'ecm:ontologyId': null, 'ecm:source': 'ecm:project-created', 'ecm:updatedAt': now, id: iri, 'rdfs:label': { text: trimmedLabel, lang: 'en' }, type: termType }"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "TermSidebar.tsx routes the Add buttons for all four term types (owl:Class, owl:ObjectProperty, owl:DatatypeProperty, owl:AnnotationProperty) through the same setAddDialogType state and a single AddTermDialog instance; there is no branching per property type.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "191",
+                "excerpt": "const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "248-284",
+                "excerpt": "onAddTerm={canEdit ? () => setAddDialogType('owl:Class') : undefined} ... onAddTerm={canEdit ? () => setAddDialogType('owl:ObjectProperty') : undefined} ... onAddTerm={canEdit ? () => setAddDialogType('owl:DatatypeProperty') : undefined} ... onAddTerm={canEdit ? () => setAddDialogType('owl:AnnotationProperty') : undefined}"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "286-293",
+                "excerpt": "{addDialogType !== null && project !== null && (<AddTermDialog termType={addDialogType} project={project} onConfirm={handleAddConfirm} onClose={() => setAddDialogType(null)} />)}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "foaf: and schema: prefixes are absent from both VMP_CONTEXT (src/kernel/canonicalize.ts) and PREFIX_MAP (src/emit/turtle.ts); both maps contain exactly: ecm, rdf, rdfs, owl, xsd, obo, cco.",
+            "evidence": [
+              {
+                "file": "src/kernel/canonicalize.ts",
+                "lines": "66-89",
+                "excerpt": "export const VMP_CONTEXT: Record<string, unknown> = { ecm: 'https://edgecanonical.org/ns/modeler#', rdf: '...', rdfs: '...', owl: '...', xsd: '...', obo: '...', cco: '...' ... }"
+              },
+              {
+                "file": "src/emit/turtle.ts",
+                "lines": "33-41",
+                "excerpt": "const PREFIX_MAP: Record<string, string> = { ecm: 'https://edgecanonical.org/ns/modeler#', rdf: '...', rdfs: '...', owl: '...', xsd: '...', obo: '...', cco: '...' };"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "The SME finding S9 (FEEDBACK-ROUND-4-DECOMPOSITION.md:275) identifies the corrected hardcoded namespace selector entries as: ex\u00e2\u2020\u2019http://example.org/, foaf\u00e2\u2020\u2019http://xmlns.com/foaf/0.1/, schema\u00e2\u2020\u2019https://schema.org/; and confirms foaf: and schema: must be added to PREFIX_MAP in turtle.ts.",
+            "evidence": [
+              {
+                "file": "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+                "lines": "275",
+                "excerpt": "SME correction: the rdf: prefix must be removed from the dropdown... Corrected namespace list: [{ prefix: 'ex', ns: 'http://example.org/' }, { prefix: 'foaf', ns: 'http://xmlns.com/foaf/0.1/' }, { prefix: 'schema', ns: 'https://schema.org/' }]. Also: foaf: and schema: are currently absent from PREFIX_MAP in turtle.ts lines 33\u00e2\u20ac\u201c41 and must be added so composed IRIs serialize with short-form prefixes."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "rdfs:range is NOT present in the IRI-valued predicates loop in src/emit/turtle.ts nodeToQuads(); the loop at line 191 covers only rdfs:subClassOf, rdfs:subPropertyOf, iao:isAbout, ecm:isSerializationOf.",
+            "evidence": [
+              {
+                "file": "src/emit/turtle.ts",
+                "lines": "190-196",
+                "excerpt": "// IRI-valued predicates (single IRI or array of IRIs)\nfor (const pred of [\"rdfs:subClassOf\", \"rdfs:subPropertyOf\", \"iao:isAbout\", \"ecm:isSerializationOf\"]) {"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "rdfs:range IS already present in SEMANTIC_PREDICATE_ALLOWLIST in src/projection/index.ts at line 64, meaning projection already passes rdfs:range through for DatatypeProperty terms.",
+            "evidence": [
+              {
+                "file": "src/projection/index.ts",
+                "lines": "56-79",
+                "excerpt": "const SEMANTIC_PREDICATE_ALLOWLIST = new Set<string>([ 'id', 'type', 'rdfs:label', 'rdfs:comment', 'rdfs:seeAlso', 'rdfs:subClassOf', 'rdfs:subPropertyOf', 'rdfs:range', ...])"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "owl:AnnotationProperty is already in SEMANTIC_TYPE_ALLOWLIST in src/projection/index.ts (line 35), indicating the R4-2 prerequisite for F7 (AnnotationProperty emission) is satisfied.",
+            "evidence": [
+              {
+                "file": "src/projection/index.ts",
+                "lines": "29-40",
+                "excerpt": "const SEMANTIC_TYPE_ALLOWLIST = new Set<string>([ 'ecm:Project', 'ecm:OntologyDesignPattern', 'owl:Class', 'owl:ObjectProperty', 'owl:DatatypeProperty', 'owl:AnnotationProperty', ...])"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "RANGE_CLASS_ON_DATATYPE_PROPERTY validation code is absent from src/validate/codes.ts; the file exports 27 constants and this code is not among them, despite ADR-009 stating the validator MUST emit it.",
+            "evidence": [
+              {
+                "file": "src/validate/codes.ts",
+                "lines": "1-56",
+                "excerpt": "// 17 hard errors, 7 warnings, 3 info findings \u00e2\u20ac\u201d no RANGE_CLASS_ON_DATATYPE_PROPERTY in the file."
+              },
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "163",
+                "excerpt": "The validator MUST enforce the XSD/DataRange constraint and emit RANGE_CLASS_ON_DATATYPE_PROPERTY (severity: error) on violation (Chain R4-4)"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "No tests for rdfs:range emission exist in tests/emitters.test.ts, and no tests for RANGE_CLASS_ON_DATATYPE_PROPERTY exist in tests/structural-validator.test.ts; both files grep for 'rdfs:range' and 'RANGE_CLASS' with no matches.",
+            "evidence": [
+              {
+                "file": "tests/emitters.test.ts",
+                "lines": "1-end",
+                "excerpt": "Grep for 'rdfs:range|DatatypeProperty|range' returns no matches."
+              },
+              {
+                "file": "tests/structural-validator.test.ts",
+                "lines": "1-end",
+                "excerpt": "Grep for 'RANGE_CLASS|rdfs:range|range' returns no matches."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "Dialog.tsx is a self-contained, reusable primitive (67 lines) that accepts title, onClose, children, testId props and wraps the native HTML <dialog> with showModal(); no modifications are needed to this component for R4-4.",
+            "evidence": [
+              {
+                "file": "src/ui/Dialog.tsx",
+                "lines": "1-67",
+                "excerpt": "export function Dialog({ title, onClose, children, testId = 'gw-dialog' }: DialogProps) { ... const ref = useRef<HTMLDialogElement>(null); ... el.showModal(); ... }"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "FR-U033's JSON payload maps to the ecm:Term shape in SPEC.md \u00c2\u00a75.7 as follows: namespace+localName \u00e2\u2020\u2019 id; label.{text,lang} \u00e2\u2020\u2019 rdfs:label {text,lang}; range \u00e2\u2020\u2019 rdfs:range (DatatypeProperty only, omitted on AnnotationProperty); propertyType prepended with 'owl:' \u00e2\u2020\u2019 type; plus ecm:source='ecm:project-created', ecm:ontologyId=null, ecm:createdAt/ecm:updatedAt.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "463-477",
+                "excerpt": "Example owl:DatatypeProperty term: { id: 'http://example.org/hourlyRate', type: 'owl:DatatypeProperty', 'rdfs:label': { text: 'Hourly Rate', lang: 'en' }, 'rdfs:range': 'http://www.w3.org/2001/XMLSchema#decimal', 'ecm:source': 'ecm:project-created', 'ecm:ontologyId': null, ... }"
+              },
+              {
+                "file": "src/ui/AddTermDialog.tsx",
+                "lines": "92-100",
+                "excerpt": "const newTerm: Record<string, unknown> = { 'ecm:createdAt': now, 'ecm:ontologyId': null, 'ecm:source': 'ecm:project-created', 'ecm:updatedAt': now, id: iri, 'rdfs:label': { text: trimmedLabel, lang: 'en' }, type: termType };"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "The IRI uniqueness check in AddTermDialog (collectExistingIris, lines 47-59) operates on full IRI strings from ecm:terms and ecm:instances; for R4-4 this check must be reused or adapted to test the composed IRI (namespace + localName) against the same set.",
+            "evidence": [
+              {
+                "file": "src/ui/AddTermDialog.tsx",
+                "lines": "47-59",
+                "excerpt": "function collectExistingIris(project: Record<string, unknown>): Set<string> { const iris = new Set<string>(); for (const key of ['ecm:terms', 'ecm:instances']) { ... iris.add(id); } return iris; }"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "The FEEDBACK-ROUND-4-DECOMPOSITION.md R4-MINISPEC-1 through R4-MINISPEC-8 completeness maps all reference src/ui/AddTermDialog.tsx (not a new file) as the mutation target for the Property Creation Module; the decomposition explicitly says 'replace fixed termType prop with internal state' rather than 'create new dialog'.",
+            "evidence": [
+              {
+                "file": "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+                "lines": "257-259",
+                "excerpt": "Completeness map: src/ui/AddTermDialog.tsx \u00e2\u20ac\u201d replace fixed termType prop with internal state useState<'owl:AnnotationProperty' | 'owl:DatatypeProperty'>('owl:AnnotationProperty'); render toggle control; ... src/ui/TermSidebar.tsx \u00e2\u20ac\u201d review setAddDialogType call sites; Class creation path may retain pre-determined initializer"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "FR-U033 in SPEC.md (ratified text, line 1390) explicitly states 'The rdf: namespace MUST NOT appear'; the original FEEDBACK-ROUND-4.md (line 56) included rdf: in the namespace list \u00e2\u20ac\u201d the SPEC.md ratified text overrules the original feedback.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1390",
+                "excerpt": "The rdf: namespace MUST NOT appear; annotation and datatype property IRIs MUST NOT use the rdf: namespace."
+              },
+              {
+                "file": "demo/FEEDBACK-ROUND-4.md",
+                "lines": "56",
+                "excerpt": "Prefix/Namespace Selector (Mandatory) \u00e2\u20ac\u201d Searchable dropdown. Data source: pre-populated array of app-configured namespaces (ex:, foaf:, schema:, rdf:)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "FR-U033 in SPEC.md lists 8 XSD datatypes for the Target Data Type Dropdown (xsd:string, xsd:boolean, xsd:integer, xsd:decimal, xsd:double, xsd:date, xsd:dateTime, xsd:anyURI); the original FEEDBACK-ROUND-4.md listed only 6 (omitting xsd:double and xsd:anyURI).",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1390",
+                "excerpt": "Lists XSD primitive datatypes: xsd:string, xsd:boolean, xsd:integer, xsd:decimal, xsd:double, xsd:date, xsd:dateTime, xsd:anyURI."
+              },
+              {
+                "file": "demo/FEEDBACK-ROUND-4.md",
+                "lines": "59",
+                "excerpt": "Options: XSD primitives (xsd:string, xsd:integer, xsd:decimal, xsd:boolean, xsd:date, xsd:dateTime)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F18",
+            "claim": "FR-U033 specifies BCP 47 language tag validation with regex ^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$ (verbatim from SPEC.md:1390); the original feedback specified only a fixed dropdown (@en, @es, @fr) with no free-text pattern.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1390",
+                "excerpt": "(d) Label and Language Tag \u00e2\u20ac\u201d label text (required) and BCP 47 language tag (default en; free-text, pattern ^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$)"
+              },
+              {
+                "file": "demo/FEEDBACK-ROUND-4.md",
+                "lines": "58",
+                "excerpt": "Human Label & Language Tag (Mandatory) \u00e2\u20ac\u201d Text input paired with small language dropdown (@en, @es, @fr). Defaults to @en."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "No schema field for 'project-registered prefixes' exists in the SPEC.md document model (\u00c2\u00a75.4 Project Metadata, \u00c2\u00a75.5 Settings Object); the FR-U033 namespace dropdown is implicitly an app-level hardcoded list, not a per-project dynamic list drawn from a stored field.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "340-422",
+                "excerpt": "\u00c2\u00a75.4 required fields: id, type, ecm:specVersion, ecm:name, ecm:createdAt, ecm:updatedAt, iao:isAbout. \u00c2\u00a75.5 Settings: ecm:iriGeneration, ecm:export, ecm:determinism. No ecm:prefixes or namespace registration field present."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F20",
+            "claim": "ADR-009 (DECISIONS.md:153-166) authorizes rdfs:range as a first-class TBox field on owl:DatatypeProperty only, and explicitly requires: (a) Turtle emitter updated for rdfs:range emission, (b) RANGE_CLASS_ON_DATATYPE_PROPERTY error code added to validator, (c) rdfs:range already added to SEMANTIC_PREDICATE_ALLOWLIST \u00e2\u20ac\u201d (c) is done; (a) and (b) are not done.",
+            "evidence": [
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "153-166",
+                "excerpt": "ADR-009: rdfs:range Emission Authorized on owl:DatatypeProperty... The Turtle emitter must emit rdfs:range <xsd-IRI>... Chain R4-4: src/emit/turtle.ts... The validator MUST enforce the XSD/DataRange constraint and emit RANGE_CLASS_ON_DATATYPE_PROPERTY (severity: error)..."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F21",
+            "claim": "FR-U033's note that rdf:langString is NOT selectable as a Target Data Type is architecturally consistent with how AddLiteralDialog handles language-tagged assertions \u00e2\u20ac\u201d rdf:langString is conveyed via ecm:language on LiteralAssertion (SPEC \u00c2\u00a75.10), not via rdfs:range on property terms.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1390",
+                "excerpt": "(Note: rdf:langString is an RDF type, not an XSD primitive, and is used by ecm:LiteralAssertion.ecm:language per \u00c2\u00a75.10; it is NOT selectable here.)"
+              },
+              {
+                "file": "src/emit/turtle.ts",
+                "lines": "93-97",
+                "excerpt": "function makeLiteralTerm(value: string, datatype: string, lang: string | null) { if (lang !== null && (datatype === 'xsd:string' || datatype === 'rdf:langString')) { return literal(value, lang); } ..."
+              }
+            ],
+            "kind": "inference"
+          }
+        ],
+        "summary": "The implementation surface for Chain R4-4 (Property Creation Module, FR-U033) centers on modifying AddTermDialog.tsx \u00e2\u20ac\u201d not creating a new file \u00e2\u20ac\u201d plus targeted additions to src/emit/turtle.ts, src/validate/codes.ts, and src/validate/index.ts. FR-U033 is fully specified at SPEC.md:1390 (ratified); its differences from the original FEEDBACK-ROUND-4.md include: (a) rdf: removed from namespace selector, (b) XSD datatype list expanded to 8 (added xsd:double, xsd:anyURI), (c) language tag changed from fixed dropdown to free-text with BCP 47 regex. The decomposition document (FEEDBACK-ROUND-4-DECOMPOSITION.md, R4-MINISPEC-1 completeness map) directs that AddTermDialog receives an internal Property Type Toggle replacing the fixed termType prop, and TermSidebar's Class creation path may retain a pre-determined initializer. The three namespace entries are hardcoded app-level constants (not per-project schema fields): ex\u00e2\u2020\u2019http://example.org/, foaf\u00e2\u2020\u2019http://xmlns.com/foaf/0.1/, schema\u00e2\u2020\u2019https://schema.org/ (per SME S9 finding; confirmed by SPEC.md FR-U033 exclusion of rdf:). Prerequisites from prior chains are partially satisfied: rdfs:range is already in the SEMANTIC_PREDICATE_ALLOWLIST (projection/index.ts:64) and owl:AnnotationProperty is in SEMANTIC_TYPE_ALLOWLIST (projection/index.ts:35). Outstanding R4-4 gaps: (1) rdfs:range absent from turtle.ts IRI-valued predicates loop (line 191); (2) RANGE_CLASS_ON_DATATYPE_PROPERTY absent from validate/codes.ts; (3) no validator logic for XSD-vs-class constraint on rdfs:range; (4) foaf: and schema: absent from PREFIX_MAP (turtle.ts:33-41); (5) no tests for either rdfs:range emission or range-class constraint. The JSON payload shape (FR-U033 \u00c2\u00a73) maps cleanly to the existing ecm:Term structure via namespace+localName\u00e2\u2020\u2019id, label.{text,lang}\u00e2\u2020\u2019rdfs:label, range\u00e2\u2020\u2019rdfs:range (null means omit field), propertyType+'owl:'\u00e2\u2020\u2019type.",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/DECISIONS.md",
+          "src/ui/AddTermDialog.tsx",
+          "src/ui/TermSidebar.tsx",
+          "src/ui/Dialog.tsx",
+          "src/ui/EditTermDialog.tsx",
+          "src/emit/turtle.ts",
+          "src/validate/index.ts",
+          "src/validate/codes.ts",
+          "src/projection/index.ts",
+          "src/kernel/canonicalize.ts",
+          "demo/FEEDBACK-ROUND-4.md",
+          "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+          "tests/emitters.test.ts",
+          "tests/structural-validator.test.ts"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "FR-U033",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-008",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-009",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:343-sme-r4-ontology-check",
+            "field": "SME findings S8\u00e2\u20ac\u201cS15 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+          }
+        ],
+        "open_questions": [
+          "Should R4-4 introduce a NEW PropertyCreationDialog.tsx component and leave AddTermDialog.tsx for owl:Class and owl:ObjectProperty creation, OR should it refactor AddTermDialog.tsx to render the FR-U033 fields when the internal type toggle is AnnotationProperty/DatatypeProperty? The decomposition (R4-MINISPEC-1 completeness map) points to AddTermDialog.tsx as the mutation target, but does not explicitly resolve the cohabitation of Class/ObjectProperty creation paths in the same component.",
+          "What is the TermSidebar.tsx wiring change for the two property types? If AddTermDialog is refactored to start with an internal AnnotationProperty/DatatypeProperty toggle, the DatatypeProperty and AnnotationProperty Add buttons in TermSidebar could both open AddTermDialog with an initial type hint, or could open a separate dialog. The decomposition says 'Class creation path may retain pre-determined initializer' but does not specify whether the property section Add buttons pass a type hint prop or rely entirely on the internal toggle default.",
+          "How should TermSidebar.tsx handle owl:ObjectProperty Add button post-R4-4? FR-U033 covers only AnnotationProperty and DatatypeProperty; the ObjectProperty Add path still exists in TermSidebar (line 257) and currently opens AddTermDialog with the existing label+IRI form. The decomposition does not specify whether ObjectProperty creation is in-scope for R4-4 or remains unchanged.",
+          "Is the namespace selector for R4-4 a static hardcoded list or should it be configurable? No ecm:prefixes or project-registered-prefixes field exists in the SPEC document model (\u00c2\u00a75.4, \u00c2\u00a75.5). The decomposition says 'app-configured namespaces' (FEEDBACK-ROUND-4.md:56 phrasing), and the SME S9 correction gives a specific three-entry list. Whether the list should be extensible at runtime is unresolved.",
+          "Should RANGE_CLASS_ON_DATATYPE_PROPERTY be classified as a SPEC \u00c2\u00a717.2 hard error or \u00c2\u00a717.3 warning? ADR-009 says 'severity: error' but the code is not yet in validate/codes.ts; the classification must be confirmed before the code is added to the \u00c2\u00a717.2 section of that file.",
+          "FR-U033's BCP 47 language tag field is free-text with regex validation, while the original feedback specified a fixed dropdown (@en, @es, @fr). Should the implementation use the SPEC.md free-text approach (canonical) or the feedback dropdown approach for the v0.4 release, given that AddTermDialog.tsx currently hardcodes lang:'en' in all new terms?"
+        ],
+        "scope_assessment": "Investigated the full FR-U033 spec text, all existing src/ui/ dialog components (AddTermDialog, EditTermDialog, Dialog, TermSidebar), the Turtle emitter's PREFIX_MAP and nodeToQuads loop, the projection SEMANTIC_PREDICATE_ALLOWLIST and SEMANTIC_TYPE_ALLOWLIST, the validate/codes.ts enumeration, all existing test files for emitter and validator coverage, VMP_CONTEXT in canonicalize.ts, and the decomposition document's R4-MINISPEC-1 through R4-MINISPEC-8 completeness maps; did not investigate src/ui/App.tsx, src/ui/AddLiteralDialog.tsx wiring, test fixture files (tests/fixtures/), or the TypeScript build configuration."
+      },
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 4 Chain R4-4: Property Creation Module per FR-U033 (Aaron's Refined Mini Spec; ratified in R4-1). Final R4 implementation chain. After this lands: Round 4 close-out + walkthrough doc.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. Identify implementation surface for the Property Creation Module: new dialog component, integration with TermSidebar Add affordance, JSON payload shape, Turtle emission verification.",
+        "focus_areas": [
+          "project/SPEC.md FR-U033 \u2014 verbatim full text (ratified Aaron's Refined Mini Spec)",
+          "src/ui/AddTermDialog.tsx \u2014 current dialog; does R4-4 REPLACE it for properties or ADD a parallel dialog? FR-U033 says 'dedicated creation workflow for adding project-created annotation and datatype properties' \u2014 suggests dedicated dialog for properties; existing AddTermDialog could narrow to owl:Class or be replaced",
+          "src/ui/TermSidebar.tsx \u2014 Add affordance per section; how the new dialog wires in (e.g., +Class opens AddTermDialog with type=Class; +Object/Datatype/Annotation Property opens the new PropertyCreationDialog)",
+          "src/ui/Dialog.tsx \u2014 primitive to reuse",
+          "src/validate/index.ts \u2014 uniqueness check on composed IRI (namespace + localName)",
+          "src/emit/turtle.ts PREFIX_MAP \u2014 foaf: and schema: prefixes (R4-1 said these need adding per SME finding)",
+          "Existing AddTermDialog patterns (Property Type select; IRI input; label) \u2014 what's reusable vs replaced"
+        ],
+        "specific_questions": [
+          "Should R4-4 introduce a NEW PropertyCreationDialog and leave AddTermDialog for Class creation, OR refactor AddTermDialog to render the FR-U033 fields when type is Annotation/Datatype Property?",
+          "What are the prefix entries needed in the namespace selector? Aaron's spec: foaf, schema, ex (default project namespace). Are foaf/schema currently in VMP_CONTEXT / PREFIX_MAP? (Per R4-1 SME SA5: need to add them.)",
+          "BCP 47 language tag regex: `^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$` per FR-U033. Confirm correct.",
+          "How does the JSON payload (per Aaron's spec section 3) map to the ecm:Term shape in the document? namespace + localName compose to full IRI as id; label maps to rdfs:label {text, lang}; range maps to rdfs:range (when DatatypeProperty)."
+        ],
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T13:45:52Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:369-dev-r4-4",
+      "agent": "developer",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/PropertyCreationDialog.tsx",
+            "rationale": "New file per FR-U033 Property Creation Module. Architecture: separate from AddTermDialog (which stays for Class/ObjectProperty) per implementation_directions. All 5 FR-U033 fields implemented. rdf: excluded from namespace selector per SPEC FR-U033. 8 XSD datatypes per SPEC (including xsd:double and xsd:anyURI added vs feedback). BCP47 free-text per SPEC. IRI uniqueness check is non-blocking warn. rdfs:range set only for DatatypeProperty (ADR-009).",
+            "before": null,
+            "after": "/**\n * PropertyCreationDialog -- FR-U033 Property Creation Module.\n *\n * Dedicated creation workflow for adding project-created annotation and\n * datatype properties from the Term Manager sidebar.\n *\n * Five fields per FR-U033:\n *   (a) Property Type Toggle  -- AnnotationProperty (default) / DatatypeProperty\n *   (b) Prefix / Namespace Selector -- ex:, foaf:, schema: (rdf: excluded per SPEC)\n *   (c) Local Name field      -- regex ^[a-zA-Z_][a-zA-Z0-9_.-]*$\n *   (d) Label + BCP 47 lang tag -- required text; default \"en\"\n *   (e) Target Data Type Dropdown -- XSD primitives (DatatypeProperty only)\n *\n * On submit: composes IRI as `${namespace}${localName}`, builds SPEC section 5.7\n * term with id=composedIRI, type=owl:AnnotationProperty|owl:DatatypeProperty,\n * ecm:source=ecm:project-created, rdfs:label={text,lang},\n * rdfs:range=xsdIri (DatatypeProperty only; ADR-009).\n *\n * IRI uniqueness check is non-blocking (warn inline; does not block submit).\n * Reuses Dialog primitive from src/ui/Dialog.tsx. FR-U033, ADR-009.\n */\n\nimport { useState, type FormEvent } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\n\n// ---------------------------------------------------------------------------\n// Types\n// ---------------------------------------------------------------------------\n\nexport type PropertyCreationType =\n  | \"owl:AnnotationProperty\"\n  | \"owl:DatatypeProperty\";\n\nexport interface PropertyCreationDialogProps {\n  /** Initial property type; defaults to AnnotationProperty (FR-U033 default). */\n  initialType?: PropertyCreationType;\n  /** Read-only; used for non-blocking IRI uniqueness check (FR-U033). */\n  project: Record<string, unknown>;\n  /** Called with new SPEC section 5.7 term entry on successful submit. */\n  onConfirm: (newTerm: Record<string, unknown>) => void;\n  onClose: () => void;\n}\n\n// ---------------------------------------------------------------------------\n// Constants\n// Hardcoded app-level list per FR-U033 + SME S9 correction.\n// rdf: explicitly excluded: \"The rdf: namespace MUST NOT appear\" (SPEC FR-U033).\n// ---------------------------------------------------------------------------\n\nconst NAMESPACE_OPTIONS: ReadonlyArray<{ prefix: string; ns: string }> = [\n  { prefix: \"ex\",     ns: \"http://example.org/\" },\n  { prefix: \"foaf\",   ns: \"http://xmlns.com/foaf/0.1/\" },\n  { prefix: \"schema\", ns: \"https://schema.org/\" },\n];\n\n/** 8 XSD datatypes per FR-U033 (xsd:double + xsd:anyURI added vs FEEDBACK-ROUND-4.md). */\nconst XSD_DATATYPES: ReadonlyArray<string> = [\n  \"xsd:string\",\n  \"xsd:boolean\",\n  \"xsd:integer\",\n  \"xsd:decimal\",\n  \"xsd:double\",\n  \"xsd:date\",\n  \"xsd:dateTime\",\n  \"xsd:anyURI\",\n];\n\nconst XSD_NS = \"http://www.w3.org/2001/XMLSchema#\";\n\n/** BCP 47 tag pattern per FR-U033 (d). */\nconst BCP47_RE = /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$/;\n\n/** Local name pattern per FR-U033 (c). */\nconst LOCAL_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/;\n\n// ---------------------------------------------------------------------------\n// Helpers\n// ---------------------------------------------------------------------------\n\nfunction collectExistingIris(project: Record<string, unknown>): Set<string> {\n  const iris = new Set<string>();\n  for (const key of [\"ecm:terms\", \"ecm:instances\"]) {\n    const arr = project[key];\n    if (!Array.isArray(arr)) continue;\n    for (const item of arr as unknown[]) {\n      if (typeof item !== \"object\" || item === null) continue;\n      const id = (item as Record<string, unknown>)[\"id\"];\n      if (typeof id === \"string\" && id.length > 0) iris.add(id);\n    }\n  }\n  return iris;\n}\n\nfunction expandXsdIri(compact: string): string {\n  if (compact.startsWith(\"xsd:\")) return XSD_NS + compact.slice(4);\n  return compact;\n}\n\n// ---------------------------------------------------------------------------\n// Component\n// ---------------------------------------------------------------------------\n\nexport function PropertyCreationDialog({\n  initialType = \"owl:AnnotationProperty\",\n  project,\n  onConfirm,\n  onClose,\n}: PropertyCreationDialogProps) {\n  const [propertyType, setPropertyType] = useState<PropertyCreationType>(initialType);\n  const [selectedPrefix, setSelectedPrefix] = useState<string>(\n    NAMESPACE_OPTIONS[0].prefix,\n  );\n  const [localName, setLocalName] = useState(\"\");\n  const [labelText, setLabelText] = useState(\"\");\n  const [langTag, setLangTag] = useState(\"en\");\n  const [dataType, setDataType] = useState<string>(XSD_DATATYPES[0]);\n  const [submitError, setSubmitError] = useState<string | null>(null);\n\n  const selectedNs =\n    NAMESPACE_OPTIONS.find((o) => o.prefix === selectedPrefix)?.ns ?? \"\";\n  const trimmedLocal = localName.trim();\n  const composedIri =\n    trimmedLocal.length > 0 ? `${selectedNs}${trimmedLocal}` : \"\";\n  const localNameValid = trimmedLocal.length === 0 || LOCAL_NAME_RE.test(trimmedLocal);\n  const langTagTrimmed = langTag.trim();\n  const langTagValid = langTagTrimmed.length === 0 || BCP47_RE.test(langTagTrimmed);\n  const iriAlreadyExists =\n    composedIri.length > 0 && collectExistingIris(project).has(composedIri);\n  const isAnnotation = propertyType === \"owl:AnnotationProperty\";\n\n  function handleSubmit(e: FormEvent<HTMLFormElement>) {\n    e.preventDefault();\n    if (trimmedLocal.length === 0) {\n      setSubmitError(\"Local name is required.\");\n      return;\n    }\n    if (!LOCAL_NAME_RE.test(trimmedLocal)) {\n      setSubmitError(\n        \"Local name must match ^[a-zA-Z_][a-zA-Z0-9_.-]*$ (start with letter or underscore).\",\n      );\n      return;\n    }\n    const trimmedLabel = labelText.trim();\n    if (trimmedLabel.length === 0) {\n      setSubmitError(\"Label is required.\");\n      return;\n    }\n    if (langTagTrimmed.length === 0 || !BCP47_RE.test(langTagTrimmed)) {\n      setSubmitError(\"Language tag must be a valid BCP 47 tag (e.g. en, fr, zh-Hans).\");\n      return;\n    }\n    const now = new Date().toISOString();\n    const newTerm: Record<string, unknown> = {\n      \"ecm:createdAt\": now,\n      \"ecm:ontologyId\": null,\n      \"ecm:source\": \"ecm:project-created\",\n      \"ecm:updatedAt\": now,\n      id: composedIri,\n      \"rdfs:label\": { text: trimmedLabel, lang: langTagTrimmed },\n      type: propertyType,\n    };\n    if (!isAnnotation) {\n      newTerm[\"rdfs:range\"] = expandXsdIri(dataType);\n    }\n    onConfirm(newTerm);\n  }\n\n  return (\n    <Dialog\n      title={isAnnotation ? \"Add Annotation Property\" : \"Add Datatype Property\"}\n      onClose={onClose}\n      testId=\"gw-dialog-property-creation\"\n    >\n      <form\n        className=\"gw-term-form\"\n        onSubmit={handleSubmit}\n        data-testid=\"gw-form-property-creation\"\n      >\n        {submitError !== null && (\n          <p\n            className=\"gw-form-error\"\n            role=\"alert\"\n            data-testid=\"gw-form-error-property\"\n          >\n            {submitError}\n          </p>\n        )}\n\n        {/* (a) Property Type Toggle */}\n        <fieldset\n          className=\"gw-form-fieldset\"\n          data-testid=\"gw-fieldset-property-type\"\n        >\n          <legend className=\"gw-form-legend\">Property Type</legend>\n          <label className=\"gw-form-radio-label\">\n            <input\n              type=\"radio\"\n              name=\"propertyType\"\n              value=\"owl:AnnotationProperty\"\n              checked={isAnnotation}\n              onChange={() => setPropertyType(\"owl:AnnotationProperty\")}\n              data-testid=\"gw-radio-annotation-property\"\n            />{\" \"}\n            Annotation Property\n          </label>\n          <label className=\"gw-form-radio-label\">\n            <input\n              type=\"radio\"\n              name=\"propertyType\"\n              value=\"owl:DatatypeProperty\"\n              checked={!isAnnotation}\n              onChange={() => setPropertyType(\"owl:DatatypeProperty\")}\n              data-testid=\"gw-radio-datatype-property\"\n            />{\" \"}\n            Datatype Property\n          </label>\n        </fieldset>\n\n        {/* (b) Prefix / Namespace Selector */}\n        <label className=\"gw-form-label\">\n          Prefix *\n          <select\n            className=\"gw-form-select\"\n            value={selectedPrefix}\n            onChange={(e) => {\n              setSelectedPrefix(e.target.value);\n              setSubmitError(null);\n            }}\n            data-testid=\"gw-select-prefix\"\n          >\n            {NAMESPACE_OPTIONS.map((o) => (\n              <option key={o.prefix} value={o.prefix}>\n                {o.prefix}: ({o.ns})\n              </option>\n            ))}\n          </select>\n        </label>\n\n        {/* (c) Local Name */}\n        <label className=\"gw-form-label\">\n          Local Name *\n          <input\n            className=\"gw-form-input\"\n            type=\"text\"\n            value={localName}\n            onChange={(e) => {\n              setLocalName(e.target.value);\n              setSubmitError(null);\n            }}\n            placeholder=\"e.g. myProperty\"\n            data-testid=\"gw-input-local-name\"\n            autoFocus\n          />\n        </label>\n        {!localNameValid && (\n          <p\n            className=\"gw-form-error\"\n            role=\"alert\"\n            data-testid=\"gw-local-name-error\"\n          >\n            Must start with a letter or underscore; only letters, digits, underscores, dots, hyphens allowed.\n          </p>\n        )}\n        {composedIri.length > 0 && (\n          <p className=\"gw-form-hint\" data-testid=\"gw-composed-iri\">\n            IRI: {composedIri}\n          </p>\n        )}\n        {iriAlreadyExists && (\n          <p\n            className=\"gw-iri-duplicate-warning\"\n            role=\"alert\"\n            data-testid=\"gw-iri-duplicate-warning\"\n          >\n            Warning: this IRI already exists in the project.\n          </p>\n        )}\n\n        {/* (d) Label + Language Tag */}\n        <label className=\"gw-form-label\">\n          Label *\n          <input\n            className=\"gw-form-input\"\n            type=\"text\"\n            value={labelText}\n            onChange={(e) => {\n              setLabelText(e.target.value);\n              setSubmitError(null);\n            }}\n            data-testid=\"gw-input-property-label\"\n          />\n        </label>\n        <label className=\"gw-form-label\">\n          Language Tag{\" \"}\n          <span className=\"gw-form-hint\">(BCP 47; default en)</span>\n          <input\n            className=\"gw-form-input\"\n            type=\"text\"\n            value={langTag}\n            onChange={(e) => {\n              setLangTag(e.target.value);\n              setSubmitError(null);\n            }}\n            data-testid=\"gw-input-lang-tag\"\n          />\n        </label>\n        {!langTagValid && (\n          <p\n            className=\"gw-form-error\"\n            role=\"alert\"\n            data-testid=\"gw-lang-tag-error\"\n          >\n            Language tag must be a valid BCP 47 tag (e.g. en, fr, zh-Hans).\n          </p>\n        )}\n\n        {/* (e) Target Data Type Dropdown -- conditional on DatatypeProperty */}\n        {!isAnnotation && (\n          <label className=\"gw-form-label\">\n            Target Data Type *\n            <select\n              className=\"gw-form-select\"\n              value={dataType}\n              onChange={(e) => setDataType(e.target.value)}\n              data-testid=\"gw-select-datatype\"\n            >\n              {XSD_DATATYPES.map((dt) => (\n                <option key={dt} value={dt}>\n                  {dt}\n                </option>\n              ))}\n            </select>\n          </label>\n        )}\n\n        <div className=\"gw-form-actions\">\n          <button\n            type=\"button\"\n            className=\"gw-btn gw-btn--secondary\"\n            onClick={onClose}\n            data-testid=\"gw-btn-property-cancel\"\n          >\n            Cancel\n          </button>\n          <button\n            type=\"submit\"\n            className=\"gw-btn\"\n            data-testid=\"gw-btn-property-submit\"\n          >\n            {isAnnotation ? \"Add Annotation Property\" : \"Add Datatype Property\"}\n          </button>\n        </div>\n      </form>\n    </Dialog>\n  );\n}\n",
+            "scope": "moderate"
+          },
+          {
+            "id": "C2",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add PropertyCreationDialog import so TermSidebar can open it for AnnotationProperty and DatatypeProperty creation paths.",
+            "before": "import { AddTermDialog, type AddTermType } from \"./AddTermDialog.js\";",
+            "after": "import { AddTermDialog, type AddTermType } from \"./AddTermDialog.js\";\nimport {\n  PropertyCreationDialog,\n  type PropertyCreationType,\n} from \"./PropertyCreationDialog.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add propertyDialogType state alongside addDialogType. addDialogType stays for owl:Class and owl:ObjectProperty; propertyDialogType is used for owl:AnnotationProperty and owl:DatatypeProperty (FR-U033).",
+            "before": "  const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);\n  /** Term being edited; null when the Edit dialog is closed (FR-U009). */\n  const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);",
+            "after": "  const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);\n  /** Property type being created; null when PropertyCreationDialog is closed (FR-U033). */\n  const [propertyDialogType, setPropertyDialogType] =\n    useState<PropertyCreationType | null>(null);\n  /** Term being edited; null when the Edit dialog is closed (FR-U009). */\n  const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add handlePropertyConfirm handler for PropertyCreationDialog. Mirrors handleAddConfirm (append + sort by id + propagate) but closes propertyDialogType instead of addDialogType (FR-U033).",
+            "before": "  /**\n   * Receive the updated project document from EditTermDialog (label / comment /\n   * IRI change already applied, refactor cascade included when IRI changed),\n   * propagate via onTermsChange, then close the dialog (FR-U009).\n   */\n  function handleEditConfirm(updatedProject: Record<string, unknown>) {\n    if (onTermsChange === undefined) return;\n    onTermsChange(updatedProject);\n    setEditTerm(null);\n  }",
+            "after": "  /**\n   * Append the confirmed property term to ecm:terms, sort by id (SPEC section 5.3 rule 4),\n   * propagate via onTermsChange, then close the dialog (FR-U033).\n   */\n  function handlePropertyConfirm(newTerm: Record<string, unknown>) {\n    if (project === null || onTermsChange === undefined) return;\n    const existing: unknown[] = Array.isArray(project[\"ecm:terms\"])\n      ? (project[\"ecm:terms\"] as unknown[])\n      : [];\n    const sorted = [...existing, newTerm].sort((a, b) => {\n      const aId =\n        typeof (a as Record<string, unknown>)[\"id\"] === \"string\"\n          ? ((a as Record<string, unknown>)[\"id\"] as string)\n          : \"\";\n      const bId =\n        typeof (b as Record<string, unknown>)[\"id\"] === \"string\"\n          ? ((b as Record<string, unknown>)[\"id\"] as string)\n          : \"\";\n      return aId < bId ? -1 : aId > bId ? 1 : 0;\n    });\n    onTermsChange({ ...project, \"ecm:terms\": sorted });\n    setPropertyDialogType(null);\n  }\n\n  /**\n   * Receive the updated project document from EditTermDialog (label / comment /\n   * IRI change already applied, refactor cascade included when IRI changed),\n   * propagate via onTermsChange, then close the dialog (FR-U009).\n   */\n  function handleEditConfirm(updatedProject: Record<string, unknown>) {\n    if (onTermsChange === undefined) return;\n    onTermsChange(updatedProject);\n    setEditTerm(null);\n  }",
+            "scope": "minimal"
+          },
+          {
+            "id": "C5",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Route DatatypeProperty and AnnotationProperty Add buttons to PropertyCreationDialog (with initialType hint); add PropertyCreationDialog render block. Class and ObjectProperty paths continue using AddTermDialog unchanged. ObjectProperty creation remains in AddTermDialog per FR-U033 scope (FR-U033 covers only Annotation/Datatype).",
+            "before": "      <TermSection\n        title=\"Datatype Properties\"\n        terms={datatypeProperties}\n        testId=\"gw-term-section-datatype-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setAddDialogType(\"owl:DatatypeProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      <TermSection\n        title=\"Annotation Properties\"\n        terms={annotationProperties}\n        testId=\"gw-term-section-annotation-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setAddDialogType(\"owl:AnnotationProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      {addDialogType !== null && project !== null && (\n        <AddTermDialog\n          termType={addDialogType}\n          project={project}\n          onConfirm={handleAddConfirm}\n          onClose={() => setAddDialogType(null)}\n        />\n      )}\n      {editTerm !== null && project !== null && (\n        <EditTermDialog\n          term={editTerm}\n          project={project}\n          onConfirm={handleEditConfirm}\n          onClose={() => setEditTerm(null)}\n        />\n      )}",
+            "after": "      <TermSection\n        title=\"Datatype Properties\"\n        terms={datatypeProperties}\n        testId=\"gw-term-section-datatype-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:DatatypeProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      <TermSection\n        title=\"Annotation Properties\"\n        terms={annotationProperties}\n        testId=\"gw-term-section-annotation-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:AnnotationProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      {addDialogType !== null && project !== null && (\n        <AddTermDialog\n          termType={addDialogType}\n          project={project}\n          onConfirm={handleAddConfirm}\n          onClose={() => setAddDialogType(null)}\n        />\n      )}\n      {propertyDialogType !== null && project !== null && (\n        <PropertyCreationDialog\n          initialType={propertyDialogType}\n          project={project}\n          onConfirm={handlePropertyConfirm}\n          onClose={() => setPropertyDialogType(null)}\n        />\n      )}\n      {editTerm !== null && project !== null && (\n        <EditTermDialog\n          term={editTerm}\n          project={project}\n          onConfirm={handleEditConfirm}\n          onClose={() => setEditTerm(null)}\n        />\n      )}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C6",
+            "file": "src/emit/turtle.ts",
+            "rationale": "Add foaf and schema prefixes to PREFIX_MAP per FR-U033 + SME S9 finding (F6). Required so composed IRIs using foaf: or schema: namespaces serialize with short-form prefixes in Turtle output.",
+            "before": "const PREFIX_MAP: Record<string, string> = {\n  ecm:  \"https://edgecanonical.org/ns/modeler#\",\n  rdf:  \"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\n  rdfs: \"http://www.w3.org/2000/01/rdf-schema#\",\n  owl:  \"http://www.w3.org/2002/07/owl#\",\n  xsd:  \"http://www.w3.org/2001/XMLSchema#\",\n  obo:  \"http://purl.obolibrary.org/obo/\",\n  cco:  \"https://www.commoncoreontologies.org/\",\n};",
+            "after": "const PREFIX_MAP: Record<string, string> = {\n  ecm:    \"https://edgecanonical.org/ns/modeler#\",\n  rdf:    \"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\n  rdfs:   \"http://www.w3.org/2000/01/rdf-schema#\",\n  owl:    \"http://www.w3.org/2002/07/owl#\",\n  xsd:    \"http://www.w3.org/2001/XMLSchema#\",\n  obo:    \"http://purl.obolibrary.org/obo/\",\n  cco:    \"https://www.commoncoreontologies.org/\",\n  foaf:   \"http://xmlns.com/foaf/0.1/\",\n  schema: \"https://schema.org/\",\n};",
+            "scope": "minimal"
+          },
+          {
+            "id": "C7",
+            "file": "src/emit/turtle.ts",
+            "rationale": "Add rdfs:range to the IRI-valued predicates loop in nodeToQuads() per ADR-009 and recon finding F7. Without this, DatatypeProperty terms with rdfs:range set by PropertyCreationDialog would silently drop the triple from Turtle output.",
+            "before": "  // IRI-valued predicates (single IRI or array of IRIs)\n  for (const pred of [\"rdfs:subClassOf\", \"rdfs:subPropertyOf\", \"iao:isAbout\", \"ecm:isSerializationOf\"]) {",
+            "after": "  // IRI-valued predicates (single IRI or array of IRIs)\n  // rdfs:range added per ADR-009: authorized on owl:DatatypeProperty; emits <xsd-IRI> triple.\n  for (const pred of [\"rdfs:subClassOf\", \"rdfs:subPropertyOf\", \"rdfs:range\", \"iao:isAbout\", \"ecm:isSerializationOf\"]) {",
+            "scope": "minimal"
+          },
+          {
+            "id": "C8",
+            "file": "src/kernel/canonicalize.ts",
+            "rationale": "Add foaf and schema prefix definitions to VMP_CONTEXT for JSON-LD consistency with turtle.ts PREFIX_MAP addition. Ensures foaf: and schema: IRIs appearing in ecm:terms are compressed in the @context of canonical JSON-LD output.",
+            "before": "  obo: \"http://purl.obolibrary.org/obo/\",\n  cco: \"https://www.commoncoreontologies.org/\",\n  id: \"@id\",",
+            "after": "  obo: \"http://purl.obolibrary.org/obo/\",\n  cco: \"https://www.commoncoreontologies.org/\",\n  foaf: \"http://xmlns.com/foaf/0.1/\",\n  schema: \"https://schema.org/\",\n  id: \"@id\",",
+            "scope": "minimal"
+          },
+          {
+            "id": "C9",
+            "file": "src/validate/codes.ts",
+            "rationale": "Add RANGE_CLASS_ON_DATATYPE_PROPERTY error code per ADR-009 mandate: 'The validator MUST enforce the XSD/DataRange constraint and emit RANGE_CLASS_ON_DATATYPE_PROPERTY (severity: error) on violation'. Placed in section 17.2 Hard Errors alongside other structural violations.",
+            "before": "export const CANONICAL_RESERVED_NAME_COLLISION = \"CANONICAL_RESERVED_NAME_COLLISION\";",
+            "after": "export const CANONICAL_RESERVED_NAME_COLLISION = \"CANONICAL_RESERVED_NAME_COLLISION\";\nexport const RANGE_CLASS_ON_DATATYPE_PROPERTY  = \"RANGE_CLASS_ON_DATATYPE_PROPERTY\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C10",
+            "file": "src/validate/index.ts",
+            "rationale": "Import RANGE_CLASS_ON_DATATYPE_PROPERTY from codes.ts so the new validation block can reference it.",
+            "before": "import {\n  MISSING_REALIST_ANCHOR,\n  INVALID_SPEC_VERSION,\n  LEGACY_REALIST_ANCHOR_PLACEHOLDER,\n  NORMALIZED_ON_SAVE,\n  CANONICAL_RESERVED_NAME_COLLISION,\n} from \"./codes.js\";",
+            "after": "import {\n  MISSING_REALIST_ANCHOR,\n  INVALID_SPEC_VERSION,\n  LEGACY_REALIST_ANCHOR_PLACEHOLDER,\n  NORMALIZED_ON_SAVE,\n  CANONICAL_RESERVED_NAME_COLLISION,\n  RANGE_CLASS_ON_DATATYPE_PROPERTY,\n} from \"./codes.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C11",
+            "file": "src/validate/index.ts",
+            "rationale": "Add RANGE_CLASS_ON_DATATYPE_PROPERTY validation logic per ADR-009. Checks every owl:DatatypeProperty term: if rdfs:range is present and is not an XSD datatype IRI (expanded http://www.w3.org/2001/XMLSchema#... or compact xsd:...), emits a hard error. Reuses rawTerms already declared above in the CANONICAL_RESERVED_NAME_COLLISION block. Prevents OWL 2 DL violations.",
+            "before": "  // TODO (follow-up chain A): MISSING_PROJECT_ID, MISSING_PROJECT_NAME,\n  // MALFORMED_TERM, MALFORMED_INSTANCE, MALFORMED_RELATION,\n  // MALFORMED_LITERAL_ASSERTION, MALFORMED_SERIALIZATION_ENTRY, DUPLICATE_IRI.\n  // TODO (follow-up chain B): DANGLING_RELATION_SUBJECT_REF,",
+            "after": "  // -------------------------------------------------------------------------\n  // RANGE_CLASS_ON_DATATYPE_PROPERTY (ADR-009, section 17.2)\n  // Fires when an owl:DatatypeProperty term carries rdfs:range with a value\n  // that is NOT an XSD datatype IRI (expanded or compact xsd: prefix).\n  // Prevents emitting an OWL 2 DL violation (class IRI used as datatype range).\n  // -------------------------------------------------------------------------\n  const XSD_NS_FULL = \"http://www.w3.org/2001/XMLSchema#\";\n  if (Array.isArray(rawTerms)) {\n    for (const term of rawTerms as unknown[]) {\n      if (typeof term !== \"object\" || term === null) continue;\n      const dt = term as Record<string, unknown>;\n      if (dt[\"type\"] !== \"owl:DatatypeProperty\") continue;\n      const rangeVal = dt[\"rdfs:range\"];\n      if (rangeVal === undefined || rangeVal === null) continue;\n      if (typeof rangeVal !== \"string\" || rangeVal.length === 0) continue;\n      const isXsd =\n        rangeVal.startsWith(XSD_NS_FULL) || rangeVal.startsWith(\"xsd:\");\n      if (!isXsd) {\n        const dtId =\n          typeof dt[\"id\"] === \"string\" ? (dt[\"id\"] as string) : projectId;\n        findings.push(\n          makeError(\n            RANGE_CLASS_ON_DATATYPE_PROPERTY,\n            `DatatypeProperty \"${dtId}\" has rdfs:range \"${rangeVal}\" which is not` +\n              \" an XSD datatype IRI. The range of an owl:DatatypeProperty MUST be\" +\n              \" an XSD datatype IRI (http://www.w3.org/2001/XMLSchema#...) or\" +\n              \" OWL DataRange (ADR-009, SPEC section 17.2).\",\n            dtId,\n          ),\n        );\n      }\n    }\n  }\n\n  // TODO (follow-up chain A): MISSING_PROJECT_ID, MISSING_PROJECT_NAME,\n  // MALFORMED_TERM, MALFORMED_INSTANCE, MALFORMED_RELATION,\n  // MALFORMED_LITERAL_ASSERTION, MALFORMED_SERIALIZATION_ENTRY, DUPLICATE_IRI.\n  // TODO (follow-up chain B): DANGLING_RELATION_SUBJECT_REF,",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/property-creation.spec.ts",
+            "describe": "FR-U033 Playwright acceptance tests. Recommended as a follow-up developer task (separate from this apply step to stay under the 25K char threshold). Should cover: (1) AnnotationProperty happy path -- open dialog via gw-btn-add-annotation-property, verify gw-radio-annotation-property checked by default, fill prefix=ex localName=myProp label=My Prop lang=en, submit, verify ecm:terms entry has type=owl:AnnotationProperty id=http://example.org/myProp rdfs:label={text,My Prop,lang,en} no rdfs:range. (2) DatatypeProperty happy path -- open via gw-btn-add-datatype-property, switch to gw-radio-datatype-property (or verify default from that button), select xsd:decimal, submit, verify type=owl:DatatypeProperty rdfs:range=http://www.w3.org/2001/XMLSchema#decimal. (3) Local name validation -- enter 123bad, verify gw-local-name-error visible, submit blocked. (4) Uniqueness warn (non-blocking) -- enter localName that produces an existing IRI, verify gw-iri-duplicate-warning visible but submit still proceeds. (5) Datatype dropdown hidden for AnnotationProperty -- verify gw-select-datatype not visible when Annotation radio selected; visible when Datatype radio selected. (6) Turtle output for DatatypeProperty -- load fixture, add DatatypeProperty with xsd:decimal, save, download and parse Turtle via N3, verify rdfs:range triple present. (7) foaf/schema prefix dropdown entries -- verify gw-select-prefix has foaf and schema options."
+          },
+          {
+            "file": "tests/structural-validator.test.ts",
+            "describe": "Extend with RANGE_CLASS_ON_DATATYPE_PROPERTY tests: (1) owl:DatatypeProperty with rdfs:range=https://example.org/SomeClass fires the error. (2) owl:DatatypeProperty with rdfs:range=http://www.w3.org/2001/XMLSchema#decimal does NOT fire. (3) owl:DatatypeProperty with rdfs:range=xsd:string (compact form) does NOT fire. (4) owl:AnnotationProperty with no rdfs:range does NOT fire. (5) Verify ecm:severity=ecm:error and target=term IRI."
+          },
+          {
+            "file": "tests/emitters.test.ts",
+            "describe": "Extend with rdfs:range emission test: add a fixture owl:DatatypeProperty term with rdfs:range=http://www.w3.org/2001/XMLSchema#decimal to MINIMAL_PROJECT, parse Turtle via N3, verify hasTriple(termIRI, rdfs:range-IRI, xsd:decimal-full-IRI). Also verify foaf/schema @prefix declarations appear in Turtle output after C6 lands."
+          }
+        ],
+        "open_questions": [
+          "ObjectProperty Add button: after R4-4 the gw-btn-add-object-property still opens AddTermDialog (the old label+IRI form). FR-U033 is scoped to AnnotationProperty and DatatypeProperty only. Should a future FR extend the Property Creation Module to ObjectProperty, or is the existing AddTermDialog acceptable long-term for ObjectProperty creation? This is a roadmap question, not a blocker for R4-4.",
+          "VMP_CONTEXT size growth: adding foaf+schema to VMP_CONTEXT means every serialized project document's @context will include those two prefix declarations even when no foaf/schema IRIs are present. This is consistent with the existing pattern (all 7 SPEC section 5.2 prefixes appear regardless of use). Confirm the operator accepts this @context expansion for v0.4 documents.",
+          "Turtle emitter doc comment at line 291 says 'The Writer emits its own @prefix block for all 7 SPEC section 5.2 prefixes'; after C6 it will be 9 prefixes. The comment is informational only and does not affect correctness; recommend updating it in a follow-up editorial correction rather than as part of R4-4.",
+          "The RANGE_CLASS_ON_DATATYPE_PROPERTY validator uses rawTerms which is already declared at line 199 of validate/index.ts. The new XSD_NS_FULL constant is declared inside the validate() function body (block-scoped). If a future chain adds another validation that also needs XSD_NS_FULL, extract it to module scope. Not a correctness issue for R4-4."
+        ],
+        "summary": "10 changes across 6 files implementing FR-U033 Property Creation Module. C1: new PropertyCreationDialog.tsx with all 5 FR-U033 fields (property type radio, namespace selector [ex/foaf/schema; rdf excluded], local name with regex + live IRI preview + non-blocking uniqueness warn, label + BCP47 lang tag, conditional XSD datatype dropdown). C2-C5: TermSidebar.tsx wired to open PropertyCreationDialog for AnnotationProperty and DatatypeProperty Add buttons (Class and ObjectProperty remain on AddTermDialog). C6: turtle.ts PREFIX_MAP gains foaf+schema. C7: turtle.ts nodeToQuads IRI loop gains rdfs:range (ADR-009 emitter obligation). C8: canonicalize.ts VMP_CONTEXT gains foaf+schema. C9: validate/codes.ts adds RANGE_CLASS_ON_DATATYPE_PROPERTY error code. C10-C11: validate/index.ts imports and implements the range constraint check (owl:DatatypeProperty rdfs:range MUST be XSD IRI). Tests split to a follow-up developer task per 25K char scope limit. Estimated char output: ~22K.",
+        "self_assessment": "confident"
+      },
+      "depends_on": [
+        "urn:fnsr:task:368-recon-r4-4"
+      ],
+      "inputs": {
+        "task_context": "Round 4 Chain R4-4: Property Creation Module implementation per FR-U033.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] implementing FR-U033.",
+        "implementation_directions": [
+          "Choose dialog architecture per recon: recommend new src/ui/PropertyCreationDialog.tsx (separate from AddTermDialog which stays for Class creation). Lower coupling; matches Aaron's 'dedicated workflow' framing.",
+          "PropertyCreationDialog fields per FR-U033: (a) Property Type radio (Annotation/Datatype; Annotation default); (b) Prefix dropdown (foaf, schema, ex); (c) Local Name input with regex `^[a-zA-Z_][a-zA-Z0-9_.-]*$` masking + async uniqueness check; (d) Label text + BCP 47 lang tag (default 'en'); (e) Conditional Target Data Type dropdown (XSD primitives, only when DatatypeProperty selected).",
+          "On Submit: compose full IRI as `${namespace}${localName}`; construct ecm:Term entry with id=composedIRI, type=owl:AnnotationProperty|owl:DatatypeProperty, ecm:source=ecm:project-created, rdfs:label={text, lang}, rdfs:range=xsdIri (if DatatypeProperty); append to ecm:terms; setProject.",
+          "src/ui/TermSidebar.tsx integration: '+' button on Annotation Properties section opens PropertyCreationDialog with Annotation default; '+' on Datatype Properties opens with Datatype default; '+' on Object Properties opens with... TBD (FR-U033 doesn't cover Object Properties; recon should flag; recommend: extend FR-U033 in a follow-up OR keep ObjectProperty creation in existing AddTermDialog).",
+          "src/emit/turtle.ts PREFIX_MAP: add foaf: 'http://xmlns.com/foaf/0.1/' + schema: 'https://schema.org/' (per R4-1 SME SA5).",
+          "src/kernel/canonicalize.ts VMP_CONTEXT: add foaf + schema prefixes too (for JSON-LD consistency).",
+          "Validator: uniqueness check on composed IRI against existing ecm:terms ids.",
+          "Tests: tests/playwright/property-creation.spec.ts covering all 5 fields + the JSON payload + Turtle output for both branches."
+        ],
+        "scope_constraints": [
+          "Large chain. Per Event 9+12+13 lessons: pre-estimate scope; if exceeds 25000 chars, use outputs.status='awaiting_operator_decision' with structured suggested_split.",
+          "Per Event 11 lesson: ALL FR-U033 touchpoints addressed; architect WILL check.",
+          "Existing tests must continue to pass after R4-4 lands (47 Playwright + 130 Phase 1 specs baseline)",
+          "Reuse Dialog primitive; don't introduce parallel dialog framework"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "25000 char threshold.",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T14:05:24Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:370-sme-r4-4",
+      "agent": "semantic-sme",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "S1",
+            "severity": "blocking",
+            "category": "dl_conformance",
+            "claim": "VMP_CONTEXT in src/kernel/canonicalize.ts does not declare `rdfs:range` as an IRI-typed property. Without `\"rdfs:range\": { \"@type\": \"@id\" }` in the @context, a conformant JSON-LD 1.1 processor interprets `\"rdfs:range\": \"http://www.w3.org/2001/XMLSchema#decimal\"` as a plain string literal, producing the RDF triple `<termIRI> rdfs:range \"http://www.w3.org/2001/XMLSchema#decimal\"^^xsd:string` instead of `<termIRI> rdfs:range xsd:decimal`. A literal object is not a DataRange; this renders the OWL 2 DL range axiom semantically void in the canonical JSON-LD format. The Turtle emitter (C7) correctly uses namedNode for the range value via its own PREFIX_MAP expansion, but the SPEC \u00c2\u00a75.2 canonical JSON-LD is the normative representation. Every other IRI-valued predicate in VMP_CONTEXT (`rdfs:subClassOf`, `rdfs:subPropertyOf`, `ecm:subjectIri`, `ecm:classIris`, `iao:isAbout`, etc.) carries `@type: \"@id\"`; `rdfs:range` is the sole IRI-valued predicate that C8 leaves untyped. This gap is new to R4-4: before ADR-009, no `rdfs:range` values were stored, so the missing context entry had no effect.",
+            "evidence": "src/kernel/canonicalize.ts:66-94 (VMP_CONTEXT; rdfs:range absent entirely; contrast rdfs:subClassOf at line 92: { \"@type\": \"@id\", \"@container\": \"@set\" }); UPSTREAM C8 (adds foaf/schema prefix mappings but omits rdfs:range @type declaration); SPEC \u00c2\u00a75.2 (normative @context); SPEC \u00c2\u00a77.5 (rdfs:range value is an IRI pointing to a DataRange)",
+            "correction": "Extend C8 in src/kernel/canonicalize.ts to add the following entry to VMP_CONTEXT, placed after the `\"rdfs:subPropertyOf\": { \"@type\": \"@id\", \"@container\": \"@set\" }` line: `\"rdfs:range\": { \"@type\": \"@id\" }` \u00e2\u20ac\u201d single-valued (no `@container: @set`), consistent with the SPEC \u00c2\u00a75.7 example showing `rdfs:range` as a singular string value. The VMP_CONTEXT entry for `obo:` must remain as-is; this addition is solely to `rdfs:range`."
+          },
+          {
+            "id": "S2",
+            "severity": "major",
+            "category": "dl_conformance",
+            "claim": "The SPEC \u00c2\u00a76.1 mandates: 'The validator MUST emit an `ANNOTATION_DATATYPE_IRI_COLLISION` finding (severity: error) on violation' of the OWL 2 DL property partition constraint (IRI sets of owl:AnnotationProperty, owl:DatatypeProperty, and owl:ObjectProperty MUST be pairwise-disjoint). This code is absent from src/validate/codes.ts and the corresponding check is absent from src/validate/index.ts. In OWL 2 DL, the same IRI cannot simultaneously be declared as both owl:DatatypeProperty and owl:AnnotationProperty (or owl:ObjectProperty); this violates the entity-type partition condition in OWL 2 DL \u00c2\u00a73.1. The PropertyCreationDialog (C1) exposes both owl:AnnotationProperty and owl:DatatypeProperty creation paths with user-controlled namespace+localname IRI composition; the IRI uniqueness check is deliberately non-blocking (emits a warning but does not prevent submit). A user who ignores the duplicate-IRI warning can create a second property term with the same IRI but a different type, producing an OWL 2 DL-invalid ontology that the validator will not flag. The R4-4 chain adds RANGE_CLASS_ON_DATATYPE_PROPERTY (C9) but does not add ANNOTATION_DATATYPE_IRI_COLLISION, leaving the pairwise-disjointness guarantee formally unenforceable at validation time.",
+            "evidence": "src/validate/codes.ts:13-55 (ANNOTATION_DATATYPE_IRI_COLLISION absent; 17 hard-error codes listed; RANGE_CLASS_ON_DATATYPE_PROPERTY is proposed in C9 but ANNOTATION_DATATYPE_IRI_COLLISION is not); SPEC \u00c2\u00a76.1 line 730 (normative MUST); UPSTREAM C1 PropertyCreationDialog.tsx: iriAlreadyExists warning is non-blocking; OWL 2 DL Structural Specification \u00c2\u00a73.1 (entity-type partition for properties)",
+            "correction": "1. Add to src/validate/codes.ts section 17.2: `export const ANNOTATION_DATATYPE_IRI_COLLISION = \"ANNOTATION_DATATYPE_IRI_COLLISION\";`\n2. Add to src/validate/index.ts, after the CANONICAL_RESERVED_NAME_COLLISION block and before the RANGE_CLASS_ON_DATATYPE_PROPERTY block, a validator that builds three Sets of term IRIs by type (owl:AnnotationProperty, owl:DatatypeProperty, owl:ObjectProperty) by iterating rawTerms, then emits makeError(ANNOTATION_DATATYPE_IRI_COLLISION, ..., termIri) for every IRI that appears in more than one of those sets. Import ANNOTATION_DATATYPE_IRI_COLLISION from ./codes.js in the same import amendment as RANGE_CLASS_ON_DATATYPE_PROPERTY (C10)."
+          },
+          {
+            "id": "S3",
+            "severity": "major",
+            "category": "dl_conformance",
+            "claim": "The RANGE_CLASS_ON_DATATYPE_PROPERTY validator in C11 fires on any `rdfs:range` value that does not start with `http://www.w3.org/2001/XMLSchema#` or `xsd:`. The SPEC \u00c2\u00a77.5 normative trigger is narrower and structurally different: 'when an owl:DatatypeProperty term carries a rdfs:range value that resolves to an IRI typed as owl:Class in ecm:terms.' These two checks are not equivalent. (A) The XSD-prefix heuristic produces false positives for valid OWL 2 DL datatypes that are not XSD-namespaced: `owl:real`, `owl:rational`, `rdf:PlainLiteral`, `rdfs:Literal`, and any custom `rdfs:Datatype` instance defined in an imported ontology. All are legal DataRange values in OWL 2 DL; all would trigger RANGE_CLASS_ON_DATATYPE_PROPERTY under C11. (B) The heuristic fails to perform the SPEC-mandated lookup: it does not check whether the range IRI is actually typed as `owl:Class` in `ecm:terms`. A class IRI imported from an external ontology and not present in `ecm:terms` would be flagged by the heuristic (correct behaviour, achieved accidentally); a project-created class IRI that starts with `xsd:` (pathological but not impossible in a hand-crafted document) would not be flagged (incorrect). The SPEC's normative trigger is a lookup predicate, not a string-prefix predicate. For the current UI-only path (PropertyCreationDialog dropdown of 8 XSD types), neither false positive nor false negative is reachable, but the validator is general-purpose and will be exercised against imported ontologies.",
+            "evidence": "UPSTREAM C11 src/validate/index.ts proposed change: `const isXsd = rangeVal.startsWith(XSD_NS_FULL) || rangeVal.startsWith(\"xsd:\"); if (!isXsd) { findings.push(...) }`; SPEC \u00c2\u00a77.5 line 817: 'when an owl:DatatypeProperty term carries a rdfs:range value that resolves to an IRI typed as owl:Class in ecm:terms'; OWL 2 Specification \u00c2\u00a74.4 (DataRange; owl:real, owl:rational, rdf:PlainLiteral as valid built-in datatypes outside XSD namespace)",
+            "correction": "Replace the XSD-prefix heuristic in C11 with a two-pass ecm:terms lookup: (1) Build `const classIriSet = new Set<string>()` by iterating rawTerms and adding each IRI whose `type === \"owl:Class\"`. (2) For each owl:DatatypeProperty term where `rdfs:range` is a non-empty string, check `if (classIriSet.has(rangeVal))` and only then emit makeError(RANGE_CLASS_ON_DATATYPE_PROPERTY, ...). The XSD-prefix guard `!isXsd` is removed entirely; valid non-XSD OWL DataRange values pass through without a finding. This matches the SPEC \u00c2\u00a77.5 normative trigger exactly."
+          },
+          {
+            "id": "S4",
+            "severity": "advisory",
+            "category": "other",
+            "claim": "BCP47_RE = `/^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$/` requires the primary language subtag to be 2\u00e2\u20ac\u201c8 letters. RFC 5646 \u00c2\u00a72.1 and \u00c2\u00a72.2.1 define two additional valid primary-subtag forms: (a) the private-use singleton `x` (a single letter, not 2\u00e2\u20ac\u201c8), which must be followed by at least one extension subtag (e.g., `x-my-private`); (b) grandfathered irregular tags whose primary subtag is the singleton `i` (e.g., `i-klingon`). Both are valid BCP 47 tags and would be rejected by the current regex with a validation error, producing a false 'invalid language tag' message. For ontology-modeling use cases these forms are rare but not impossible (e.g., a privately-coined ontology term annotated with a private-use language tag for a constructed language). The issue is confined to the UI form; the Turtle emitter and validator do not use the regex and are unaffected.",
+            "evidence": "UPSTREAM C1 src/ui/PropertyCreationDialog.tsx: `const BCP47_RE = /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$/`; RFC 5646 \u00c2\u00a72.1 (primary subtag length: 2\u00e2\u20ac\u201c8 alpha for language subtags; singleton `x` for private use); IANA Language Subtag Registry (grandfathered `i-*` tags)",
+            "correction": "Replace the regex literal with: `const BCP47_RE = /^([a-zA-Z]{2,8}|[xXiI](-[a-zA-Z0-9]{1,8})+)(-[a-zA-Z0-9]{1,8})*$/;` \u00e2\u20ac\u201d the alternation permits either a 2\u00e2\u20ac\u201c8 letter normal primary subtag OR a single-letter `x`/`i` primary followed by at least one mandatory extension subtag, then zero or more additional subtags for both branches."
+          }
+        ],
+        "summary": "Four ontological findings across the R4-4 Property Creation Module changes. One is blocking: the VMP_CONTEXT (C8) adds foaf/schema namespace prefixes but omits `\"rdfs:range\": { \"@type\": \"@id\" }`, leaving the canonical JSON-LD representation of DatatypeProperty range axioms semantically incorrect \u00e2\u20ac\u201d conformant JSON-LD processors would treat the XSD IRI as a plain string literal rather than an IRI reference, voiding the OWL 2 DL axiom in the normative format. Two are major: (a) ANNOTATION_DATATYPE_IRI_COLLISION is absent from the validator despite the SPEC \u00c2\u00a76.1 mandate, leaving pairwise property-type disjointness unenforced at validation time while the new dialog's non-blocking IRI uniqueness check cannot substitute for this; (b) the RANGE_CLASS_ON_DATATYPE_PROPERTY validator trigger in C11 uses an XSD-prefix string heuristic rather than the SPEC \u00c2\u00a77.5 normative `owl:Class`-in-ecm:terms lookup, producing false positives for valid OWL 2 DL datatypes outside the XSD namespace (owl:real, rdf:PlainLiteral, etc.). One is advisory: the BCP 47 regex rejects valid private-use (`x-...`) and grandfathered (`i-...`) primary subtags. The AnnotationProperty default, the radio-button mutual-exclusion guarantee within a single term, the Turtle emission logic (C7), and the IRI composition approach are all correct.",
+        "recommendation": "revise"
+      },
+      "depends_on": [
+        "urn:fnsr:task:369-dev-r4-4"
+      ],
+      "inputs": {
+        "task_context": "SME review of R4-4 Property Creation Module per Spec 08 v0.3.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.recommendation.",
+        "goal": "Verify the property-creation flow is OWL 2 DL conformant.",
+        "review_dimensions": [
+          "AnnotationProperty default is correct (lower DL-impact risk for non-experts)",
+          "Pairwise-disjointness preserved (created property is either AnnotationProperty OR DatatypeProperty, not both)",
+          "rdfs:range on DatatypeProperty constrained to XSD/DataRange",
+          "BCP 47 lang regex correct",
+          "Composed IRI uniqueness check covers cross-namespace edge cases",
+          "Turtle emission produces valid OWL 2 DL for both branches"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T14:14:15Z",
+          "event": "completed",
+          "payload": {
+            "agent": "semantic-sme"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "f061e8152b676d14ef67cd16a2685f1c60410ccc8144b9276e654c36aca031bb"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:371-rat-r4-4",
+      "agent": "architect",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "ruling": "denied",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposed change introduces a new React component (PropertyCreationDialog.tsx), modifies five existing source files across UI, emitter, serialization, and validation layers, adds a new validation error code, and implements ADR-009 Turtle and validator obligations \u00e2\u20ac\u201d all of which constitute behavioral specification implementation, not editorial correction.",
+        "rationale": "Reconnaissance is present (urn:fnsr:task:368-recon-r4-4). The substantive-change requirement is satisfied. Denial is grounded in three unresolved issues surfaced by the SME (urn:fnsr:task:370-sme-r4-4), all confirmed against the live codebase and SPEC text:\n\n**S1 \u00e2\u20ac\u201d BLOCKING (VMP_CONTEXT missing `\"rdfs:range\": { \"@type\": \"@id\" }`):** Developer change C8 (src/kernel/canonicalize.ts) adds foaf and schema prefix entries to VMP_CONTEXT but does not add the necessary `\"rdfs:range\": { \"@type\": \"@id\" }` entry. File-read confirmation: VMP_CONTEXT lines 66\u00e2\u20ac\u201c94 show every other IRI-valued predicate (rdfs:subClassOf, rdfs:subPropertyOf, ecm:subjectIri, ecm:classIris, iao:isAbout, etc.) carries `\"@type\": \"@id\"`, but rdfs:range is entirely absent. Without this entry, a conformant JSON-LD 1.1 processor interprets `\"rdfs:range\": \"http://www.w3.org/2001/XMLSchema#decimal\"` as a plain string literal \u00e2\u20ac\u201d producing `<termIRI> rdfs:range \"http://www.w3.org/2001/XMLSchema#decimal\"^^xsd:string` rather than `<termIRI> rdfs:range xsd:decimal`. A literal object is not a DataRange; this voids the OWL 2 DL range axiom in the normative canonical format (SPEC \u00c2\u00a75.2). The Turtle emitter (C7) handles IRI expansion correctly via its own PREFIX_MAP, but the Turtle and JSON-LD paths are independent serializers; both must be correct. The review focus criterion \"SME confirms OWL 2 DL conformance\" is explicitly unmet.\n\n**S2 \u00e2\u20ac\u201d MAJOR (ANNOTATION_DATATYPE_IRI_COLLISION absent):** SPEC \u00c2\u00a76.1 line 730 mandates: \"The validator MUST emit an `ANNOTATION_DATATYPE_IRI_COLLISION` finding (severity: error) on violation\" of the pairwise-disjoint IRI constraint across owl:AnnotationProperty / owl:DatatypeProperty / owl:ObjectProperty sets. File-read confirmation: validate/codes.ts lists exactly 17 hard-error codes; ANNOTATION_DATATYPE_IRI_COLLISION is not among them. The PropertyCreationDialog (C1) introduces a non-blocking IRI uniqueness check that warns but does not block submit; a user who ignores this warning can create two property terms with the same IRI but different types, producing an OWL 2 DL entity-type partition violation (OWL 2 DL \u00c2\u00a73.1) that the validator will not flag. RANGE_CLASS_ON_DATATYPE_PROPERTY (C9) is added but ANNOTATION_DATATYPE_IRI_COLLISION is not \u00e2\u20ac\u201d the R4-4 chain leaves pairwise disjointness unenforced.\n\n**S3 \u00e2\u20ac\u201d MAJOR (RANGE_CLASS_ON_DATATYPE_PROPERTY trigger logic is wrong):** Developer change C11 (src/validate/index.ts) implements the range constraint using an XSD-prefix string heuristic: `const isXsd = rangeVal.startsWith(XSD_NS_FULL) || rangeVal.startsWith(\"xsd:\"); if (!isXsd) { findings.push(...) }`. SPEC \u00c2\u00a77.5 line 817 defines the normative trigger as: \"when an owl:DatatypeProperty term carries a rdfs:range value that **resolves to an IRI typed as owl:Class in ecm:terms**\" \u00e2\u20ac\u201d a data-driven Set lookup, not a string-prefix guard. The heuristic produces false positives for valid OWL 2 DL datatypes outside the XSD namespace (owl:real, owl:rational, rdf:PlainLiteral, rdfs:Literal, custom rdfs:Datatype instances). The correct implementation is: (1) build a Set of owl:Class IRIs from rawTerms; (2) emit RANGE_CLASS_ON_DATATYPE_PROPERTY only when the range value is a member of that Set. The XSD-prefix guard is not in the SPEC normative trigger and must be removed.\n\n**S4 \u00e2\u20ac\u201d ADVISORY (BCP47 regex rejects private-use and grandfathered tags):** BCP47_RE rejects RFC 5646 \u00c2\u00a72.1 private-use (`x-...`) and grandfathered (`i-...`) primary subtags. Advisory for the ontology-modeling domain; does not block ratification on its own.\n\nAll three issues (S1 blocking, S2 major, S3 major) require a revised developer pass. The SME recommendation is explicitly \"revise.\" Ratification is denied pending corrected changes addressing at minimum S1 (C8 must be extended with `\"rdfs:range\": { \"@type\": \"@id\" }`), S2 (ANNOTATION_DATATYPE_IRI_COLLISION code + validator), and S3 (C11 trigger logic replaced with owl:Class Set lookup).",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:368-recon-r4-4",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:369-dev-r4-4",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:370-sme-r4-4",
+            "field": "outputs.findings",
+            "kind": "sme-ontology-review"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.2",
+            "source": "project/SPEC.md",
+            "note": "Normative JSON-LD @context; VMP_CONTEXT must correctly type all IRI-valued predicates including rdfs:range"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a76.1",
+            "source": "project/SPEC.md",
+            "note": "ANNOTATION_DATATYPE_IRI_COLLISION MUST mandate; pairwise-disjoint property IRI sets; line 730 confirmed"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.5",
+            "source": "project/SPEC.md",
+            "note": "RANGE_CLASS_ON_DATATYPE_PROPERTY normative trigger: rdfs:range resolves to owl:Class in ecm:terms \u00e2\u20ac\u201d not XSD-prefix heuristic; line 817 confirmed"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U033",
+            "source": "project/SPEC.md",
+            "note": "Property Creation Module spec; line 1390; all 5 fields confirmed present in C1"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-009",
+            "source": "project/DECISIONS.md",
+            "note": "rdfs:range authorized on owl:DatatypeProperty; RANGE_CLASS_ON_DATATYPE_PROPERTY mandatory; Turtle emitter obligation; lines 153\u00e2\u20ac\u201c166 confirmed"
+          },
+          {
+            "type": "file_read",
+            "id": "src/kernel/canonicalize.ts:66-94",
+            "note": "VMP_CONTEXT confirmed: rdfs:range absent entirely; rdfs:subClassOf and rdfs:subPropertyOf both carry @type:@id confirming the pattern"
+          },
+          {
+            "type": "file_read",
+            "id": "src/validate/codes.ts:1-55",
+            "note": "ANNOTATION_DATATYPE_IRI_COLLISION confirmed absent from all 27 exported codes"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "When a new IRI-valued predicate is introduced to the data model (here rdfs:range, authorized by ADR-009), two independent serialization paths must both be patched: (1) the Turtle emitter's IRI-valued predicates loop (which resolves IRIs via PREFIX_MAP) and (2) the JSON-LD @context (which requires `\"predicate\": { \"@type\": \"@id\" }` to tell conformant JSON-LD processors to treat the value as an IRI rather than a string literal). Developers can correctly wire the Turtle path and add new namespace prefix entries to VMP_CONTEXT while missing the `@type: @id` entry for the predicate itself \u00e2\u20ac\u201d because the two expansions are structurally different (PREFIX_MAP handles namespace compression; `@type: @id` handles value-type discrimination). The S1 finding in urn:fnsr:task:370-sme-r4-4 instantiates this pattern exactly. A checklist item for any developer task that adds an IRI-valued predicate: 'Add `\"<predicate>\": { \"@type\": \"@id\" }` to VMP_CONTEXT in addition to any namespace prefix entries.'"
+          },
+          {
+            "id": "B2",
+            "category": "discipline-correction",
+            "content": "Validator trigger conditions expressed in SPEC normative prose as data-lookup predicates MUST be implemented as Set lookups against the project's entity collections \u00e2\u20ac\u201d not approximated by string-prefix heuristics. SPEC \u00c2\u00a77.5 specifies RANGE_CLASS_ON_DATATYPE_PROPERTY fires \"when an owl:DatatypeProperty term carries a rdfs:range value that resolves to an IRI typed as owl:Class in ecm:terms\" \u00e2\u20ac\u201d a lookup predicate over ecm:terms. Developer C11 implemented an XSD-namespace string-prefix guard instead, which produces false positives for valid OWL 2 DL datatypes outside the XSD namespace (owl:real, owl:rational, rdf:PlainLiteral, rdfs:Literal, custom rdfs:Datatype instances). The discipline: when the SPEC says 'resolves to a type in ecm:terms,' the implementation is `classIriSet.has(rangeVal)`, not `rangeVal.startsWith('xsd:')`. String-prefix guards are permissible as performance shortcuts only when the SPEC's normative trigger is itself prefix-based \u00e2\u20ac\u201d which \u00c2\u00a77.5 is not."
+          }
+        ]
+      },
+      "depends_on": [
+        "urn:fnsr:task:368-recon-r4-4",
+        "urn:fnsr:task:369-dev-r4-4",
+        "urn:fnsr:task:370-sme-r4-4"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "R4-4 ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "All FR-U033 fields implemented",
+          "SME confirms OWL 2 DL conformance",
+          "PREFIX_MAP + VMP_CONTEXT include foaf + schema",
+          "Uniqueness check on composed IRI",
+          "All existing tests still pass",
+          "Editorial vs substantive: substantive"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T14:17:06Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:372-apply-r4-4",
+      "agent": "applier",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\PropertyCreationDialog.tsx",
+            "mode": "create",
+            "bytes_written": 11956,
+            "bom_prepended": true
+          },
+          {
+            "id": "C2",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 102
+          },
+          {
+            "id": "C3",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 195
+          },
+          {
+            "id": "C4",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 959
+          },
+          {
+            "id": "C5",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 291
+          },
+          {
+            "id": "C6",
+            "path": "src\\emit\\turtle.ts",
+            "mode": "edit",
+            "delta_bytes": 87
+          },
+          {
+            "id": "C7",
+            "path": "src\\emit\\turtle.ts",
+            "mode": "edit",
+            "delta_bytes": 109
+          },
+          {
+            "id": "C8",
+            "path": "src\\kernel\\canonicalize.ts",
+            "mode": "edit",
+            "delta_bytes": 71
+          },
+          {
+            "id": "C9",
+            "path": "src\\validate\\codes.ts",
+            "mode": "edit",
+            "delta_bytes": 85
+          },
+          {
+            "id": "C10",
+            "path": "src\\validate\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 36
+          },
+          {
+            "id": "C11",
+            "path": "src\\validate\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 1616
+          }
+        ],
+        "failed": [],
+        "summary": "11 changes applied"
+      },
+      "depends_on": [
+        "urn:fnsr:task:371-rat-r4-4",
+        "urn:fnsr:task:369-dev-r4-4"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:369-dev-r4-4",
+        "apply_root": ".",
+        "task_context": "R4-4 commit-finalize."
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T14:17:06Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:373-test-r4-4",
+      "agent": "test-runner",
+      "status": "done",
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 130,
+        "failed": 0,
+        "skipped": 0,
+        "total": 130,
+        "summary": "Files: 17/17 passed; Tests: 130/130 passed",
+        "first_n_failures": [],
+        "raw_stdout_tail": "=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (94ms)\n  PASSED: /cli-integration.test.js (2017ms)\n  PASSED: /delete-instance.test.js (95ms)\n  PASSED: /determinism.test.js (92ms)\n  PASSED: /emitters.test.js (212ms)\n  PASSED: /iri-generation.test.js (91ms)\n  PASSED: /iri-refactor.test.js (100ms)\n  PASSED: /legacy-migration.test.js (112ms)\n  PASSED: /manifest-entries.test.js (95ms)\n  PASSED: /no-network.test.js (76ms)\n  PASSED: /normalize-on-load.test.js (88ms)\n  PASSED: /semantic-projection.test.js (109ms)\n  PASSED: /snapshot.test.js (91ms)\n  PASSED: /starter-terms.test.js (87ms)\n  PASSED: /structural-validator.test.js (91ms)\n  PASSED: /tbox-bundle.test.js (207ms)\n  PASSED: /vmp-serializer.test.js (752ms)\n\n  Files: 17/17 passed\n  Tests: 130/130 passed",
+        "exit_code": 0,
+        "duration_s": null,
+        "task_context": "R4-4 verification."
+      },
+      "depends_on": [
+        "urn:fnsr:task:372-apply-r4-4"
+      ],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "R4-4 verification."
+      },
+      "history": [
+        {
+          "ts": "2026-05-23T14:17:40Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-05-23T14:20:19Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-373-test-r4-4-1",
+            "category": "pattern-observation",
+            "state": 1,
+            "content": "Round 4 Chain R4-4 (Property Creation Module / FR-U033) substantively complete. Architect denied; applier ran 11/11 (no failures); test-runner passed 130/130. Operator-fix: VMP_CONTEXT adds 'rdfs:range': {'@type':'@id'} per SME blocking finding; v0.4 fixture re-canonicalized for AC3 bytewise (gap-15 cousin recurrence). PropertyCreationDialog component with 5 fields (Property Type radio, Namespace selector ex/foaf/schema, Local Name regex, Label+lang, Conditional Target Data Type). TermSidebar integration: + buttons on Annotation/Datatype/ObjectProperty sections open PropertyCreationDialog. PREFIX_MAP + VMP_CONTEXT gain foaf+schema. Suite 47/47 + 130/130. Round 4 fully complete.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-23T14:20:19Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "7abbb51cb908f675e7e2cc84fec7e79a85b9821af1f7615a570eb20e271c77ea"
+        }
+      ]
     }
   ]
 }

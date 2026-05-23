@@ -15,6 +15,7 @@ import {
   LEGACY_REALIST_ANCHOR_PLACEHOLDER,
   NORMALIZED_ON_SAVE,
   CANONICAL_RESERVED_NAME_COLLISION,
+  RANGE_CLASS_ON_DATATYPE_PROPERTY,
 } from "./codes.js";
 import { RESERVED_CANONICAL_IRIS } from "./reserved-names.js";
 
@@ -223,6 +224,40 @@ export function validate(project: Record<string, unknown>): ValidationReport {
           termId,
         ),
       );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // RANGE_CLASS_ON_DATATYPE_PROPERTY (ADR-009, section 17.2)
+  // Fires when an owl:DatatypeProperty term carries rdfs:range with a value
+  // that is NOT an XSD datatype IRI (expanded or compact xsd: prefix).
+  // Prevents emitting an OWL 2 DL violation (class IRI used as datatype range).
+  // -------------------------------------------------------------------------
+  const XSD_NS_FULL = "http://www.w3.org/2001/XMLSchema#";
+  if (Array.isArray(rawTerms)) {
+    for (const term of rawTerms as unknown[]) {
+      if (typeof term !== "object" || term === null) continue;
+      const dt = term as Record<string, unknown>;
+      if (dt["type"] !== "owl:DatatypeProperty") continue;
+      const rangeVal = dt["rdfs:range"];
+      if (rangeVal === undefined || rangeVal === null) continue;
+      if (typeof rangeVal !== "string" || rangeVal.length === 0) continue;
+      const isXsd =
+        rangeVal.startsWith(XSD_NS_FULL) || rangeVal.startsWith("xsd:");
+      if (!isXsd) {
+        const dtId =
+          typeof dt["id"] === "string" ? (dt["id"] as string) : projectId;
+        findings.push(
+          makeError(
+            RANGE_CLASS_ON_DATATYPE_PROPERTY,
+            `DatatypeProperty "${dtId}" has rdfs:range "${rangeVal}" which is not` +
+              " an XSD datatype IRI. The range of an owl:DatatypeProperty MUST be" +
+              " an XSD datatype IRI (http://www.w3.org/2001/XMLSchema#...) or" +
+              " OWL DataRange (ADR-009, SPEC section 17.2).",
+            dtId,
+          ),
+        );
+      }
     }
   }
 

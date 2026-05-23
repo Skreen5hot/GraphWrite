@@ -31,13 +31,15 @@ const { namedNode, literal, quad: makeQuad, blankNode } = DataFactory;
 // ---------------------------------------------------------------------------
 
 const PREFIX_MAP: Record<string, string> = {
-  ecm:  "https://edgecanonical.org/ns/modeler#",
-  rdf:  "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-  rdfs: "http://www.w3.org/2000/01/rdf-schema#",
-  owl:  "http://www.w3.org/2002/07/owl#",
-  xsd:  "http://www.w3.org/2001/XMLSchema#",
-  obo:  "http://purl.obolibrary.org/obo/",
-  cco:  "https://www.commoncoreontologies.org/",
+  ecm:    "https://edgecanonical.org/ns/modeler#",
+  rdf:    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+  rdfs:   "http://www.w3.org/2000/01/rdf-schema#",
+  owl:    "http://www.w3.org/2002/07/owl#",
+  xsd:    "http://www.w3.org/2001/XMLSchema#",
+  obo:    "http://purl.obolibrary.org/obo/",
+  cco:    "https://www.commoncoreontologies.org/",
+  foaf:   "http://xmlns.com/foaf/0.1/",
+  schema: "https://schema.org/",
 };
 
 /**
@@ -188,7 +190,8 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
   }
 
   // IRI-valued predicates (single IRI or array of IRIs)
-  for (const pred of ["rdfs:subClassOf", "rdfs:subPropertyOf", "iao:isAbout", "ecm:isSerializationOf"]) {
+  // rdfs:range added per ADR-009: authorized on owl:DatatypeProperty; emits <xsd-IRI> triple.
+  for (const pred of ["rdfs:subClassOf", "rdfs:subPropertyOf", "rdfs:range", "iao:isAbout", "ecm:isSerializationOf"]) {
     const val = node[pred];
     const items: unknown[] = Array.isArray(val) ? val : typeof val === "string" ? [val] : [];
     const predNode = namedNode(expandIri(JSON_KEY_TO_RDF_PRED[pred] ?? pred));
