@@ -145,6 +145,46 @@ def _empty_state() -> dict[str, Any]:
 
 # ---------- Deterministic routing ----------------------------------------
 
+def _architect_ratification_block(
+    task: dict[str, Any], by_id: dict[str, dict[str, Any]]
+) -> Optional[tuple[str, Any]]:
+    """Pass 2a gating per FNSR Spec 03 + OPERATOR-MEDIATION-LOG Event 11.
+
+    If the task is an applier-class task (Pass 2b commit-finalize) and any
+    upstream architect-ratification dep has `outputs.ruling != "ratified"`,
+    return `(architect_dep_id, ruling)` indicating the block. Return None
+    when no block applies.
+
+    The architect's ratification ruling MUST gate the Pass 2b applier
+    dispatch. Before this check, the daemon dispatched the applier when
+    deps were `status=done`, ignoring the architect's `outputs.ruling`.
+    Five-plus occurrences in the Round 4 implementation session — every
+    denied/deferred ratification was followed by the applier landing
+    changes the architect had refused.
+    """
+    if task.get("agent") != "applier":
+        return None
+    for dep_id in task.get("depends_on", []) or []:
+        dep = by_id.get(dep_id)
+        if dep is None:
+            continue
+        if dep.get("agent") != "architect":
+            continue
+        dep_inputs = dep.get("inputs") or {}
+        mode = (
+            dep_inputs.get("mode") if isinstance(dep_inputs, dict) else None
+        )
+        if mode != "ratification":
+            continue
+        outputs = dep.get("outputs") or {}
+        ruling = (
+            outputs.get("ruling") if isinstance(outputs, dict) else None
+        )
+        if ruling != "ratified":
+            return (dep_id, ruling)
+    return None
+
+
 def next_ready_task(state: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
     Deterministic task picker. Filters by `status=ready` and all deps `done`,
@@ -155,6 +195,12 @@ def next_ready_task(state: dict[str, Any]) -> Optional[dict[str, Any]]:
     SPL v0.1: priority-as-int is the smallest plan-language step that
     gives operators routing control without introducing a separate plan
     object. Phase / branch / conditional structure is future work.
+
+    Pass 2a gating (Spec 03; Event 11 fix): applier-class tasks whose
+    upstream architect-ratification dep has `outputs.ruling != "ratified"`
+    are SKIPPED — the architect's denial/deferral blocks the Pass 2b
+    commit-finalize. The applier task stays `status=ready` (no mutation);
+    operator-action is required to either abandon or re-dispatch.
     """
     by_id = {t["@id"]: t for t in state.get("tasks", [])}
     done_ids = {tid for tid, t in by_id.items() if t.get("status") == "done"}
@@ -163,8 +209,13 @@ def next_ready_task(state: dict[str, Any]) -> Optional[dict[str, Any]]:
         if t.get("status") != "ready":
             continue
         deps = t.get("depends_on", []) or []
-        if all(d in done_ids for d in deps):
-            candidates.append(t)
+        if not all(d in done_ids for d in deps):
+            continue
+        # Pass 2a gating: skip applier tasks whose architect ratification
+        # did not return ruling=ratified.
+        if _architect_ratification_block(t, by_id) is not None:
+            continue
+        candidates.append(t)
     if not candidates:
         return None
     return min(candidates, key=lambda t: (-int(t.get("priority", 0)), t["@id"]))

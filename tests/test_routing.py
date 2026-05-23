@@ -60,5 +60,115 @@ class TestNextReadyTask(unittest.TestCase):
         self.assertIsNone(d.next_ready_task(s))
 
 
+def architect_ratification_task(tid, ruling, mode="ratification"):
+    """Architect task in done state with a specified ruling."""
+    return {
+        "@id": tid,
+        "agent": "architect",
+        "status": "done",
+        "depends_on": [],
+        "inputs": {"mode": mode},
+        "outputs": {"ruling": ruling},
+    }
+
+
+def applier_task(tid, deps, status="ready"):
+    """Applier task gated by architect-ratification dep."""
+    return {
+        "@id": tid,
+        "agent": "applier",
+        "status": status,
+        "depends_on": deps,
+    }
+
+
+class TestPassRatificationGating(unittest.TestCase):
+    """Event 11 regression: applier tasks must be gated by architect ratification ruling.
+
+    Five-plus occurrences in the Round 4 implementation session: every
+    denied/deferred ratification was followed by the applier landing changes
+    the architect had refused. This class pins the fix in
+    `_architect_ratification_block` + `next_ready_task`.
+    """
+
+    def test_applier_skipped_when_ratification_denied(self):
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "denied"),
+            applier_task("urn:t:app", deps=["urn:t:arch"]),
+        ]}
+        self.assertIsNone(d.next_ready_task(s))
+
+    def test_applier_skipped_when_ratification_deferred(self):
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "deferred"),
+            applier_task("urn:t:app", deps=["urn:t:arch"]),
+        ]}
+        self.assertIsNone(d.next_ready_task(s))
+
+    def test_applier_returned_when_ratified(self):
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "ratified"),
+            applier_task("urn:t:app", deps=["urn:t:arch"]),
+        ]}
+        self.assertEqual(d.next_ready_task(s)["@id"], "urn:t:app")
+
+    def test_non_applier_not_gated_by_architect_ruling(self):
+        # A developer task downstream of a denied ratification is NOT gated —
+        # only the applier-class Pass 2b commit-finalize is.
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "denied"),
+            {
+                "@id": "urn:t:dev",
+                "agent": "developer",
+                "status": "ready",
+                "depends_on": ["urn:t:arch"],
+            },
+        ]}
+        self.assertEqual(d.next_ready_task(s)["@id"], "urn:t:dev")
+
+    def test_architect_review_mode_does_not_gate(self):
+        # Architect tasks in `review` mode (not `ratification`) do not gate
+        # downstream applier tasks — gating only fires on ratification mode.
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "denied", mode="review"),
+            applier_task("urn:t:app", deps=["urn:t:arch"]),
+        ]}
+        self.assertEqual(d.next_ready_task(s)["@id"], "urn:t:app")
+
+    def test_applier_skipped_other_candidate_returned(self):
+        # When the gated applier is skipped, another ready candidate must
+        # still be picked — gating filters, it does not abort the picker.
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch", "denied"),
+            applier_task("urn:t:app", deps=["urn:t:arch"]),
+            task("urn:t:other"),
+        ]}
+        self.assertEqual(d.next_ready_task(s)["@id"], "urn:t:other")
+
+    def test_applier_with_multiple_ratifications_one_denied_blocks(self):
+        # If an applier depends on multiple architect ratifications and ANY
+        # are denied/deferred, the applier is blocked.
+        s = {"tasks": [
+            architect_ratification_task("urn:t:arch-a", "ratified"),
+            architect_ratification_task("urn:t:arch-b", "denied"),
+            applier_task("urn:t:app", deps=["urn:t:arch-a", "urn:t:arch-b"]),
+        ]}
+        self.assertIsNone(d.next_ready_task(s))
+
+    def test_applier_with_no_architect_dep_not_gated(self):
+        # An applier with no architect dep is not gated (e.g., direct
+        # developer→applier chains for editorial corrections without Pass 2a).
+        s = {"tasks": [
+            {
+                "@id": "urn:t:dev",
+                "agent": "developer",
+                "status": "done",
+                "depends_on": [],
+            },
+            applier_task("urn:t:app", deps=["urn:t:dev"]),
+        ]}
+        self.assertEqual(d.next_ready_task(s)["@id"], "urn:t:app")
+
+
 if __name__ == "__main__":
     unittest.main()
