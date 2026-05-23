@@ -9,7 +9,7 @@
  *   AC2: N-Triples output parses cleanly under N3.js (section 17.6, FR-C004).
  *   AC3: Golden-file byte-identical -- DEFERRED (OED-306 + OED-313).
  *   AC6: idempotency for emitTurtle + emitNTriples + narrateProject (section 9.1).
- *   AC7: Turtle contains TBox markers iao:OntologyDesignPattern + ecm:isSerializationOf.
+ *   AC7: Turtle contains TBox markers ecm:OntologyDesignPattern + ecm:isSerializationOf.
  *   FR-C008: narrateTriple template; narrateProject label resolution.
  *
  * Content checks (inline):
@@ -69,7 +69,7 @@ const LIT_PRED   = "urn:uuid:00000000-0000-0000-0000-000000000031";
 
 const MINIMAL_PROJECT: Record<string, unknown> = {
   id: PROJ_IRI,
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "Emitter Test Project",
   "ecm:createdAt": "2026-05-20T00:00:00Z",
@@ -133,7 +133,7 @@ try {
     "Turtle must contain 'OntologyDesignPattern' (TBox marker, AC7)");
   ok(turtleOut.includes("isSerializationOf"),
     "Turtle must contain 'isSerializationOf' (TBox marker, AC7)");
-  pass("TBox markers iao:OntologyDesignPattern and ecm:isSerializationOf present in Turtle (AC7)");
+  pass("TBox markers ecm:OntologyDesignPattern and ecm:isSerializationOf present in Turtle (AC7)");
 } catch (e) { fail("TBox markers in Turtle (AC7)", e); }
 
 // ---------------------------------------------------------------------------

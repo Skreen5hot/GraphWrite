@@ -64,8 +64,8 @@
   },
   "id": "urn:uuid:00000000-0000-0000-0000-000000000040",
   "type": [
-    "ecm:Project",
-    "iao:OntologyDesignPattern"
+    "ecm:OntologyDesignPattern",
+    "ecm:Project"
   ],
   "ecm:specVersion": "0.4",
   "ecm:createdAt": "2026-01-01T00:00:00Z",

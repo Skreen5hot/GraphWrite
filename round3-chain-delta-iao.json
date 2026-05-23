@@ -1,0 +1,155 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:322-recon-r3-delta",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 3 Chain δ: IAO IRI fix per R3-S5-01. Aaron adjudicated δ-a with ecm:OntologyDesignPattern re-homing: (1) add new `obo:` prefix bound to `http://purl.obolibrary.org/obo/`; (2) canonical 'is about' becomes `obo:IAO_0000136` (RDF triples); (3) re-home `iao:OntologyDesignPattern` → `ecm:OntologyDesignPattern` (project/modeler namespace, not IAO); (4) keep `iao:` prefix only for any truly-iao#-namespaced terms (likely none in current corpus — vestigial). JSON-LD shape decision: developer chooses whether to keep `iao:isAbout` as a local property alias (@context maps it to obo:IAO_0000136) OR use `obo:IAO_0000136` as the JSON-LD property key directly. Architect will catch shape issues.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. Enumerate EVERY touchpoint of the iao: prefix + iao:isAbout + iao:OntologyDesignPattern in the entire codebase. The completeness map MUST be exhaustive — anything missed breaks tests or produces invalid output.",
+        "focus_areas": [
+          "project/SPEC.md — §5.2 @context block; anywhere iao: prefix is documented or referenced; anywhere iao:isAbout or iao:OntologyDesignPattern appears in normative text",
+          "src/kernel/canonicalize.ts — VMP_CONTEXT constant; any iao: handling in the serializer",
+          "src/emit/turtle.ts — PREFIX_MAP constant; how iao: maps to @prefix in Turtle output",
+          "src/tbox/index.ts — TBox triples; declared @prefix iao:; any iao:OntologyDesignPattern triples",
+          "src/validate/index.ts — MISSING_REALIST_ANCHOR check on iao:isAbout array",
+          "src/validate/reserved-names.ts — does it list iao: namespace IRIs?",
+          "src/migrate/index.ts — v0.3 → v0.4 migration writes iao:isAbout placeholder",
+          "src/normalize/index.ts — does normalize touch iao:isAbout?",
+          "src/projection/index.ts — does projection iterate iao:isAbout?",
+          "src/ui/App.tsx — buildNewDocument hardcodes 'iao:isAbout' key + ECM_UNSPECIFIED placeholder; deriveIsAboutState uses 'iao:isAbout' lookup; iao:OntologyDesignPattern in type array",
+          "src/ui/ProjectSettingsDialog.tsx — manages iao:isAbout array editing",
+          "src/ui/NewProjectDialog.tsx — references 'subject' which maps to iao:isAbout",
+          "src/ui/Inspector.tsx — does it reference iao:isAbout?",
+          "tests/*.test.ts — spec tests asserting on iao:isAbout values (vmp-serializer.test.js, snapshot.test.js, normalize-on-load.test.js, structural-validator.test.js, legacy-migration.test.js)",
+          "tests/playwright/*.spec.ts — Playwright tests asserting iao:isAbout-related text",
+          "tests/playwright/fixtures/*.jsonld — fixtures with iao:isAbout entries (minimal-v0.3.jsonld, term-sidebar-2c-1op-1dp.jsonld, term-sidebar-cross-refs.jsonld, validation-3-findings.jsonld, etc.)",
+          "test/fixtures/canonical-v0.4/minimal.jsonld — canonical v0.4 fixture",
+          "demo/library-catalog.jsonld — demo fixture",
+          "demo/FEEDBACK*.md + WALKTHROUGH*.md (informational; not normative)"
+        ],
+        "specific_questions": [
+          "What's the current @context block in src/kernel/canonicalize.ts VMP_CONTEXT? Verbatim, including all prefix bindings.",
+          "What's the current PREFIX_MAP in src/emit/turtle.ts? Verbatim.",
+          "What's the current TBox source in src/tbox/index.ts? Does it have iao: prefix declarations + iao:OntologyDesignPattern triples? Verbatim relevant lines.",
+          "How does the validator check for MISSING_REALIST_ANCHOR — does it iterate iao:isAbout key in the document, or does it expand prefixes first? If literal key check: switching property key breaks the validator.",
+          "What does buildNewDocument in App.tsx hardcode for the property keys? It uses 'iao:isAbout' literal — switching keys breaks the initial state.",
+          "How many existing fixtures contain 'iao:isAbout' as a literal JSON property key? Enumerate.",
+          "Per Aaron's recommendation, suggest the JSON-LD shape choice: (option α) keep 'iao:isAbout' as alias in @context that resolves to obo:IAO_0000136 — minimal code change, just @context binding fix; (option β) rename property key to 'obo:IAO_0000136' everywhere — semantically purer but breaks every fixture + every test"
+        ],
+        "scope_observation": "This is potentially the largest chain so far in Round 3. Recon should explicitly flag if scope appears to exceed reasonable single-chain bounds.",
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:323-dev-r3-delta",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:322-recon-r3-delta"],
+      "inputs": {
+        "task_context": "Round 3 Chain δ: IAO IRI fix implementation per Aaron's δ-a + ecm:OntologyDesignPattern recommendation.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] implementing the IAO IRI fix end-to-end.",
+        "implementation_directions": [
+          "Choose the JSON-LD shape per recon's analysis. RECOMMENDED: option α (keep 'iao:isAbout' as alias in @context; @context maps it to obo:IAO_0000136). This produces correct RDF triples (subject obo:IAO_0000136 object) while minimizing code/fixture churn. The Turtle export then uses obo:IAO_0000136 (correct canonical IRI) via the prefix expansion. If option β (rename key) is necessary for any reason, surface that in self_assessment with explicit justification.",
+          "@context updates (canonicalize.ts VMP_CONTEXT + SPEC.md §5.2):",
+          "  - Add: 'obo': 'http://purl.obolibrary.org/obo/'",
+          "  - Map: 'iao:isAbout': { '@id': 'obo:IAO_0000136', '@type': '@id', '@container': '@set' } — the key stays 'iao:isAbout' for JSON-LD compatibility BUT the @id binding makes it expand to the canonical IRI",
+          "  - Remove or vestigial-mark: 'iao:OntologyDesignPattern' references — re-home as 'ecm:OntologyDesignPattern' in any @type array",
+          "  - Keep 'iao:' prefix bound to 'http://purl.obolibrary.org/obo/iao#' for backward-compat OR remove entirely if no other terms use it",
+          "src/emit/turtle.ts PREFIX_MAP: add obo: bound to the OBO base URI; keep iao: if needed; turtle output should now emit obo:IAO_0000136 for the 'is about' triple",
+          "src/tbox/index.ts: declare @prefix obo:; the TBox triples for ecm:OntologyDesignPattern (class definition) move under ecm: namespace; obo:IAO_0000136 is referenced from the ecm:Project subClassOf chain or similar grounding",
+          "src/validate/index.ts: MISSING_REALIST_ANCHOR check stays on 'iao:isAbout' key (since option α preserves the alias). Verify the check logic is key-based, not IRI-resolution-based",
+          "src/ui/App.tsx: buildNewDocument keeps 'iao:isAbout' property key (option α); the 'type' array changes from ['ecm:Project', 'iao:OntologyDesignPattern'] to ['ecm:Project', 'ecm:OntologyDesignPattern']",
+          "All fixtures (test/, tests/playwright/, demo/): update any 'iao:OntologyDesignPattern' in 'type' arrays to 'ecm:OntologyDesignPattern'. 'iao:isAbout' property keys stay the same (option α).",
+          "If any Phase 1 spec tests assert on type arrays containing 'iao:OntologyDesignPattern', update them to assert 'ecm:OntologyDesignPattern'",
+          "Documentation: SPEC.md §5.2 explicitly documents the obo: prefix + canonical IAO IRI; notes the design decision (option α JSON-LD alias)"
+        ],
+        "scope_constraints": [
+          "Multi-file change; per Event 9+12 lesson if scope exceeds 25000 chars, use outputs.status='awaiting_operator_decision' with structured suggested_split",
+          "Per Event 11 lesson: ALL touchpoints from recon's enumeration addressed in this chain; architect WILL check",
+          "Existing tests (42 Playwright + 126 specs baseline post-Chain-α) must pass after updates",
+          "JSON-LD-shape choice (option α vs β) MUST be applied consistently across all files"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Large scope. 25000 char threshold.",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:324-rat-r3-delta",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:322-recon-r3-delta",
+        "urn:fnsr:task:323-dev-r3-delta"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Round 3 Chain δ ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "All touchpoints from recon addressed; no missed file",
+          "obo: prefix correctly bound to http://purl.obolibrary.org/obo/",
+          "iao:isAbout @context binding correctly resolves to obo:IAO_0000136 (option α) OR justified switch to option β",
+          "iao:OntologyDesignPattern → ecm:OntologyDesignPattern propagated consistently (type arrays + tbox + tests + fixtures)",
+          "RDF triples produced via Turtle export are semantically correct (subject obo:IAO_0000136 object pattern)",
+          "Validator behavior preserved (MISSING_REALIST_ANCHOR still fires correctly)",
+          "Fixtures consistent — every 'type' array using OntologyDesignPattern is updated",
+          "SPEC.md §5.2 documents the obo: prefix + design decision",
+          "Editorial vs substantive: substantive (semantic ontology IRI change)"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:325-apply-r3-delta",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:324-rat-r3-delta",
+        "urn:fnsr:task:323-dev-r3-delta"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:323-dev-r3-delta",
+        "apply_root": ".",
+        "task_context": "Round 3 Chain δ commit-finalize."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:326-test-r3-delta",
+      "agent": "test-runner",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:325-apply-r3-delta"],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "Round 3 Chain δ verification."
+      },
+      "history": []
+    }
+  ]
+}

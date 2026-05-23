@@ -294,7 +294,7 @@ Every project document must include this `@context` (or one semantically equival
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "owl": "http://www.w3.org/2002/07/owl#",
     "xsd": "http://www.w3.org/2001/XMLSchema#",
-    "iao": "http://purl.obolibrary.org/obo/iao#",
+    "obo": "http://purl.obolibrary.org/obo/",
     "cco": "https://www.commoncoreontologies.org/",
     "id": "@id",
     "type": "@type",
@@ -311,7 +311,7 @@ Every project document must include this `@context` (or one semantically equival
     "ecm:predicateIri":     { "@type": "@id" },
     "ecm:objectIri":        { "@type": "@id" },
     "ecm:isSerializationOf":{ "@type": "@id" },
-    "iao:isAbout":          { "@type": "@id", "@container": "@set" },
+    "iao:isAbout":          { "@id": "obo:IAO_0000136", "@type": "@id", "@container": "@set" },
     "rdfs:subClassOf":      { "@type": "@id", "@container": "@set" },
     "rdfs:subPropertyOf":   { "@type": "@id", "@container": "@set" }
   }
@@ -359,7 +359,7 @@ Example project root:
 {
   "@context": { /* §5.2 */ },
   "id": "urn:uuid:PROJECT_UUID",
-  "type": ["ecm:Project", "iao:OntologyDesignPattern"],
+  "type": ["ecm:OntologyDesignPattern", "ecm:Project"],
   "ecm:specVersion": "0.4",
   "ecm:name": "Customer Orders",
   "ecm:description": "A model of customers placing orders.",
@@ -604,13 +604,12 @@ The TBox declares:
 
 ```turtle
 @prefix ecm:  <https://edgecanonical.org/ns/modeler#> .
-@prefix iao:  <http://purl.obolibrary.org/obo/iao#> .
 @prefix cco:  <https://www.commoncoreontologies.org/> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 # Realist anchoring of the Ontology Design Pattern concept
-iao:OntologyDesignPattern  a            owl:Class ;
+ecm:OntologyDesignPattern  a            owl:Class ;
                            rdfs:label   "Ontology Design Pattern" ;
                            rdfs:comment "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology." ;
                            rdfs:subClassOf cco:ont00000958 .
@@ -618,7 +617,7 @@ iao:OntologyDesignPattern  a            owl:Class ;
 # Every project is an Ontology Design Pattern
 ecm:Project                a            owl:Class ;
                            rdfs:label   "Visual Modeler Project" ;
-                           rdfs:subClassOf iao:OntologyDesignPattern .
+                           rdfs:subClassOf ecm:OntologyDesignPattern .
 
 # Serializations are concrete ICEs of a project
 ecm:Serialization          a            owl:Class ;
@@ -630,7 +629,7 @@ ecm:Serialization          a            owl:Class ;
 ecm:isSerializationOf      a            owl:ObjectProperty ;
                            rdfs:label   "is serialization of" ;
                            rdfs:domain  ecm:Serialization ;
-                           rdfs:range   iao:OntologyDesignPattern .
+                           rdfs:range   ecm:OntologyDesignPattern .
 
 # Placeholder subject class used during onboarding
 ecm:UnspecifiedSubjectMatter a          owl:Class ;
@@ -641,7 +640,7 @@ ecm:UnspecifiedSubjectMatter a          owl:Class ;
 **Notes on the TBox.**
 
 - `cco:ont00000958` is `cco:InformationContentEntity` (verified against CCO ≥ v1.7, 2024-11-03).
-- `iao:OntologyDesignPattern` is **introduced by this spec**. Core IAO does not currently define an Ontology Design Pattern class. The spec uses the `iao:` prefix because the term is conceptually in the Information Artifact family; if a future IAO release adds this term natively, the spec will align rather than re-namespace.
+- `ecm:OntologyDesignPattern` is **introduced by this spec**. Core IAO does not currently define an Ontology Design Pattern class; the term has been re-homed under `ecm:` to avoid conflating this spec's ODP concept with a potential future native IAO definition. The `iao:isAbout` property key is retained as a compact alias bound to the canonical IAO IRI via `@id: obo:IAO_0000136` in the normative `@context` (see section 5.2).
 - The TBox is included with every full semantic export. The Turtle and N-Triples exports prepend the TBox declarations so the resulting RDF graph is self-contained.
 
 ### 5.15 Serialization Object

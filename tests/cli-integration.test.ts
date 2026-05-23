@@ -59,7 +59,7 @@ function fail(msg: string, err?: unknown): void {
 
 const VALID_V04: Record<string, unknown> = {
   id: "urn:uuid:00000000-0000-0000-0000-000000000001",
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "CLI Test Project",
   "ecm:createdAt": "2026-05-14T12:00:00Z",

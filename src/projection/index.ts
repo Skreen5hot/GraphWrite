@@ -28,7 +28,7 @@ import { getProjectTBoxNodes } from "../tbox/index.js";
  */
 const SEMANTIC_TYPE_ALLOWLIST = new Set<string>([
   "ecm:Project",
-  "iao:OntologyDesignPattern",
+  "ecm:OntologyDesignPattern",
   "owl:Class",
   "owl:ObjectProperty",
   "owl:DatatypeProperty",

@@ -45,7 +45,7 @@ function fail(msg: string, err?: unknown): void {
  */
 const NON_CANONICAL_DOC: Record<string, unknown> = {
   "id": "urn:uuid:00000000-0000-0000-0000-000000000020",
-  "type": ["iao:OntologyDesignPattern", "ecm:Project"],
+  "type": ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "Non-Canonical Project",
   "ecm:createdAt": "2026-05-14T12:00:00Z",

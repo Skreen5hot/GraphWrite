@@ -53,7 +53,10 @@ test.describe("Canvas view (task 2.4 Chain B)", () => {
       await page.goto("/");
 
       // Create a new empty project (no existing nodes to interfere).
+      // Post-Round-3 Chain α: gw-btn-new opens NewProjectDialog; Skip = use placeholder.
       await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
       const canvasView = page.getByTestId("gw-canvas-view");

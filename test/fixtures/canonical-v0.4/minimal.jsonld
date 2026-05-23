@@ -42,12 +42,13 @@
     "ecm:terms": {
       "@container": "@set"
     },
-    "iao": "http://purl.obolibrary.org/obo/iao#",
     "iao:isAbout": {
       "@container": "@set",
+      "@id": "obo:IAO_0000136",
       "@type": "@id"
     },
     "id": "@id",
+    "obo": "http://purl.obolibrary.org/obo/",
     "owl": "http://www.w3.org/2002/07/owl#",
     "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
@@ -64,10 +65,11 @@
   },
   "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
   "type": [
-    "ecm:Project",
-    "iao:OntologyDesignPattern"
+    "ecm:OntologyDesignPattern",
+    "ecm:Project"
   ],
   "ecm:specVersion": "0.4",
+  "ecm:_wasNormalizedOnLoad": true,
   "ecm:createdAt": "2026-01-01T00:00:00Z",
   "ecm:instances": [],
   "ecm:layouts": [],

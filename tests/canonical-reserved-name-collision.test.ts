@@ -39,7 +39,7 @@ function fail(msg: string, err?: unknown): void {
 /** Minimal fully valid v0.4 project document (no findings expected). */
 const BASE: Record<string, unknown> = {
   id: "urn:uuid:00000000-0000-0000-0000-000000000101",
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "J1 Canonical Reserved Name Test Project",
   "ecm:createdAt": "2026-05-21T00:00:00Z",

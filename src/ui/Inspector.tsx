@@ -347,6 +347,18 @@ export function Inspector({
         ? selectedInstance["rdfs:label"]
         : iriTail(selectedInstanceId);
 
+    function handleLabelChange(newLabel: string) {
+      if (onProjectChange === undefined || project === null) return;
+      const updatedInstances = rawInstances.map((inst) => {
+        if (!isEcmInstance(inst) || inst.id !== selectedInstanceId) return inst;
+        return {
+          ...(inst as unknown as Record<string, unknown>),
+          "rdfs:label": newLabel,
+        };
+      });
+      onProjectChange({ ...project, "ecm:instances": updatedInstances });
+    }
+
     function handleDeleteInstance() {
       if (onProjectChange === undefined || project === null) return;
       const { document: updated } = deleteInstance(project, selectedInstanceId);
@@ -358,6 +370,17 @@ export function Inspector({
       <>
         <div data-testid="gw-inspector-instance">
           <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Instance</p>
+          <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+            Label
+          </p>
+          <input
+            type="text"
+            value={typeof selectedInstance["rdfs:label"] === "string" ? selectedInstance["rdfs:label"] : ""}
+            onChange={(e) => { handleLabelChange(e.target.value); }}
+            data-testid="gw-inspector-instance-label-input"
+            placeholder="(no label)"
+            style={{ fontSize: "0.8rem", width: "100%", marginBottom: "0.75rem", boxSizing: "border-box" }}
+          />
           <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
             IRI
           </p>

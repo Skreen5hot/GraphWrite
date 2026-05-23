@@ -1,0 +1,131 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:337-recon-r3-gamma",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 3 Chain γ: implement S4-02 starter terms (pre-populate standard RDFS + OWL + XSD vocabulary on New project). Recurrence of Round 1 Item J (provision half lost to ad-hoc-chain bundling). Aaron's Round 3 Section 4 verbatim: 'pre-populate the standard RDFS + OWL + XSD vocabulary (probably 20-30 properties: rdfs:label/comment/domain/range/subClassOf/subPropertyOf/seeAlso/isDefinedBy + owl:sameAs/equivalentClass/inverseOf/Class/ObjectProperty/DatatypeProperty/etc. + xsd:string/integer/boolean/date/dateTime)'.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. Identify canonical list of RDFS + OWL + XSD starter terms and their correct ecm:Term shape. Identify integration point in App.tsx handleNewConfirm/handleNewSkip + matching for Open flow (do imported documents get starter terms too?).",
+        "focus_areas": [
+          "project/SPEC.md §5.7 + §5.7.1 (term shape; canonical reserved-name list with 8 IRIs from J1)",
+          "src/validate/reserved-names.ts (the 8 IRIs already canonicalized — these are subset of the starter terms)",
+          "src/ui/TermSidebar.tsx — how it partitions terms by type (owl:Class / owl:ObjectProperty / owl:DatatypeProperty) + how it renders ecm:system-starter-example badge",
+          "src/ui/App.tsx — buildNewDocument + handleNewConfirm + handleNewSkip (where starter terms get inserted)",
+          "Existing fixtures with ecm:source: 'ecm:system-starter-example' (if any) — pattern reference",
+          "What about Open flow? If user opens a project that doesn't have starter terms, should they be added? Recommend: NO (preserve fixture integrity); starter terms only inserted on New"
+        ],
+        "specific_questions": [
+          "List the canonical RDFS terms by type-classification: which are owl:ObjectProperty (rdfs:subClassOf, rdfs:subPropertyOf, rdfs:domain, rdfs:range, rdfs:isDefinedBy) vs owl:DatatypeProperty (rdfs:label, rdfs:comment, rdfs:seeAlso)? Note: in strict OWL, rdfs:label is an owl:AnnotationProperty but for Phase 3 user-facing simplicity, classify based on what UI section users expect.",
+          "List the canonical OWL terms (owl:sameAs, owl:differentFrom, owl:equivalentClass, owl:equivalentProperty, owl:inverseOf — all object properties; owl:Class, owl:ObjectProperty, owl:DatatypeProperty — these are meta-classes)",
+          "XSD types: should xsd:string, xsd:integer, etc. be in ecm:terms (as DatatypeProperty? or as Class?) OR be a separate concept (a 'datatype' selectable in Add Literal Dialog dropdowns)? Recommend: NOT in ecm:terms (datatypes are a separate kind; they belong to Add Literal Dialog's datatype dropdown — already exists per task 2.7 Chain A)",
+          "Target count: 'probably 20-30 properties' — split into ~15 RDFS+OWL properties (definitely-add) + leave XSD-datatype-handling as a separate concern. Recon should propose a specific list."
+        ],
+        "scope_observation": "Per Event 13 + token-overflow caution: this chain's developer should pre-estimate scope. Starter terms list is small (~15-25 entries; each ~200 chars) so should fit single chain.",
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:338-dev-r3-gamma",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:337-recon-r3-gamma"],
+      "inputs": {
+        "task_context": "Round 3 Chain γ: starter terms implementation per recon's curated list.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] implementing S4-02.",
+        "implementation_directions": [
+          "Create src/ui/starter-terms.ts (or src/validate/starter-terms.ts if shared with validator scope): export STARTER_TERMS as a const array of EcmTerm objects. Each entry: { id, type, 'ecm:source': 'ecm:system-starter-example', 'rdfs:label': <readable name> }. Use full canonical IRIs (http://www.w3.org/2000/01/rdf-schema#label, etc.).",
+          "Curate ~15-20 terms per recon's list: RDFS properties (label, comment, domain, range, subClassOf, subPropertyOf, seeAlso, isDefinedBy) + OWL properties (sameAs, differentFrom, equivalentClass, equivalentProperty, inverseOf). XSD datatypes are NOT in this list (separate concern).",
+          "For each term: type assignment based on intuitive UI category (rdfs:label/comment/seeAlso/isDefinedBy → owl:DatatypeProperty; rdfs:subClassOf/subPropertyOf/domain/range → owl:ObjectProperty; same logic for OWL).",
+          "src/ui/App.tsx: update buildNewDocument to include STARTER_TERMS in ecm:terms array (deep clone to avoid shared-state mutations across project instances).",
+          "Verify: J1 collision check still fires correctly on user attempts to override IRIs that match starter terms (the 8 canonical reserved names are subset of starter terms; check should still catch user-mints-rdfs:label-as-custom).",
+          "Tests: add a spec test verifying STARTER_TERMS list is well-formed (each has valid id, type, source, label); update New-project Playwright tests to assert that newly-created project has ecm:terms.length >= 15 (or similar).",
+          "Open flow: do NOT add starter terms on Open (preserve fixture integrity). Existing fixtures + user-loaded files keep their term lists as-is."
+        ],
+        "scope_constraints": [
+          "Do NOT modify src/kernel/* / src/iri/* / src/refactor/* / src/migrate/* / src/normalize/* / src/validate/* / src/projection/* / src/emit/* — stable (except src/validate/reserved-names.ts if recon recommends extending to import STARTER_TERMS IRIs for collision check consistency)",
+          "Layer boundaries respected",
+          "TypeScript: gap-13 caution",
+          "Per Event 9+12+13 lessons: if scope exceeds 25000 chars, use outputs.status='awaiting_operator_decision'",
+          "Existing tests (46 Playwright + 126 specs) must continue to pass"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Small-moderate scope. 25000 char threshold.",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:339-rat-r3-gamma",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:337-recon-r3-gamma",
+        "urn:fnsr:task:338-dev-r3-gamma"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Round 3 Chain γ ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "STARTER_TERMS list curated reasonably (15-20 entries; RDFS + OWL; no XSD datatypes)",
+          "Each term has correct canonical IRI + type classification + ecm:source: ecm:system-starter-example",
+          "buildNewDocument inserts deep-cloned starter terms (no shared-state mutation risk)",
+          "Open flow preserves user-supplied term lists (no auto-injection)",
+          "J1 collision check still consistent with starter terms",
+          "Editorial vs substantive: substantive"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:340-apply-r3-gamma",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:339-rat-r3-gamma",
+        "urn:fnsr:task:338-dev-r3-gamma"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:338-dev-r3-gamma",
+        "apply_root": ".",
+        "task_context": "Round 3 Chain γ commit-finalize."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:341-test-r3-gamma",
+      "agent": "test-runner",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:340-apply-r3-gamma"],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "Round 3 Chain γ verification."
+      },
+      "history": []
+    }
+  ]
+}

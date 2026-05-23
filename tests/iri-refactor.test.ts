@@ -112,7 +112,7 @@ const SNAPSHOT_FIXTURE: unknown[] = [
  */
 const BASE_PROJECT: Record<string, unknown> = {
   id: "urn:test:project:p1",
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "Refactor Test Project",
   "ecm:createdAt": "2026-01-01T00:00:00Z",

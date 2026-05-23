@@ -1,0 +1,138 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:327-recon-r3-delta-2",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 3 Chain δ-2: forward-fix for δ-1 token-overflow. δ-1 dev (323) returned only C38-C63 (test + doc updates); foundational C1-C37 source-code changes never returned. Architect (324) correctly deferred. Applier ran anyway (Event 11), applied 24 of 26 returned. Source code (canonicalize.ts, turtle.ts, tbox, projection, migrate) UNCHANGED. Test/doc updates landed but expect new behavior; npm test shows 125/126 (semantic-projection broken). δ-2 produces ONLY the source-code changes needed to make code match the already-updated tests + docs.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. The current SPEC.md + DECISIONS.md ADR-007 + the updated tests are AUTHORITATIVE for what the source code must produce. Identify the precise source code changes needed.",
+        "focus_areas": [
+          "project/SPEC.md §5.2 + §5.4 + §5.14 (already updated per δ-1) — read what they NOW say about the @context + obo: prefix + iao:isAbout binding + ecm:OntologyDesignPattern",
+          "project/DECISIONS.md ADR-007 (added by δ-1) — decision record for the IAO IRI fix",
+          "tests/semantic-projection.test.ts (updated by δ-1, currently failing) — what does it expect from src/projection/index.ts?",
+          "Other updated tests with iao→obo or iao→ecm changes — what do they expect?",
+          "src/kernel/canonicalize.ts (UNCHANGED) — VMP_CONTEXT must add obo: + bind iao:isAbout via @id alias to obo:IAO_0000136",
+          "src/emit/turtle.ts (UNCHANGED) — PREFIX_MAP must add obo: + handle the iao:isAbout-to-obo:IAO_0000136 mapping (per the JSON_KEY_TO_RDF_PRED helper the architect mentioned)",
+          "src/tbox/index.ts (UNCHANGED) — PROJECT_TBOX_TURTLE must declare obo: prefix; ecm:OntologyDesignPattern replaces iao:OntologyDesignPattern",
+          "src/projection/index.ts (UNCHANGED) — SEMANTIC_TYPE_ALLOWLIST must use ecm:OntologyDesignPattern",
+          "src/migrate/index.ts (UNCHANGED) — migrate output type array uses ecm:OntologyDesignPattern",
+          "src/validate/index.ts (status?) — does validate logic need any change for new IRI binding?",
+          "src/normalize/index.ts (status?) — does normalize touch iao:isAbout?",
+          "src/ui/App.tsx — buildNewDocument type array (currently ['ecm:Project', 'iao:OntologyDesignPattern']; needs ['ecm:Project', 'ecm:OntologyDesignPattern'])",
+          "demo/library-catalog.jsonld + test/fixtures/canonical-v0.4/minimal.jsonld + tests/playwright/fixtures/*.jsonld — type arrays with iao:OntologyDesignPattern need updating to ecm:OntologyDesignPattern"
+        ],
+        "specific_questions": [
+          "Read current SPEC.md §5.2 verbatim — what's the @context block now? What does it say about obo: prefix and iao:isAbout binding?",
+          "Read DECISIONS.md ADR-007 verbatim — what's the chosen approach?",
+          "What's the current semantic-projection.test.ts failure exact assertion? What's expected vs actual?",
+          "Per architect 324 evidence, what source files are confirmed UNCHANGED post-δ-1? Cross-check against current git status."
+        ],
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:328-dev-r3-delta-2",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:327-recon-r3-delta-2"],
+      "inputs": {
+        "task_context": "Round 3 Chain δ-2: source-code-only fix for IAO IRI. Tests + docs already updated by δ-1; source code must catch up.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] making ALL source code consistent with the SPEC.md + DECISIONS.md ADR-007 + test expectations that δ-1 already landed.",
+        "implementation_directions": [
+          "Make src/kernel/canonicalize.ts VMP_CONTEXT match the SPEC.md §5.2 @context exactly. Add obo: prefix. Bind iao:isAbout via @id alias to obo:IAO_0000136.",
+          "Make src/emit/turtle.ts PREFIX_MAP add obo:. Wherever iao:isAbout was routed through expandIri to produce iao#isAbout, route to obo:IAO_0000136 instead. Per the architect's mention of a JSON_KEY_TO_RDF_PRED helper, add or use that mapping.",
+          "Make src/tbox/index.ts declare @prefix obo:. Replace iao:OntologyDesignPattern with ecm:OntologyDesignPattern. ecm:Project subClassOf grounding may use obo:IAO_0000136 if any TBox triples reference 'is about' directly.",
+          "Make src/projection/index.ts SEMANTIC_TYPE_ALLOWLIST use ecm:OntologyDesignPattern.",
+          "Make src/migrate/index.ts output type array use ecm:OntologyDesignPattern.",
+          "Check src/validate/index.ts + src/normalize/index.ts — if they have any iao: hardcoded strings related to OntologyDesignPattern or isAbout, update.",
+          "Make src/ui/App.tsx buildNewDocument type array use ecm:OntologyDesignPattern.",
+          "Update demo/library-catalog.jsonld + test/fixtures/canonical-v0.4/minimal.jsonld + ALL tests/playwright/fixtures/*.jsonld files: change type arrays from ['ecm:Project', 'iao:OntologyDesignPattern'] to ['ecm:Project', 'ecm:OntologyDesignPattern'].",
+          "After this lands, npm test should be 126/126 (semantic-projection green again)."
+        ],
+        "scope_constraints": [
+          "ONLY source-code + fixture changes; do NOT modify SPEC.md/DECISIONS.md/tests (those are δ-1 work; already done)",
+          "Per Event 9+12+13 lessons: estimate scope BEFORE generating; if exceeds 25000 chars, return outputs.status='awaiting_operator_decision' with structured suggested_split",
+          "Per Event 11+13 lessons: ALL touchpoints from recon's enumeration addressed in this chain",
+          "Existing tests must continue to pass after this chain lands (126/126 expected post-fix)"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Moderate scope (multiple source files + multiple fixtures). 25000 char threshold. If output approaches threshold, scope-split via awaiting_operator_decision: suggested split = δ-2a (source code only: kernel + emit + tbox + projection + migrate + validate + normalize + ui); δ-2b (fixtures: demo + test/fixtures + tests/playwright/fixtures).",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:329-rat-r3-delta-2",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:327-recon-r3-delta-2",
+        "urn:fnsr:task:328-dev-r3-delta-2"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Round 3 Chain δ-2 ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "All source files updated to match SPEC.md + DECISIONS.md ADR-007",
+          "obo: prefix correctly added throughout",
+          "iao:isAbout still works as JSON-LD property key but resolves to obo:IAO_0000136",
+          "ecm:OntologyDesignPattern consistently replaces iao:OntologyDesignPattern in type arrays + tbox + projection allowlist",
+          "Fixtures updated where they have iao:OntologyDesignPattern",
+          "Editorial vs substantive: substantive"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:330-apply-r3-delta-2",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:329-rat-r3-delta-2",
+        "urn:fnsr:task:328-dev-r3-delta-2"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:328-dev-r3-delta-2",
+        "apply_root": ".",
+        "task_context": "Round 3 Chain δ-2 commit-finalize."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:331-test-r3-delta-2",
+      "agent": "test-runner",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:330-apply-r3-delta-2"],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "Round 3 Chain δ-2 verification. Expected 126/126."
+      },
+      "history": []
+    }
+  ]
+}

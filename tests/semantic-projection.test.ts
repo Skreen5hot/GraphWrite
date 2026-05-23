@@ -65,7 +65,7 @@ function mulberry32(seed: number): () => number {
 /** Minimal but complete VMP v0.4 project with semantic content. */
 const BASE_PROJECT: Record<string, unknown> = {
   id: "urn:uuid:00000000-0000-0000-0000-000000000001",
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
   "ecm:name": "Test Project",
   "ecm:createdAt": "2026-05-14T12:00:00Z",
@@ -320,7 +320,7 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// AC4: Project root is typed iao:OntologyDesignPattern with iao:isAbout intact
+// AC4: Project root is typed ecm:OntologyDesignPattern with iao:isAbout intact
 // ---------------------------------------------------------------------------
 console.log("\nAC4: Project root typing and iao:isAbout retention");
 
@@ -328,13 +328,13 @@ try {
   const output = projectSemantic(BASE_PROJECT);
   const graph = parseGraph(output);
 
-  // The project root node is typed BOTH ecm:Project AND iao:OntologyDesignPattern.
-  // The TBox node for iao:OntologyDesignPattern has type ["owl:Class"] only --
+  // The project root node is typed BOTH ecm:Project AND ecm:OntologyDesignPattern.
+  // The TBox node for ecm:OntologyDesignPattern has type ["owl:Class"] only --
   // so the ecm:Project presence in type distinguishes the actual project root.
   const projectRootCandidates = graph.filter((n) => {
     const types = nodeTypes(n);
     return (
-      types.includes("iao:OntologyDesignPattern") && types.includes("ecm:Project")
+      types.includes("ecm:OntologyDesignPattern") && types.includes("ecm:Project")
     );
   });
 
@@ -361,7 +361,7 @@ try {
   );
 
   pass(
-    "project root is typed iao:OntologyDesignPattern + ecm:Project with" +
+    "project root is typed ecm:OntologyDesignPattern + ecm:Project with" +
       " iao:isAbout intact (AC4)",
   );
 } catch (e) {
@@ -431,7 +431,7 @@ try {
   const output = projectSemantic(BASE_PROJECT);
   const graph = parseGraph(output);
   const tboxIds = [
-    "iao:OntologyDesignPattern",
+    "ecm:OntologyDesignPattern",
     "ecm:Project",
     "ecm:Serialization",
     "ecm:isSerializationOf",

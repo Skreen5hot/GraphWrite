@@ -69,7 +69,7 @@ export const VMP_CONTEXT: Record<string, unknown> = {
   rdfs: "http://www.w3.org/2000/01/rdf-schema#",
   owl: "http://www.w3.org/2002/07/owl#",
   xsd: "http://www.w3.org/2001/XMLSchema#",
-  iao: "http://purl.obolibrary.org/obo/iao#",
+  obo: "http://purl.obolibrary.org/obo/",
   cco: "https://www.commoncoreontologies.org/",
   id: "@id",
   type: "@type",
@@ -86,7 +86,7 @@ export const VMP_CONTEXT: Record<string, unknown> = {
   "ecm:predicateIri":      { "@type": "@id" },
   "ecm:objectIri":         { "@type": "@id" },
   "ecm:isSerializationOf": { "@type": "@id" },
-  "iao:isAbout":           { "@type": "@id", "@container": "@set" },
+  "iao:isAbout":           { "@id": "obo:IAO_0000136", "@type": "@id", "@container": "@set" },
   "rdfs:subClassOf":       { "@type": "@id", "@container": "@set" },
   "rdfs:subPropertyOf":    { "@type": "@id", "@container": "@set" },
 };

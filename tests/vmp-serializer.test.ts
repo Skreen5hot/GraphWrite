@@ -259,7 +259,7 @@ try {
       "urn:uuid:00000000-0000-0000-0000-000000000002",
       "urn:uuid:aaaabbbb-cccc-dddd-eeee-ffffffffffff",
     ),
-    "type": fc.constant(["ecm:Project", "iao:OntologyDesignPattern"] as unknown[]),
+    "type": fc.constant(["ecm:Project", "ecm:OntologyDesignPattern"] as unknown[]),
     "ecm:specVersion": fc.constantFrom("0.4", "0.3", "0.0"),
     "ecm:name": fc.constantFrom("Project A", "Project B", "Test Project"),
     "ecm:createdAt": fc.constantFrom(

@@ -1,0 +1,125 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:332-recon-r3-beta",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 3 Chain β: implement S2-01 (instance label edit affordance) + S2-02 (relation edge predicate label on canvas) + S2-04 auto-resolves once S2-01 lands. Per ratified FR-U011 amendment + S2-04 cross-resolution note in FEEDBACK-ROUND-3-DECOMPOSITION.md.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. Identify Inspector.tsx instance-mode current shape (post-Round-1+post-Round-3 Chain α); identify CanvasView.tsx deriveEdges() current shape; identify label-resolution.ts helpers that can be reused.",
+        "focus_areas": [
+          "src/ui/Inspector.tsx — instance-mode section (selectedInstance !== null branch); current fields shown (label header, Class Assignments, Literal Assertions); where Label edit input should slot in",
+          "src/ui/CanvasView.tsx deriveEdges() — current shape; React Flow edge object building; where edge.label should be added; label resolution from predicate term's rdfs:label",
+          "src/ui/label-resolution.ts — shared helpers (iriTail, buildInstanceLabelMap, resolveInstanceDisplay); is there a buildTermLabelMap or similar for predicate label resolution? If not, suggest adding",
+          "tests/playwright/relation-crud.spec.ts — does AC2 (predicate dropdown) interact with edges that now have labels? Update if needed",
+          "Existing data-testid conventions in Inspector (gw-inspector-instance-label-input candidate?)"
+        ],
+        "specific_questions": [
+          "Does Inspector.tsx instance-mode currently render the instance's rdfs:label as a static display, or as an editable input?",
+          "If static: where should the edit affordance go? Inline-editable text vs separate 'Edit Label' button + dialog?",
+          "What's the simplest pattern that matches existing Inspector affordances (e.g., the predicate dropdown for relation-mode)?",
+          "For S2-02: does CanvasView.tsx already accept edge.label and render it, or does the React Flow default skip label rendering?"
+        ],
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:333-dev-r3-beta",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:332-recon-r3-beta"],
+      "inputs": {
+        "task_context": "Round 3 Chain β: instance label edit + edge predicate labels.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] implementing S2-01 + S2-02.",
+        "implementation_directions": [
+          "Inspector.tsx (instance-mode): add an inline-editable Label field at the top of the instance section. On input change, update the instance's rdfs:label via setProject (immutable update of ecm:instances array). Use existing setProject + state propagation patterns.",
+          "CanvasView.tsx deriveEdges: for each ecm:RelationAssertion, resolve the predicate IRI to the matching term's rdfs:label (use existing label-resolution helpers OR add buildTermLabelMap if not present); set the edge's .label property to that string (fallback to IRI tail if no rdfs:label).",
+          "Once S2-01 + S2-02 land, S2-04 auto-resolves (relation inspector's existing Subject/Object label resolution now picks up the user-edited rdfs:label).",
+          "Update tests if needed: existing tests that assert on 'New Instance' default label after creation are still valid (Skip-flow creates instance with default label); add tests that exercise the edit affordance + verify the rdfs:label propagates to canvas node display + Inspector Subject/Object resolution."
+        ],
+        "scope_constraints": [
+          "Do NOT modify src/kernel/* / src/iri/* / src/refactor/* / src/migrate/* / src/normalize/* / src/validate/* / src/projection/* / src/emit/* — stable",
+          "Layer boundaries respected",
+          "TypeScript: gap-13 caution",
+          "Per Event 9+12+13 lessons: pre-estimate scope; if exceeds 25000 chars, use outputs.status='awaiting_operator_decision'",
+          "Existing tests (42 Playwright + 126 specs) must continue to pass"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Small-moderate scope. 25000 char threshold.",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:334-rat-r3-beta",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:332-recon-r3-beta",
+        "urn:fnsr:task:333-dev-r3-beta"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Round 3 Chain β ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "S2-01 instance label edit works end-to-end (Inspector input → setProject → rdfs:label updates → canvas + Inspector reflect)",
+          "S2-02 edge labels resolve predicate's rdfs:label with iri-tail fallback",
+          "S2-04 auto-resolution validated (relation Inspector Subject/Object now shows user-edited labels)",
+          "Layer boundaries respected",
+          "Editorial vs substantive: substantive"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:335-apply-r3-beta",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:334-rat-r3-beta",
+        "urn:fnsr:task:333-dev-r3-beta"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:333-dev-r3-beta",
+        "apply_root": ".",
+        "task_context": "Round 3 Chain β commit-finalize."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:336-test-r3-beta",
+      "agent": "test-runner",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:335-apply-r3-beta"],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "Round 3 Chain β verification."
+      },
+      "history": []
+    }
+  ]
+}

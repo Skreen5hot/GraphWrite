@@ -22,17 +22,19 @@ const V03_FIXTURE = path.join(
 );
 
 test.describe("iao:isAbout Declaration UI (FR-U031 task 2.9)", () => {
-  test("AC1: New project shows MISSING_REALIST_ANCHOR indicator", async ({
+  test("AC1: New project (skip dialog) shows subject guidance indicator", async ({
     page,
   }) => {
     await page.goto("/");
     await page.getByTestId("gw-btn-new").click();
+    await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+    await page.getByTestId("gw-btn-new-project-skip").click();
     // Wait for React state update -- Save becomes enabled once project != null
     await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
-    const banner = page.getByTestId("gw-anchor-banner");
-    await expect(banner).toBeVisible();
-    await expect(banner).toHaveAttribute("data-anchor-state", "missing");
+    // Per S1-03: muted guidance affordance instead of accusatory banner.
+    const guidance = page.getByTestId("gw-subject-guidance");
+    await expect(guidance).toBeVisible();
   });
 
   test(
@@ -40,6 +42,8 @@ test.describe("iao:isAbout Declaration UI (FR-U031 task 2.9)", () => {
     async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
       // Open Project Settings dialog
@@ -83,14 +87,16 @@ test.describe("iao:isAbout Declaration UI (FR-U031 task 2.9)", () => {
   );
 
   test(
-    "AC3: After IRI declaration via settings, indicator banner not visible",
+    "AC3: After IRI declaration via settings, subject guidance not visible",
     async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
-      // Confirm indicator is shown before declaration
-      await expect(page.getByTestId("gw-anchor-banner")).toBeVisible();
+      // Confirm soft guidance is shown before subject declaration (S1-03).
+      await expect(page.getByTestId("gw-subject-guidance")).toBeVisible();
 
       // Open settings, add a real IRI, save dialog
       await page.getByTestId("gw-btn-project-settings").click();
@@ -100,9 +106,8 @@ test.describe("iao:isAbout Declaration UI (FR-U031 task 2.9)", () => {
       await page.getByTestId("gw-btn-add-iri").click();
       await page.getByTestId("gw-btn-settings-save").click();
 
-      // Indicator must not be visible after declaration
-      // (passes whether element is hidden or absent from DOM)
-      await expect(page.getByTestId("gw-anchor-banner")).not.toBeVisible();
+      // Soft guidance must not be visible after subject is declared.
+      await expect(page.getByTestId("gw-subject-guidance")).not.toBeVisible();
     },
   );
 
@@ -115,12 +120,12 @@ test.describe("iao:isAbout Declaration UI (FR-U031 task 2.9)", () => {
       // Wait for async FileReader + React state update
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
-      const banner = page.getByTestId("gw-anchor-banner");
-      await expect(banner).toBeVisible();
-      await expect(banner).toHaveAttribute("data-anchor-state", "legacy");
+      // Per S1-03: legacy placeholder guidance shown (muted, no red/yellow).
+      const legacyGuidance = page.getByTestId("gw-subject-guidance-legacy");
+      await expect(legacyGuidance).toBeVisible();
 
       // "Set real subject" affordance must be present and visible
-      const actionBtn = page.getByTestId("gw-btn-anchor-action");
+      const actionBtn = page.getByTestId("gw-btn-subject-guidance-legacy");
       await expect(actionBtn).toBeVisible();
       await expect(actionBtn).toContainText("Set real subject");
     },

@@ -60,7 +60,7 @@ const V02_FIXTURE: Record<string, unknown> = {
 
 /**
  * Minimal v0.3 document: has ecm:specVersion "0.3", no iao:isAbout,
- * no ecm:serializations, no iao:OntologyDesignPattern type.
+ * no ecm:serializations, no ecm:OntologyDesignPattern type.
  * Per SPEC section 10.4 v0.3 description.
  */
 const V03_FIXTURE: Record<string, unknown> = {
@@ -287,7 +287,7 @@ try {
   // Verify v0.4 input is a no-op (already at target; no error, no changes)
   const V04_FIXTURE: Record<string, unknown> = {
     id: "urn:uuid:00000000-0000-0000-0000-000000000013",
-    type: ["ecm:Project", "iao:OntologyDesignPattern"],
+    type: ["ecm:Project", "ecm:OntologyDesignPattern"],
     "ecm:specVersion": "0.4",
     "iao:isAbout": ["https://example.org/subjects/TestSubject"],
     "ecm:serializations": [],

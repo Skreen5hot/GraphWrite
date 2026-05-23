@@ -236,6 +236,48 @@ Both categories matter for v3.2+ design but they answer different questions: gap
 
 **Sibling-to-Event-9 observation:** Event 9 said "developer used wrong shape (error: task_too_broad) — needs developer-contract refinement." Now in Event 12, the developer used the RIGHT shape (awaiting_operator_decision) but the substrate's CPS check sequence doesn't honor the bypass. So both shapes are blocked by different substrate gaps — Event 9 by spec design (`error` shape is CPS-veto-by-design); Event 12 by spec-implementation mismatch (`awaiting_operator_decision` bypass not implemented in CPS sequence). Cluster strengthens.
 
+### Event 13: Recurring chain-stall pattern + proposed daemon-notification substrate primitive
+
+- **Type:** Substrate-discipline gap (compound: Event 11 recurrence x2 in one session + new gap: developer token-overflow truncation + new gap: no daemon→orchestrator push notification)
+- **When:** 2026-05-22, Round 3 Phase 06 (Chain α + Chain δ both stalled)
+- **What happened (three intertwined sub-events):**
+
+  **(a) Event 11 recurrence x2 in one session.** Chain α (new-project UX): architect ratified, applier reported `apply_partial_failure` (15/16 applied, C5 failed), task → blocked. Chain δ (IAO IRI): architect **deferred** (correctly identifying that the developer's returned change set was C38-C63 only, missing the foundational C1-C37 fixes per architect's file-level evidence), applier ran anyway, applied 24 of 26 returned changes (foundational @context + canonicalize.ts + turtle.ts + tbox + projection + migrate fixes never landed because C1-C37 were never returned to it). Both Chain α and Chain δ now have stuck test-runner tasks (321, 326) sitting "ready" with `depends_on` pointing at "blocked" applier tasks — they can never dispatch.
+
+  **(b) New gap: developer token-overflow silent truncation.** Chain δ developer task 323-dev-r3-delta ran with `attempts=1` and returned a summary explicitly stating "Continuation output C38-C63 (26 changes). Covers: ..." — meaning the developer's full proposal was C1-C63, but the model's output was capped at ~max_tokens and only the TAIL (C38-C63) made it back to the daemon. There is no signal in the substrate that this happened; the developer task → `done` cleanly, the substrate has no idea half the proposal is missing. The architect catches it (via file-evidence; not via any structured signal), but only after the developer is already `done`.
+
+  **(c) New gap: no daemon→orchestrator push notification.** When chains stall (Event 11; partial-fail; deferred ruling), the orchestrator-Agent (me) has no signal. I discover the stall by manually polling `state_admin status` OR by Aaron asking "did we stop again?". This means: every stall costs Aaron-visible delay because the orchestrator-Agent is waiting on chain progress notifications that never fire (the chain technically reached "terminal" — partly-done, partly-stuck — but the substrate doesn't differentiate "all-good-terminal" from "half-stuck-terminal").
+
+- **Why substrate machinery could not proceed autonomously:** Substrate's existing primitives (CPS check, depends_on graph, chain-hashed audit) handle the correctness of each task in isolation. The substrate has no cross-chain awareness; no stall-detection; no signal back to the orchestrator. Per Aaron's framing: "Have we considered the Daemon sending a message to you the coordinator?" — this is the missing primitive.
+
+- **Operator-mediated resolution (this round):** I'll: (1) roll back Chain δ's 24 partially-applied changes via `git checkout` (since the foundational fixes never landed; partial state is incoherent); (2) dispatch δ as 3 narrower scope-tighter chains per the developer's implicit signal (token overflow proves task_too_broad); (3) leave Chain α's stuck 321-test-r3-alpha untouched (no fresh test data; my 42/42 Playwright verification lives in my conversation context, not in audit chain — friction worth accepting for now); (4) document this Event for v3.2+ substrate work.
+
+- **Proposed substrate primitive (v3.2+ candidate):** "Daemon-to-orchestrator stall notification." Sketch:
+
+  - **Detection.** Daemon detects stall conditions periodically (e.g., every minute):
+    - Tasks in "ready" status whose `depends_on` includes a task in {blocked, failed, abandoned}: dispatch-impossible-by-design (Event 11 / Event 12 territory).
+    - Tasks in "in_progress" for > N minutes without state transition: hung-agent territory.
+    - Architect tasks with `ruling: denied` or `deferred` whose downstream applier-class tasks are blocked or running: pass-2a-gate-violation territory.
+    - Developer tasks whose outputs.summary contains continuation-style language ("C38-C63", "continuation output", etc.) without matching prior-task evidence: token-overflow-truncation territory.
+
+  - **Emission.** When detected, daemon emits a `stall_detected` audit event with payload `{stall_kind, anchor_task, evidence, suggested_recovery_options}`.
+
+  - **Channel.** The audit event surfaces to the orchestrator-Agent via the substrate's existing mechanism — same channel by which task completions reach me. This means: I see a stall as a notification (analogous to background-task-completion notification), not as a manual-check requirement.
+
+  - **Anti-pattern guardrails (Spec 08 v0.2 §AP candidates):**
+    - Daemon SHOULD NOT auto-act on stall (no auto-rollback, no auto-re-dispatch); orchestrator decides recovery.
+    - Operator-Agent SHOULD NOT poll state.jsonld manually for stalls once daemon-notification ships — relying on push notifications is the substrate-honest path.
+
+  - **Token-overflow specific signal.** Sub-primitive: developer agent's response is post-processed for truncation markers (continuation language; missing-change-id references). If detected: daemon emits `developer_output_truncated` event AND optionally re-dispatches the developer task with reduced scope (or escalates to orchestrator). This makes the silent-truncation gap visible.
+
+  - **Integration with existing primitives.** Stall events become forward-tracks in state-A automatically (Spec 07 integration), so the operator can resolve via standard `state_admin forward-track transition` once the stall is unstuck.
+
+- **Could substrate have handled it autonomously with a documented default?** **Yes — substrate refactor scope:** the stall-detection daemon hook + token-overflow detector + push-notification channel are all v3.2+ substrate work. Bigger than gap-15-style refinements; closer to a new substrate primitive (FNSR Spec 09 candidate: "Stall Detection + Orchestrator Notification Protocol"). Aaron's framing-of-the-coordinator-as-Agent makes this primitive essential — without it, the orchestrator-Agent's "keep the team working" responsibility is undermined every time a chain stalls silently.
+
+- **Outcome category if autonomous:** **Outcome 2** — substrate could absorb this via a real new primitive; not inherently orchestrator-level. Substantively bigger than prior v3.2 candidates but architecturally clean.
+
+**Cluster observation (Events 4-13 now; 10 entries):** The verification-step + escalation-shape + role-clarification cluster has grown to 10 entries. Events 4-7 verification-step gaps; Events 8-12 escalation-shape gaps (developer + architect + applier); Event 13 surfaces the meta-gap: substrate has no closed-loop with the orchestrator. v3.2/v3.3 framing strengthens further: **"substrate clarity refinements" is the cluster theme for v3.2; "substrate closed-loop with orchestrator" is a candidate theme for v3.3.**
+
 ---
 
 (Subsequent events logged during Phase 2 dispatch.)

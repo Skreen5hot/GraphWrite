@@ -170,14 +170,32 @@ function deriveEdges(project: Record<string, unknown>): RelationEdge[] {
     ? (project["ecm:relations"] as unknown[])
     : [];
 
+  // Build predicate-label map from ecm:terms (S2-02: edge predicate label display).
+  const termLabelMap = new Map<string, string>();
+  const rawTerms = project["ecm:terms"];
+  if (Array.isArray(rawTerms)) {
+    for (const item of rawTerms as unknown[]) {
+      if (item === null || typeof item !== "object") continue;
+      const term = item as Record<string, unknown>;
+      const id = term["id"];
+      if (typeof id !== "string") continue;
+      if (typeof term["rdfs:label"] === "string" && (term["rdfs:label"] as string).length > 0) {
+        termLabelMap.set(id, term["rdfs:label"] as string);
+      }
+    }
+  }
+
   return rawRelations.flatMap<RelationEdge>((rel) => {
     if (!isEcmRelation(rel)) return [];
+    const predicateIri = rel["ecm:predicateIri"];
+    const predicateLabel = termLabelMap.get(predicateIri) ?? iriTail(predicateIri);
     return [
       {
         id: rel.id,
         source: rel["ecm:subjectIri"],
         target: rel["ecm:objectIri"],
-        data: { relationId: rel.id, predicateIri: rel["ecm:predicateIri"] },
+        label: predicateLabel,
+        data: { relationId: rel.id, predicateIri },
         markerEnd: { type: MarkerType.ArrowClosed },
       },
     ];

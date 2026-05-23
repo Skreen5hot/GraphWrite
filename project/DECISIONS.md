@@ -114,3 +114,20 @@
 - Serialization output is fully determined by `serializeVmp`; no library-version variance
 - Timestamp normalization (strip fractional seconds, replace offsets with `Z`) is the serializer's responsibility, not the caller's; callers may pass non-canonical timestamps and receive normalized output
 - The JSON-LD library (if adopted) is deferred to Phase 1 task 1.5 (semantic-export boundary) where expansion/compaction semantics are required
+
+---
+
+## ADR-007: Re-home ecm:OntologyDesignPattern and Fix iao:isAbout IRI Expansion
+
+**Date:** 2026-05-22
+
+**Decision:** Rename `iao:OntologyDesignPattern` to `ecm:OntologyDesignPattern` throughout the codebase, and fix the `iao:isAbout` JSON-LD property to expand to the canonical IAO IRI `http://purl.obolibrary.org/obo/IAO_0000136` via an `@id` alias binding in `VMP_CONTEXT`.
+
+**Context:** Reconnaissance (task urn:fnsr:task:322-recon-r3-delta) identified two issues. First, `iao:OntologyDesignPattern` used the vestigial `iao:` prefix (`http://purl.obolibrary.org/obo/iao#`), a speculative namespace that does not match the actual IAO numeric-IRI pattern (`IAO_NNNNNNN`). Keeping the term under `iao:` risks a naming collision if IAO ever defines a native ODP class. Re-homing under `ecm:` removes that ambiguity and makes the term's provenance explicit. Second, `iao:isAbout` as used in the codebase expanded to `http://purl.obolibrary.org/obo/iao#isAbout`, which is wrong; the canonical IAO property is `http://purl.obolibrary.org/obo/IAO_0000136`. The fix uses an `@id` alias binding (`"@id": "obo:IAO_0000136"`) in `VMP_CONTEXT` and replaces the `iao:` prefix entry with `obo: http://purl.obolibrary.org/obo/` in both `VMP_CONTEXT` and `PREFIX_MAP`. The `"iao:isAbout"` property key is preserved unchanged in all JSON-LD documents so no user-visible key migration is required.
+
+**Consequences:**
+- All project documents, fixtures, and tests referencing `iao:OntologyDesignPattern` in `type` arrays must be updated to `ecm:OntologyDesignPattern`; this is a one-time coordinated change across ~17 files
+- The canonical serialized `type` array order changes from `["ecm:Project", "iao:OntologyDesignPattern"]` to `["ecm:OntologyDesignPattern", "ecm:Project"]` (lexicographic sort: 'O'=79 < 'P'=80 within the shared `ecm:` namespace)
+- The `iao:isAbout` property key is unchanged in all compact JSON-LD; only its RDF expansion changes (transparent to callers)
+- The Turtle emitter gains a `JSON_KEY_TO_RDF_PRED` constant mapping `"iao:isAbout"` to `"obo:IAO_0000136"` so RDF serialization uses the correct predicate IRI
+- The `iao:` prefix is removed from `VMP_CONTEXT` and `PREFIX_MAP`; no remaining term in scope uses this prefix after the OntologyDesignPattern re-homing

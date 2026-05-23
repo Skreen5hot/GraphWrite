@@ -187,7 +187,7 @@ function migrateV3toV4(
   result["@context"] = VMP_CONTEXT;
   transformed.push("@context");
 
-  result["type"] = ["ecm:Project", "iao:OntologyDesignPattern"];
+  result["type"] = ["ecm:Project", "ecm:OntologyDesignPattern"];
   transformed.push("type");
 
   result["iao:isAbout"] = ["ecm:UnspecifiedSubjectMatter"];

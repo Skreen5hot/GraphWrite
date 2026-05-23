@@ -1,0 +1,138 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:317-recon-r3-alpha",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Round 3 Chain α: New-project UX overhaul. Bundles atomic items R3-S1-01 (banner tone too aggressive) + R3-S1-02 (New = Title+Subject modal; reactivates BL1's B-half) + R3-S1-03 (design philosophy: prevent invalid states, do not report errors — UX-layer only per operator adjudication; no SPEC §17 amendment) + R3-S1-04 (validation panel stale after realist anchor added — trivial onSave re-validate fix). FR-U001 amendment was already ratified in Round 1 FR-deltas batch (chain 281-287); this is the implementation.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation. Identify per-atomic-item touchpoints; map to specific file locations.",
+        "focus_areas": [
+          "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md (R3-S1-01/02/03/04 detail; completeness maps)",
+          "src/ui/App.tsx — current handleNew() function; current banner JSX (gw-anchor-banner / gw-btn-anchor-action); how isAboutState is computed",
+          "src/ui/ProjectSettingsDialog.tsx — current onSave handler; ValidationPanel state plumbing",
+          "src/ui/ValidationPanel.tsx — current validation-report subscription; does it re-validate on project change or read a stale prop?",
+          "project/SPEC.md FR-U001 (ratified amendment from chain 281-287 fix): 'The UI SHOULD prompt the user to declare iao:isAbout BEFORE the project is considered usable... Acceptable default during the prompt is ecm:UnspecifiedSubjectMatter... The UI MAY defer the prompt to first save attempt'",
+          "src/ui/Dialog.tsx (primitive to reuse for NewProjectDialog)",
+          "tests/playwright/new-open-save.spec.ts (AC2: New → Save → re-parse correct fields — will need updating since New now opens dialog)",
+          "tests/playwright/smoke.spec.ts (flow 4: New shows MISSING_REALIST_ANCHOR — will need adjustment since banner is being changed)",
+          "tests/playwright/validation-panel.spec.ts (tests for re-validate behavior — current tests may not exercise the onSave wiring)"
+        ],
+        "specific_questions": [
+          "What does the current banner JSX look like in App.tsx? Aaron's S1-01 says it's 'too aggressive' — recon should surface the exact text strings so the dev can replace them with objective-framed alternatives.",
+          "Does the current handleNew() in App.tsx accept any input, or does it use hardcoded defaults?",
+          "Does ValidationPanel.tsx receive validationReport as a prop, OR does it compute it internally? If prop: re-validate fix = parent must re-call validate() on state changes. If internal: panel needs useEffect dependency on project state.",
+          "ProjectSettingsDialog.tsx onSave path: where does it call setProject? Is validate() called after? S1-04 root cause is that ValidationPanel doesn't see the new state.",
+          "Per S1-03 design philosophy (prevent-not-report): should the banner be REMOVED entirely once NewProjectDialog gates project creation, OR retained as a guide-style hint (e.g., 'Add a subject to complete your project setup' as a soft guidance)?"
+        ],
+        "no_proposals": "Read-only; observations only."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:318-dev-r3-alpha",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:317-recon-r3-alpha"],
+      "inputs": {
+        "task_context": "Round 3 Chain α: implement S1-01 + S1-02 + S1-03 + S1-04 per the design-philosophy of prevent-invalid-states-not-report-errors.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[], outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] implementing the 4 atomic items.",
+        "implementation_directions": [
+          "src/ui/NewProjectDialog.tsx (new component): gates the handleNew flow. Fields: (a) Project Title (text input; maps to ecm:name in created project document); (b) Subject of the graph (text input; maps to iao:isAbout array; helper text shows example IRI). Primary action: 'Create Project'. Secondary action: 'Skip — use placeholder' (per FR-U001 amendment 'UI MAY defer the prompt to first save attempt'; creates project with ecm:UnspecifiedSubjectMatter placeholder but DOES NOT show MISSING_REALIST_ANCHOR banner — design philosophy: don't accuse user of skipping the optional prompt). Use src/ui/Dialog.tsx primitive.",
+          "src/ui/App.tsx edits:",
+          "  (a) handleNew() opens NewProjectDialog instead of immediately creating project; on dialog Confirm, creates project with the dialog's Title + Subject IRI; on dialog Skip, creates project with ecm:UnspecifiedSubjectMatter placeholder",
+          "  (b) Banner: per S1-03 design philosophy, REMOVE the MISSING_REALIST_ANCHOR red banner JSX entirely from App.tsx. The validation panel at the bottom remains the canonical place where the validation finding shows (for users who want to inspect state); it's no longer accusatory header-level UX",
+          "  (c) Banner-area replacement: a soft guidance affordance — 'No subject set. Add a subject in Project Settings.' style — only when isAboutState === 'missing'. Style: muted text, no red, no error iconography. Optional: link to Project Settings dialog",
+          "src/ui/ValidationPanel.tsx edits OR src/ui/App.tsx state wiring: fix S1-04 re-validation. When setProject is called (anywhere: handleNew, handleOpen, ProjectSettingsDialog onSave, AddTerm/EditTerm/etc.), ValidationPanel must compute a fresh validation report. Use useEffect on project state in ValidationPanel, OR have App.tsx re-call validate() and pass updated validationReport prop. Pick the more robust pattern per recon's reading.",
+          "src/ui/ProjectSettingsDialog.tsx: verify onSave path triggers re-validation (depends on the pattern picked above).",
+          "Tests: update tests/playwright/new-open-save.spec.ts AC2 to handle the dialog step (page.getByTestId('gw-btn-new').click(); fill the Title + Subject fields; click 'Create Project'); add an explicit test for S1-04 (open v0.3 fixture or new-then-add-subject; verify the validation panel updates after Project Settings save). Update tests/playwright/smoke.spec.ts flow 4 similarly (banner is gone; soft guidance is present)."
+        ],
+        "scope_constraints": [
+          "Do NOT modify src/kernel/* / src/iri/* / src/refactor/* / src/migrate/* / src/normalize/* / src/validate/* / src/projection/* / src/emit/* — stable",
+          "Layer boundaries respected",
+          "TypeScript: gap-13 caution",
+          "Per Event 9+12 lessons: if scope assessment exceeds 25000 chars, use outputs.status='awaiting_operator_decision' with structured suggested_split (NOT outputs.error)",
+          "Per Event 11 lesson: ALL 4 atomic items' completeness maps addressed in this chain; architect WILL check completeness",
+          "Existing tests must continue to pass after updates (41 Playwright + 126 specs baseline post-Round-1 Phase 3)",
+          "Preserve all data-testids except where the banner JSX is removed (its testids gw-anchor-banner / gw-btn-anchor-action go away; update or remove tests asserting them)"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Moderate-to-large scope (1 new component + App.tsx redesign + ValidationPanel rewiring + test updates). 25000 char threshold.",
+        "output_shape_required": "outputs.changes[]; outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:319-rat-r3-alpha",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:317-recon-r3-alpha",
+        "urn:fnsr:task:318-dev-r3-alpha"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Round 3 Chain α ratification",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "All 4 atomic items (S1-01, S1-02, S1-03, S1-04) addressed; no premature bundling-loss",
+          "S1-02 NewProjectDialog: Title + Subject fields with Skip option; matches FR-U001 ratified amendment",
+          "S1-01 banner removed; soft guidance affordance in its place",
+          "S1-03 design philosophy: NO SPEC §17 amendment; UX-layer-only changes (per operator adjudication open-question-1 answer (b))",
+          "S1-04 ValidationPanel re-validate works on ALL state-change paths (handleNew, handleOpen, ProjectSettingsDialog, AddTerm/Edit, etc.)",
+          "Existing Playwright tests updated (Phase 2 task 2.1 AC2 New flow + Phase 3 smoke flow 4 + ValidationPanel tests)",
+          "Editorial vs substantive: substantive (new component + design redesign)"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:320-apply-r3-alpha",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:319-rat-r3-alpha",
+        "urn:fnsr:task:318-dev-r3-alpha"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:318-dev-r3-alpha",
+        "apply_root": ".",
+        "task_context": "Round 3 Chain α commit-finalize."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:321-test-r3-alpha",
+      "agent": "test-runner",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:320-apply-r3-alpha"],
+      "inputs": {
+        "cmd": "npm test",
+        "parser": "npm",
+        "task_context": "Round 3 Chain α verification."
+      },
+      "history": []
+    }
+  ]
+}

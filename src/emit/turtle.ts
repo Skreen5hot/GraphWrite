@@ -36,7 +36,7 @@ const PREFIX_MAP: Record<string, string> = {
   rdfs: "http://www.w3.org/2000/01/rdf-schema#",
   owl:  "http://www.w3.org/2002/07/owl#",
   xsd:  "http://www.w3.org/2001/XMLSchema#",
-  iao:  "http://purl.obolibrary.org/obo/iao#",
+  obo:  "http://purl.obolibrary.org/obo/",
   cco:  "https://www.commoncoreontologies.org/",
 };
 
@@ -62,12 +62,22 @@ function termForIri(iri: string) {
 // ---------------------------------------------------------------------------
 
 const TBOX_IDS = new Set([
-  "iao:OntologyDesignPattern",
+  "ecm:OntologyDesignPattern",
   "ecm:Project",
   "ecm:Serialization",
   "ecm:isSerializationOf",
   "ecm:UnspecifiedSubjectMatter",
 ]);
+
+/**
+ * Maps JSON property key names to their canonical RDF predicate compact IRI.
+ * Required when the key does not expand via PREFIX_MAP alone
+ * (e.g., "iao:isAbout" uses the iao: prefix as a JSON key convention but its
+ * canonical RDF IRI is obo:IAO_0000136 per ADR-007 and SPEC.md §5.2).
+ */
+const JSON_KEY_TO_RDF_PRED: Record<string, string> = {
+  "iao:isAbout": "obo:IAO_0000136",
+};
 
 const RDF_TYPE_IRI = PREFIX_MAP.rdf + "type";
 
@@ -181,7 +191,7 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
   for (const pred of ["rdfs:subClassOf", "rdfs:subPropertyOf", "iao:isAbout", "ecm:isSerializationOf"]) {
     const val = node[pred];
     const items: unknown[] = Array.isArray(val) ? val : typeof val === "string" ? [val] : [];
-    const predNode = namedNode(expandIri(pred));
+    const predNode = namedNode(expandIri(JSON_KEY_TO_RDF_PRED[pred] ?? pred));
     for (const v of items) {
       if (typeof v === "string") {
         result.push(makeQuad(subj, predNode, termForIri(v)));
@@ -244,9 +254,9 @@ export function graphToQuads(graphNodes: unknown[]): Quad[] {
  * The N3.js Writer is initialized with PREFIX_MAP so all body IRIs are
  * compressed to short form (e.g., ecm:Project, rdf:type, xsd:string).
  * The Writer emits its own @prefix block for all 7 SPEC section 5.2 prefixes
- * (ecm, rdf, rdfs, owl, xsd, iao, cco); five of those duplicate the TBox
- * prepend declarations. Duplicate @prefix lines are valid Turtle
- * (K1 accepted-duplicate strategy; rdf: and xsd: are net-new vs the TBox).
+ * (ecm, rdf, rdfs, owl, xsd, obo, cco); four of those duplicate the TBox
+ * prepend declarations (ecm, rdfs, owl, cco). Duplicate @prefix lines are valid Turtle
+ * (K1 accepted-duplicate strategy; rdf:, xsd:, and obo: are net-new vs the TBox).
  *
  * @param project - Parsed canonical VMP project document.
  * @returns Turtle string: TBox block, then Writer prefix block, then body.

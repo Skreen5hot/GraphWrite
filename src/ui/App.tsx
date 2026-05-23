@@ -7,9 +7,11 @@ import { TermSidebar } from "./TermSidebar.js";
 import { migrate } from "../migrate/index.js";
 import { normalizeOnLoad } from "../normalize/index.js";
 import { validate, type ValidationReport } from "../validate/index.js";
+import { STARTER_TERMS } from "../validate/starter-terms.js";
 import { serializeVmp } from "../kernel/canonicalize.js";
 import { emitTurtle } from "../emit/turtle.js";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog.js";
+import { NewProjectDialog } from "./NewProjectDialog.js";
 import { ValidationPanel } from "./ValidationPanel.js";
 
 /**
@@ -21,7 +23,7 @@ import { ValidationPanel } from "./ValidationPanel.js";
 function buildNewDocument(): Record<string, unknown> {
   return {
     id: "urn:ecm:project:new",
-    type: ["ecm:Project", "iao:OntologyDesignPattern"],
+    type: ["ecm:Project", "ecm:OntologyDesignPattern"],
     "ecm:specVersion": "0.4",
     "ecm:createdAt": "1970-01-01T00:00:00Z",
     "ecm:instances": [],
@@ -32,7 +34,7 @@ function buildNewDocument(): Record<string, unknown> {
     "ecm:relations": [],
     "ecm:serializations": [],
     "ecm:snapshots": [],
-    "ecm:terms": [],
+    "ecm:terms": STARTER_TERMS.map((t) => ({ ...t })),
     "ecm:updatedAt": "1970-01-01T00:00:00Z",
     "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
   };
@@ -90,6 +92,7 @@ export function App() {
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
+  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,12 +100,32 @@ export function App() {
   // Computed from project document; no validate() call required for indicator.
   const isAboutState = project !== null ? deriveIsAboutState(project) : "clean";
 
-  // FR-U001: New project
+  // FR-U001: New project -- opens NewProjectDialog for Title + Subject entry.
   function handleNew() {
+    setNewProjectDialogOpen(true);
+  }
+
+  // Confirm: user provided title/subject; create project with those values.
+  function handleNewConfirm(title: string, subjectIri: string | null) {
+    const base = buildNewDocument();
+    const newDoc: Record<string, unknown> = {
+      ...base,
+      "ecm:name": title,
+      "iao:isAbout": subjectIri !== null ? [subjectIri] : base["iao:isAbout"],
+    };
+    setProject(newDoc);
+    setValidationReport(validate(newDoc));
+    setMigrationBannerText(null);
+    setNewProjectDialogOpen(false);
+  }
+
+  // Skip: create project with default title and ecm:UnspecifiedSubjectMatter.
+  function handleNewSkip() {
     const newDoc = buildNewDocument();
     setProject(newDoc);
     setValidationReport(validate(newDoc));
     setMigrationBannerText(null);
+    setNewProjectDialogOpen(false);
   }
 
   // FR-U002: Open project -- trigger hidden file input
@@ -288,24 +311,43 @@ export function App() {
         )}
       </header>
 
-      {project !== null && isAboutState !== "clean" && (
+      {project !== null && isAboutState === "missing" && (
         <div
-          className={`gw-anchor-banner gw-anchor-banner--${isAboutState}`}
-          data-testid="gw-anchor-banner"
-          data-anchor-state={isAboutState}
+          className="gw-subject-guidance"
+          data-testid="gw-subject-guidance"
+          data-anchor-state="missing"
         >
-          <span className="gw-anchor-banner-text">
-            {isAboutState === "missing"
-              ? "This project needs a subject — what real-world thing is it about? Export is blocked until a subject is added."
-              : "This project has a placeholder subject from v0.3 migration. Replace it with a real subject IRI."}
+          <span className="gw-subject-guidance-text">
+            No subject set.{" "}
+            <button
+              type="button"
+              className="gw-link"
+              data-testid="gw-btn-subject-guidance"
+              onClick={() => { setProjectSettingsOpen(true); }}
+            >
+              Add a subject in Project Settings.
+            </button>
           </span>
-          <button
-            className="gw-btn gw-btn--sm gw-btn--anchor-action"
-            data-testid="gw-btn-anchor-action"
-            onClick={() => { setProjectSettingsOpen(true); }}
-          >
-            {isAboutState === "missing" ? "Set subject" : "Set real subject"}
-          </button>
+        </div>
+      )}
+
+      {project !== null && isAboutState === "legacy" && (
+        <div
+          className="gw-subject-guidance gw-subject-guidance--legacy"
+          data-testid="gw-subject-guidance-legacy"
+          data-anchor-state="legacy"
+        >
+          <span className="gw-subject-guidance-text">
+            Subject is a placeholder from v0.3 migration.{" "}
+            <button
+              type="button"
+              className="gw-link"
+              data-testid="gw-btn-subject-guidance-legacy"
+              onClick={() => { setProjectSettingsOpen(true); }}
+            >
+              Set real subject
+            </button>
+          </span>
         </div>
       )}
 
@@ -313,14 +355,14 @@ export function App() {
         <aside className="gw-sidebar" data-testid="gw-sidebar">
           <TermSidebar
             project={project}
-            onTermsChange={(updated) => { setProject(updated); }}
+            onTermsChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
           />
         </aside>
 
         <main className="gw-canvas" data-testid="gw-canvas">
           <CanvasView
             project={project}
-            onProjectChange={(updated) => { setProject(updated); }}
+            onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
             onEdgeSelect={(id) => { setSelectedRelationId(id); setSelectedInstanceId(null); }}
             onNodeSelect={(id) => { setSelectedInstanceId(id); setSelectedRelationId(null); }}
           />
@@ -331,7 +373,7 @@ export function App() {
             selectedRelationId={selectedRelationId}
             selectedInstanceId={selectedInstanceId}
             project={project}
-            onProjectChange={(updated) => { setProject(updated); }}
+            onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
           />
         </aside>
       </div>
@@ -343,11 +385,19 @@ export function App() {
         />
       </section>
 
+      {newProjectDialogOpen && (
+        <NewProjectDialog
+          onConfirm={handleNewConfirm}
+          onSkip={handleNewSkip}
+          onClose={() => { setNewProjectDialogOpen(false); }}
+        />
+      )}
       {projectSettingsOpen && project !== null && (
         <ProjectSettingsDialog
           project={project}
           onSave={(updated) => {
             setProject(updated);
+            setValidationReport(validate(updated));
             setProjectSettingsOpen(false);
           }}
           onClose={() => { setProjectSettingsOpen(false); }}

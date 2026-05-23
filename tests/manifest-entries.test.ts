@@ -48,7 +48,7 @@ function fail(msg: string, err?: unknown): void {
 /** Minimal project root document with stable id. */
 const PROJECT: Record<string, unknown> = {
   id: "urn:uuid:00000000-0000-0000-0000-000000000001",
-  type: ["ecm:Project", "iao:OntologyDesignPattern"],
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
   "ecm:specVersion": "0.4",
 };
 

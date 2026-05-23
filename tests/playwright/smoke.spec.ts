@@ -44,6 +44,8 @@ test.describe("Smoke flow 1 (task 2.12)", () => {
 
       // ---- Step 1: New project. ----
       await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
       // ---- Step 2: Add class 'Person'. ----
@@ -242,23 +244,20 @@ test.describe("Smoke flow 1 (task 2.12)", () => {
 
 test.describe("Smoke flow 4 (task 2.12)", () => {
   test(
-    "Smoke 4: new project shows MISSING_REALIST_ANCHOR indicator before any user action",
+    "Smoke 4: new project (skip dialog) shows subject guidance affordance",
     async ({ page }) => {
       await page.goto("/");
 
       await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      // Skip so project is created with ecm:UnspecifiedSubjectMatter placeholder.
+      await page.getByTestId("gw-btn-new-project-skip").click();
       // Wait for React state update -- Save becomes enabled once project != null.
       await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
 
-      // MISSING_REALIST_ANCHOR indicator must be visible immediately.
-      // The banner renders when iao:isAbout contains only
-      // ecm:UnspecifiedSubjectMatter (the default for new projects).
-      const banner = page.getByTestId("gw-anchor-banner");
-      await expect(banner).toBeVisible();
-      await expect(banner).toHaveAttribute(
-        "data-anchor-state",
-        "missing",
-      );
+      // Per S1-03: muted guidance affordance shown instead of red banner.
+      const guidance = page.getByTestId("gw-subject-guidance");
+      await expect(guidance).toBeVisible();
     },
   );
 });

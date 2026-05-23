@@ -39,8 +39,10 @@ test.describe("GraphWrite shell (task 2.1 AC2 + AC3 + AC4)", () => {
   }) => {
     await page.goto("/");
 
-    // FR-U001: create a fresh document
+    // FR-U001: create a fresh document via NewProjectDialog (FR-U001 amendment)
     await page.getByTestId("gw-btn-new").click();
+    await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+    await page.getByTestId("gw-btn-new-project-skip").click();
 
     // Wait for React state update -- Save becomes enabled once project != null
     await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
@@ -60,7 +62,7 @@ test.describe("GraphWrite shell (task 2.1 AC2 + AC3 + AC4)", () => {
     expect(parsed["ecm:specVersion"]).toBe("0.4");
     expect(Array.isArray(parsed["type"]), "type must be an array").toBe(true);
     expect(parsed["type"]).toContain("ecm:Project");
-    expect(parsed["type"]).toContain("iao:OntologyDesignPattern");
+    expect(parsed["type"]).toContain("ecm:OntologyDesignPattern");
     expect(
       Array.isArray(parsed["iao:isAbout"]),
       "iao:isAbout must be an array",
@@ -119,6 +121,77 @@ test.describe("GraphWrite shell (task 2.1 AC2 + AC3 + AC4)", () => {
       // Dismiss removes the banner from the DOM
       await page.getByTestId("gw-migration-dismiss").click();
       await expect(banner).not.toBeVisible();
+    },
+  );
+
+  test(
+    "S1-04: ValidationPanel clears MISSING_REALIST_ANCHOR after subject set via Project Settings",
+    async ({ page }) => {
+      await page.goto("/");
+
+      // Create new project with placeholder (skip dialog) -- MISSING_REALIST_ANCHOR fires.
+      await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
+      await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
+
+      // MISSING_REALIST_ANCHOR error must appear in ValidationPanel.
+      const errorItem = page.locator(
+        '[data-testid="gw-finding-item"][data-code="MISSING_REALIST_ANCHOR"]',
+      );
+      await expect(errorItem).toBeVisible();
+
+      // Open Project Settings; add a real subject IRI; save.
+      await page.getByTestId("gw-btn-project-settings").click();
+      await expect(
+        page.getByTestId("gw-dialog-project-settings"),
+      ).toBeVisible();
+      await page
+        .getByTestId("gw-input-isabout-iri")
+        .fill("https://example.org/subjects/TestSubject");
+      await page.getByTestId("gw-btn-add-iri").click();
+      await page.getByTestId("gw-btn-settings-save").click();
+      await expect(
+        page.getByTestId("gw-dialog-project-settings"),
+      ).not.toBeVisible();
+
+      // ValidationPanel must clear the MISSING_REALIST_ANCHOR error (S1-04 fix).
+      await expect(errorItem).not.toBeVisible();
+    },
+  );
+
+  test(
+    "S4-02: New project has starter terms pre-populated (ecm:terms.length >= 15)",
+    async ({ page }) => {
+      await page.goto("/");
+
+      // FR-U001: create a fresh document via NewProjectDialog (skip title/subject)
+      await page.getByTestId("gw-btn-new").click();
+      await expect(page.getByTestId("gw-dialog-new-project")).toBeVisible();
+      await page.getByTestId("gw-btn-new-project-skip").click();
+      await expect(page.getByTestId("gw-btn-save")).toBeEnabled();
+
+      // FR-U003: download and parse the new project document
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByTestId("gw-btn-save").click(),
+      ]);
+
+      const downloadPath = await download.path();
+      expect(downloadPath, "download must be saved to disk").not.toBeNull();
+
+      const content = fs.readFileSync(downloadPath!, "utf-8");
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // S4-02: new project must include STARTER_TERMS in ecm:terms
+      expect(
+        Array.isArray(parsed["ecm:terms"]),
+        "ecm:terms must be an array",
+      ).toBe(true);
+      expect(
+        (parsed["ecm:terms"] as unknown[]).length,
+        "ecm:terms must have at least 15 starter entries",
+      ).toBeGreaterThanOrEqual(15);
     },
   );
 });

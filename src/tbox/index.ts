@@ -16,13 +16,12 @@
 // ---------------------------------------------------------------------------
 
 const PROJECT_TBOX_TURTLE = `@prefix ecm:  <https://edgecanonical.org/ns/modeler#> .
-@prefix iao:  <http://purl.obolibrary.org/obo/iao#> .
 @prefix cco:  <https://www.commoncoreontologies.org/> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 # Realist anchoring of the Ontology Design Pattern concept
-iao:OntologyDesignPattern  a            owl:Class ;
+ecm:OntologyDesignPattern  a            owl:Class ;
                            rdfs:label   "Ontology Design Pattern" ;
                            rdfs:comment "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology." ;
                            rdfs:subClassOf cco:ont00000958 .
@@ -30,7 +29,7 @@ iao:OntologyDesignPattern  a            owl:Class ;
 # Every project is an Ontology Design Pattern
 ecm:Project                a            owl:Class ;
                            rdfs:label   "Visual Modeler Project" ;
-                           rdfs:subClassOf iao:OntologyDesignPattern .
+                           rdfs:subClassOf ecm:OntologyDesignPattern .
 
 # Serializations are concrete ICEs of a project
 ecm:Serialization          a            owl:Class ;
@@ -42,7 +41,7 @@ ecm:Serialization          a            owl:Class ;
 ecm:isSerializationOf      a            owl:ObjectProperty ;
                            rdfs:label   "is serialization of" ;
                            rdfs:domain  ecm:Serialization ;
-                           rdfs:range   iao:OntologyDesignPattern .
+                           rdfs:range   ecm:OntologyDesignPattern .
 
 # Placeholder subject class used during onboarding
 ecm:UnspecifiedSubjectMatter a          owl:Class ;
@@ -78,7 +77,7 @@ export function getProjectTBoxTurtle(): string {
 export function getProjectTBoxNodes(): object[] {
   return [
     {
-      id: "iao:OntologyDesignPattern",
+      id: "ecm:OntologyDesignPattern",
       type: ["owl:Class"],
       "rdfs:label": "Ontology Design Pattern",
       "rdfs:comment": "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology.",
@@ -88,7 +87,7 @@ export function getProjectTBoxNodes(): object[] {
       id: "ecm:Project",
       type: ["owl:Class"],
       "rdfs:label": "Visual Modeler Project",
-      "rdfs:subClassOf": ["iao:OntologyDesignPattern"],
+      "rdfs:subClassOf": ["ecm:OntologyDesignPattern"],
     },
     {
       id: "ecm:Serialization",
@@ -102,7 +101,7 @@ export function getProjectTBoxNodes(): object[] {
       type: ["owl:ObjectProperty"],
       "rdfs:label": "is serialization of",
       "rdfs:domain": "ecm:Serialization",
-      "rdfs:range": "iao:OntologyDesignPattern",
+      "rdfs:range": "ecm:OntologyDesignPattern",
     },
     {
       id: "ecm:UnspecifiedSubjectMatter",

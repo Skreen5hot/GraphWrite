@@ -1,0 +1,164 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:303-recon-spec-08",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "Drafting FNSR Protocol Spec 08: Stakeholder Feedback Round Protocol. Substrate-development work. Aaron explicitly authorized after observing that Item J's 'starter terms' provision-half got lost during the ad-hoc feedback chain that produced demo/FEEDBACK-RESPONSE.md. Root cause: no atomic-decomposition pass + no reconciliation pass.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[] (array of {id, claim, evidence, kind}), outputs.summary, outputs.evidence_paths.",
+        "goal": "Read-only investigation of existing FNSR specs + retro surface + adjacent substrate primitives. Identify: shape conventions (frontmatter, section structure) for FNSR spec docs; how retro surface phases are documented; how forward-tracks integrate; what state-persistence shape is canonical for new surfaces.",
+        "focus_areas": [
+          "surfaces/_primitives/ — existing primitive doc shapes (bounded-authority-orchestrator.md, episodic-to-semantic-promotion.md, anti-pattern-enforcement.md, surface-audience.md)",
+          "surfaces/verification/ — Spec 02 surface organization (surface-spec.md + categories/ + agents/)",
+          "surfaces/retro/ — Spec NN retro surface organization (surface-spec.md + phases/ + agents/) — this is the closest analog to a feedback-round protocol",
+          "CLAUDE.md §7.7 (Banking Lifecycle / Spec 05); §7.8 (Pass 2a Sequencing / Spec 03); §7.9 (Phase Boundaries + Forward-Tracks / Spec 07); §7.11 (Verification Ritual / Spec 02); §7.12 (Retro Surface + Episodic→Semantic / partial of v3.0)",
+          "demo/FEEDBACK.md + demo/FEEDBACK-RESPONSE.md — the empirical artifacts from the ad-hoc chain that motivated this spec",
+          "OPERATOR-MEDIATION-LOG.md events 9-12 — empirical evidence about feedback-round failure modes",
+          "How retro surface uses operator commands (state_admin retro init/phase-transition/vote/archive/verify/list) — Spec 08 will likely mirror this command structure"
+        ],
+        "specific_questions": [
+          "What's the standard frontmatter shape for FNSR Spec docs? (document_kind, version, etc.)",
+          "Where do new FNSR specs live? Top of repo? `surfaces/<surface>/spec.md`? Both?",
+          "What's the next available FNSR Spec number? CLAUDE.md references 02, 03, 05, 06, 07. Is Spec 04 reserved (per cycle-counter reference)? Is 08 the next clean number?",
+          "Does the retro surface's six-phase structure (gathering → surfacing → analyzing → deliberating → voting → compression) translate directly to feedback rounds, or do feedback rounds need different phases (capture → atomic-decomposition → categorize → completeness-map → adjudicate → implement → reconcile → consume)?",
+          "What's the integration point with forward-tracks (Spec 07)? Each unresolved feedback item should become a forward-track in state-A (candidate); ratified items become state-B (deliberated); landed items become state-C (resolved).",
+          "What's the canonical state-file location for a feedback round? `feedback-rounds/<round-id>/STATE.jsonld` (analog to `retros/<retro-id>/RETRO_STATE.jsonld`)?"
+        ],
+        "no_proposals": "Read-only; observations only. Developer authors Spec 08 in next task."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:304-dev-spec-08",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:303-recon-spec-08"],
+      "inputs": {
+        "task_context": "Author FNSR Protocol Spec 08 (Stakeholder Feedback Round Protocol). Single substantive change: create surfaces/feedback-rounds/spec.md.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[] (single create-mode change), outputs.summary, outputs.self_assessment.",
+        "goal": "Propose changes[] creating surfaces/feedback-rounds/spec.md with the FNSR Spec 08 document. v1 scope: protocol shape, phases, agent roles, state-file shape, audit events, operator-command surface. v1 does NOT include: agent contract files, state_admin command implementation, primitive-doc abstraction (those are downstream substrate work).",
+        "implementation_directions": [
+          "Single change: create surfaces/feedback-rounds/spec.md (mode=create).",
+          "Frontmatter matches existing FNSR spec convention (recon identifies). Include: document_kind: fnsr-protocol-spec; spec_number: 08; version: 0.1; status: draft (or as recon recommends).",
+          "Document sections (recon may suggest adjustments):",
+          "  - Purpose: why feedback rounds need a protocol distinct from retro and Pass 2a",
+          "  - Phases (8 phases per the protocol gap analysis):",
+          "    1. Capture (verbatim collection; analog: retro gathering)",
+          "    2. Atomic Decomposition (split bundled feedback into single-claim items; MUST happen BEFORE bundling)",
+          "    3. Categorize + Scope (per atomic item: classification + effort)",
+          "    4. Completeness Map (per atomic item: which canonical artifacts must be updated — SPEC sections, FRs, ROADMAP, IMPLEMENTATION_PLAN, source modules, spec tests, Playwright tests, demo materials, walkthrough docs)",
+          "    5. Adjudication (operator decides per-atomic-item: ratify / amend / defer)",
+          "    6. Implementation (chain dispatch per ratified atomic item)",
+          "    7. Reconciliation (verify each atomic item's completeness map was fully landed — analog of the missed step that caused Item J's provision-half to be lost)",
+          "    8. Phase-Close Consumption (update canonical docs; archive deferred items as forward-tracks; surface deltas in retrospective)",
+          "  - Agent roles: which agents in each phase; reconnaissance + developer + architect for the main chain; new role candidate 'feedback-decomposer' for Phase 2 + 'feedback-reconciler' for Phase 7 (or these can be modes of existing agents)",
+          "  - State persistence: feedback-rounds/<round-id>/STATE.jsonld with chain-hashed audit per existing surface conventions",
+          "  - Audit event shapes: feedback_round_initiated, atomic_item_decomposed, item_adjudicated, item_implemented, item_reconciled, feedback_round_closed",
+          "  - Operator commands: state_admin feedback-round init / decompose / adjudicate / reconcile / close (analog of retro family)",
+          "  - Integration with forward-tracks (Spec 07): each non-ratified atomic item becomes a forward-track in state-A",
+          "  - Integration with phase-boundary (Spec 07): feedback round can be tied to a phase-close; reconciliation prevents phase from closing if items have unfinished completeness maps",
+          "  - Anti-patterns / failure modes (empirical evidence from demo/FEEDBACK.md round):",
+          "    - Premature bundling (Item J: prevention + provision bundled as one; lost provision)",
+          "    - Lost completeness map (no record of which artifacts need updating per item)",
+          "    - No reconciliation pass (no agent verifying every item's map was honored)",
+          "    - Manual-only triage (no atomic-decomposition step; recon agent bundles based on intuition)",
+          "  - Empirical-evidence appendix: cite demo/FEEDBACK.md Item J + OPERATOR-MEDIATION-LOG.md Event 9 + 12 as the empirical motivation",
+          "v1 status: draft. The spec is the PROTOCOL specification; implementation is downstream substrate work (new agents, state_admin commands, daemon hooks)"
+        ],
+        "scope_constraints": [
+          "ONLY create surfaces/feedback-rounds/spec.md. No other files in this chain.",
+          "Do NOT create the primitive doc (surfaces/_primitives/stakeholder-feedback-round.md) — separate chain",
+          "Do NOT create agent contract files — separate chain",
+          "Do NOT implement state_admin commands — separate chain",
+          "Layer boundaries: this is substrate-side (surfaces/); no GraphWrite subject impact",
+          "Per Event 9 lesson: if scope exceeds 25000 chars, return outputs.status='awaiting_operator_decision' with suggested_split (NOT outputs.error which Event 9+12 showed gets CPS-vetoed)",
+          "Per Event 11 lesson: ALL phases + agent roles + state shape + commands + anti-patterns covered in this single chain"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Moderate-to-large scope. 25000 char threshold. Spec drafts can be substantial (8 phases + state shape + commands + anti-patterns + appendix). If exceeds threshold, scope-split: spec.md core + appendix-as-separate-file.",
+        "output_shape_required": "outputs.changes[] (single create entry for surfaces/feedback-rounds/spec.md); outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:305-review-spec-08",
+      "agent": "spec-reviewer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:304-dev-spec-08"],
+      "inputs": {
+        "task_context": "Structural + ontological + conformance review of FNSR Spec 08 draft (task 304's proposed surfaces/feedback-rounds/spec.md).",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[], outputs.summary, outputs.recommendation.",
+        "goal": "Review the proposed Spec 08 draft. Identify structural gaps, contradictions with prior FNSR specs (02, 03, 05, 06, 07), ontological inconsistencies (banking vs forward-track semantics; phase vs cycle vs feedback-round semantics), and conformance issues (FNSR spec conventions; frontmatter; section ordering).",
+        "review_dimensions": [
+          "Structural: section completeness; phase-order coherence; agent-role bindings clear",
+          "Ontological: does Spec 08 introduce any concept that overlaps or contradicts Spec 05 banking / Spec 07 forward-track / Spec 03 Pass 2a / retro-surface phases? If so, identify the disambiguation",
+          "Conformance: matches existing FNSR spec frontmatter + body conventions",
+          "Empirical-grounding: are the anti-pattern claims (premature bundling, lost completeness map) grounded in the demo/FEEDBACK.md + OPERATOR-MEDIATION-LOG.md evidence the spec cites?",
+          "Operational: can an operator actually run this protocol with the proposed commands + state shape? Are there gaps where a phase has no clear initiator or terminator?"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:306-rat-spec-08",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:303-recon-spec-08",
+        "urn:fnsr:task:304-dev-spec-08",
+        "urn:fnsr:task:305-review-spec-08"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Pass 2a ratification of FNSR Spec 08 draft. Reviews recon (303) + dev's proposal (304) + spec-reviewer's findings (305).",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "Reconciliation with recon + spec-reviewer findings",
+          "Spec 08 doesn't unintentionally duplicate or contradict Spec 02/03/05/06/07",
+          "8-phase shape is structurally complete (every phase has clear initiator + terminator + agent role)",
+          "Anti-pattern appendix grounded in actual empirical evidence (demo/FEEDBACK.md Item J + OPERATOR-MEDIATION-LOG.md Events 9+12)",
+          "Forward-track integration (Spec 07) is sound — each non-ratified atomic item becomes state-A",
+          "Phase-close consumption discipline is enforceable (or clearly delegated to operator)",
+          "v1 draft status is appropriate (spec is the protocol; implementation downstream)",
+          "Editorial vs substantive: substantive (new substrate specification)"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:307-apply-spec-08",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:306-rat-spec-08",
+        "urn:fnsr:task:304-dev-spec-08"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:304-dev-spec-08",
+        "apply_root": ".",
+        "task_context": "Write surfaces/feedback-rounds/spec.md."
+      },
+      "history": []
+    }
+  ]
+}

@@ -37,13 +37,12 @@ function fail(msg: string, err?: unknown): void {
 // ---------------------------------------------------------------------------
 
 const ECM  = "https://edgecanonical.org/ns/modeler#";
-const IAO  = "http://purl.obolibrary.org/obo/iao#";
 const CCO  = "https://www.commoncoreontologies.org/";
 const OWL  = "http://www.w3.org/2002/07/owl#";
 const RDFS = "http://www.w3.org/2000/01/rdf-schema#";
 const RDF  = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
-const IRI_ODP    = IAO  + "OntologyDesignPattern";
+const IRI_ODP    = ECM  + "OntologyDesignPattern";
 const IRI_PROJ   = ECM  + "Project";
 const IRI_SER    = ECM  + "Serialization";
 const IRI_ISO    = ECM  + "isSerializationOf";
@@ -179,7 +178,7 @@ try {
     "ecm:Serialization",
     "ecm:UnspecifiedSubjectMatter",
     "ecm:isSerializationOf",
-    "iao:OntologyDesignPattern",
+    "ecm:OntologyDesignPattern",
   ].sort();
   if (JSON.stringify(ids) !== JSON.stringify(expected)) {
     throw new Error(`Node ids: ${JSON.stringify(ids)} != expected ${JSON.stringify(expected)}`);

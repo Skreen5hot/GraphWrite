@@ -1,0 +1,145 @@
+{
+  "tasks": [
+    {
+      "@id": "urn:fnsr:task:313-recon-r3",
+      "agent": "reconnaissance",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [],
+      "inputs": {
+        "task_context": "FIRST application of FNSR Spec 08 protocol (currently being drafted; v0.1 on disk; v0.2 in progress). Aaron's Round 3 walkthrough feedback in demo/FEEDBACK-ROUND-3.md needs atomic decomposition per Spec 08 Phase 02 — explicit instruction: do NOT bundle. The Spec 08 motivating case was Item J in Round 1: 'rdfs:label collision detection + starter terms' bundled at recon stage; provision half lost.",
+        "output_envelope_constraint": "Output wrapped: outputs.findings[] (one finding per atomic claim; aggressive splitting; do not bundle for narrative convenience), outputs.summary, outputs.evidence_paths.",
+        "goal": "Per Spec 08 Phase 02 (Atomic Decomposition): produce findings[] where each finding is ONE atomic claim Aaron made in Round 3. Section-by-section parsing; one claim per finding; explicit IDs (e.g., R3-S1-01, R3-S1-02, R3-S2-01 etc.). Do NOT consolidate. Do NOT propose fixes. Per Spec 08 Phase 03 (Categorize + Scope): each finding also carries kind classification + effort estimate. Per Spec 08 Phase 04 (Completeness Map): each finding lists which canonical artifacts must be updated (SPEC sections, FR numbers, source modules, spec tests, Playwright tests, demo materials).",
+        "atomic_decomposition_rules": [
+          "One finding per single claim. A claim is a single observation, request, bug report, or design-philosophy assertion.",
+          "If Aaron's wording bundles multiple observations into one sentence, SPLIT into multiple findings.",
+          "Example from Round 1 (the case to AVOID): 'RDFS:Label (and other RDFS and OWL properties should be default options) Label should be visible on the graphical node' — this is THREE claims: (1) RDFS:Label should be a default option; (2) other RDFS/OWL properties should be default options; (3) Label should be visible on the graphical node. Round 1 bundled these as Item J 'rdfs:label collision detection and starter terms' — provision half lost. DO NOT REPEAT.",
+          "Apply same atomic decomposition to Round 3 feedback. If unsure, split further.",
+          "Each finding's claim field paraphrases Aaron's single point. Each finding's evidence field cites the exact quoted text from FEEDBACK-ROUND-3.md."
+        ],
+        "focus_areas": [
+          "demo/FEEDBACK-ROUND-3.md (Aaron's verbatim Round 3 feedback)",
+          "project/SPEC.md (for each atomic claim, identify SPEC ref if applicable)",
+          "src/ui/* (current implementation state for effort estimation)",
+          "src/validate/index.ts + reserved-names.ts (for Section 4 J1-related claims)",
+          "src/emit/turtle.ts (for Section 5 IAO IRI claim)",
+          "@context block in project/SPEC.md §5.2 (for the iao:isAbout IRI binding question — Aaron's coworker says http://purl.obolibrary.org/obo/IAO_0000136 is the canonical IAO IRI; current binding uses http://purl.obolibrary.org/obo/iao#)",
+          "demo/FEEDBACK.md + demo/FEEDBACK-RESPONSE.md (Round 1; for cross-reference to identify Round 3 items that are recurrences or extensions of Round 1 items)",
+          "OPERATOR-MEDIATION-LOG.md Events 9, 11, 12 — for substrate-side context but NOT for the decomposition itself"
+        ],
+        "completeness_map_dimensions": [
+          "For each atomic claim, list which of these get touched:",
+          "- SPEC section (e.g., §5.2 @context, §17.2 hard errors, FR-U001, FR-U011, FR-U032)",
+          "- FR number (existing or new)",
+          "- Source modules (src/ui/X.tsx, src/validate/Y.ts, src/emit/Z.ts, src/kernel/W.ts)",
+          "- Spec tests (tests/*.test.ts that must be added or updated)",
+          "- Playwright tests (tests/playwright/*.spec.ts that must be added or updated)",
+          "- Demo materials (demo/library-catalog.jsonld, demo/WALKTHROUGH*.md)",
+          "- ROADMAP entries (if the item creates a new ROADMAP task)",
+          "- IMPLEMENTATION_PLAN entries (if the item amends a Phase N task definition)"
+        ],
+        "specific_questions_recon_must_answer": [
+          "How many atomic claims are in Section 1? (count expected ~4: banner-aggressive-tone; new-project-popup-with-Title+Subject; no-more-errors-design-philosophy; validation-panel-stale-after-anchor-added)",
+          "How many in Section 2? (count expected ~6: new-instance-label-not-editable; relation-edge-labels-missing; arrowhead-direction-locked; inspector-subject-object-labels-stale-rooted-in-#1; narration-missing-class)",
+          "Section 3? (zero claims; Aaron said Perfect)",
+          "Section 4? (count expected ~2: J1-collision-check-missed-input; starter-terms-provision-recurrence-from-Round-1)",
+          "Section 5? (count expected ~1: iao:isAbout-wrong-IRI-binding)",
+          "For the IAO IRI claim: is the current @context in SPEC.md §5.2 binding iao:isAbout to http://purl.obolibrary.org/obo/iao#isAbout or to IAO_0000136? Read SPEC.md to confirm. This is a substantive @context fix.",
+          "For the validation-panel-stale claim: is this a re-validation-timing bug (panel computed once on load; not re-computed on state change), OR is the validation-result-comparison stable but the UI doesn't re-render? Inspect ValidationPanel.tsx."
+        ],
+        "no_proposals": "Read-only; observations only. Developer agent in task 314 will produce the structured FEEDBACK-ROUND-3-DECOMPOSITION.md."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:314-dev-r3-decomposition",
+      "agent": "developer",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": ["urn:fnsr:task:313-recon-r3"],
+      "inputs": {
+        "task_context": "Phase 02/03/04 of Spec 08 protocol — produce demo/FEEDBACK-ROUND-3-DECOMPOSITION.md from atomic findings.",
+        "output_envelope_constraint": "Output wrapped: outputs.changes[] (single create-mode change for demo/FEEDBACK-ROUND-3-DECOMPOSITION.md), outputs.summary, outputs.self_assessment.",
+        "goal": "Produce demo/FEEDBACK-ROUND-3-DECOMPOSITION.md with per-atomic-item structure for Aaron's Phase 05a adjudication.",
+        "implementation_directions": [
+          "Single change: create demo/FEEDBACK-ROUND-3-DECOMPOSITION.md (mode=create).",
+          "Frontmatter: document_kind: stakeholder-feedback-round-decomposition; round-number: 3; date: 2026-05-22; protocol: FNSR Spec 08 (v0.1 draft); companion: demo/FEEDBACK-ROUND-3.md",
+          "Summary section: total atomic-item count + breakdown by section + breakdown by kind",
+          "Per atomic item (use recon's finding IDs like R3-S1-01):",
+          "  ### R3-S{section}-{N}: <short title>",
+          "  - **Atomic claim:** <one-sentence paraphrase of Aaron's single point>",
+          "  - **Evidence:** <exact quote from FEEDBACK-ROUND-3.md>",
+          "  - **Kind:** <UI bug | UI polish | design philosophy | spec amendment | missing feature | data discipline | recurrence-of-prior-item>",
+          "  - **Effort estimate:** <trivial <2hr | small 2-8hr | moderate 8-24hr | large >24hr>",
+          "  - **Initial priority:** <P1 ship-blocking | P2 Phase-3-close | P3 Phase-4+ | P4 backlog>",
+          "  - **Completeness map:** <list of every artifact that must be touched — SPEC sections, FR numbers, src modules, spec tests, Playwright tests, demo materials, ROADMAP, IMPLEMENTATION_PLAN>",
+          "  - **Dependencies:** <other atomic items or forward-tracks this depends on>",
+          "  - **Cross-reference to prior rounds:** <if this is a recurrence or extension of a Round-1 item, cite the Round-1 ID>",
+          "End-of-doc: 'Pending Phase 05a Operator Adjudication' section listing each atomic-item ID with ratify/amend/defer placeholders for Aaron to fill in. After Aaron's per-item adjudication, Phase 06 implementation chains dispatch per ratified item."
+        ],
+        "scope_constraints": [
+          "Single new file (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md); no other changes",
+          "Do NOT propose code edits; this is decomposition + categorize + map, not implementation",
+          "Estimate ~12000-20000 chars (12-14 atomic items at ~800-1500 chars each + summary + Phase-05a queue)",
+          "Per Event 9+12 lessons: if scope assessment exceeds 25000 chars, use outputs.status='awaiting_operator_decision' with structured suggested_split (NOT outputs.error)"
+        ],
+        "encoding_constraint": "Emit non-ASCII via \\uXXXX escapes only.",
+        "scope_warning_token_limit": "Moderate scope. 25000 char threshold.",
+        "output_shape_required": "outputs.changes[] (single create entry); outputs.summary; outputs.self_assessment."
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:315-rat-r3-decomposition",
+      "agent": "architect",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:313-recon-r3",
+        "urn:fnsr:task:314-dev-r3-decomposition"
+      ],
+      "inputs": {
+        "mode": "ratification",
+        "task_context": "Pass 2a ratification of demo/FEEDBACK-ROUND-3-DECOMPOSITION.md.",
+        "output_envelope_constraint": "Output wrapped: outputs.ruling, .editorial_verdict, .editorial_verdict_reason, .rationale, .referenced_evidence, .bankings.",
+        "review_focus": [
+          "Atomic decomposition rigor: each item is genuinely single-claim (no bundling)",
+          "Completeness map coverage: every artifact-class is considered per item",
+          "No Item-J-style provision/prevention bundling",
+          "All Round 3 sections covered (Sections 1, 2, 4, 5; Section 3 has zero claims)",
+          "Per Event 11 lesson: architect should also flag if the daemon-side ratification-gate is being relied on (it shouldn't matter for this doc since denial here just means re-do the decomposition, not block the apply)",
+          "Editorial vs substantive: substantive (new analytical document)"
+        ],
+        "ruling_payload_required": [
+          "ruling: ratified | denied | deferred",
+          "editorial_verdict: substantive",
+          "editorial_verdict_reason",
+          "rationale",
+          "referenced_evidence",
+          "bankings"
+        ]
+      },
+      "history": []
+    },
+    {
+      "@id": "urn:fnsr:task:316-apply-r3-decomposition",
+      "agent": "applier",
+      "status": "ready",
+      "attempts": 0,
+      "outputs": null,
+      "depends_on": [
+        "urn:fnsr:task:315-rat-r3-decomposition",
+        "urn:fnsr:task:314-dev-r3-decomposition"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:314-dev-r3-decomposition",
+        "apply_root": ".",
+        "task_context": "Write demo/FEEDBACK-ROUND-3-DECOMPOSITION.md."
+      },
+      "history": []
+    }
+  ]
+}

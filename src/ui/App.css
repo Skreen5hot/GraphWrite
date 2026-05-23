@@ -412,6 +412,36 @@ dialog.gw-dialog::backdrop {
 }
 
 /* -----------------------------------------------------------------------
+ * iao:isAbout subject guidance (S1-03 R3 -- replaces accusatory banner)
+ * Muted text affordance; no red, no error iconography.
+ * --------------------------------------------------------------------- */
+
+.gw-subject-guidance {
+  padding: 0.25rem 1rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.gw-subject-guidance-text {
+  display: inline;
+}
+
+.gw-subject-guidance-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.gw-subject-guidance-link:hover {
+  color: #1d4ed8;
+}
+
+/* -----------------------------------------------------------------------
  * Project Settings Dialog: iao:isAbout list (FR-U031 task 2.9)
  * --------------------------------------------------------------------- */
 
