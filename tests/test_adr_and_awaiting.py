@@ -391,5 +391,66 @@ class TestAwaitingDecisionShape(unittest.TestCase):
         self.assertIsNotNone(d._validate_awaiting_decision_shape(outputs))
 
 
+class TestCpsCheckAwaitingDecisionBypass(unittest.TestCase):
+    """OPERATOR-MEDIATION-LOG Event 12 regression: when an agent returns
+    a valid awaiting_operator_decision shape, cps_check MUST bypass the
+    frontmatter required_outputs check per CLAUDE.md §7.6. Before this
+    fix, cps_check vetoed for missing required_outputs even when the
+    shape was valid, blocking developers that correctly escalated
+    scope-too-broad situations.
+    """
+
+    def test_valid_shape_bypasses_required_outputs(self):
+        # Developer agent's required_outputs = [changes, summary,
+        # self_assessment]. A valid awaiting_operator_decision shape
+        # omits all of these; cps_check must NOT veto.
+        task = {
+            "@id": "urn:fnsr:task:test-bypass-1",
+            "agent": "developer",
+            "inputs": {},
+        }
+        outputs = {
+            "status": "awaiting_operator_decision",
+            "options": [
+                "split A: scope X",
+                "split B: scope Y",
+            ],
+            "recommendation": "Recommend split A — smaller blast radius.",
+        }
+        # Should not raise.
+        d.cps_check(task, outputs)
+
+    def test_invalid_shape_still_vetoes_via_shape_validator(self):
+        # Status is awaiting_operator_decision but options is empty —
+        # malformed shape must veto with shape-specific message, not
+        # required_outputs message.
+        task = {
+            "@id": "urn:fnsr:task:test-bypass-2",
+            "agent": "developer",
+            "inputs": {},
+        }
+        outputs = {
+            "status": "awaiting_operator_decision",
+            "options": [],
+            "recommendation": "x",
+        }
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d.cps_check(task, outputs)
+        self.assertIn("options", str(ctx.exception))
+
+    def test_no_awaiting_shape_still_enforces_required_outputs(self):
+        # Without the awaiting shape, required_outputs is enforced as
+        # before — confirm we didn't break the normal path.
+        task = {
+            "@id": "urn:fnsr:task:test-bypass-3",
+            "agent": "developer",
+            "inputs": {},
+        }
+        outputs = {"summary": "ok"}  # missing changes + self_assessment
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d.cps_check(task, outputs)
+        self.assertIn("required output keys", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

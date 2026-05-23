@@ -236,6 +236,8 @@ Both categories matter for v3.2+ design but they answer different questions: gap
 
 **Sibling-to-Event-9 observation:** Event 9 said "developer used wrong shape (error: task_too_broad) — needs developer-contract refinement." Now in Event 12, the developer used the RIGHT shape (awaiting_operator_decision) but the substrate's CPS check sequence doesn't honor the bypass. So both shapes are blocked by different substrate gaps — Event 9 by spec design (`error` shape is CPS-veto-by-design); Event 12 by spec-implementation mismatch (`awaiting_operator_decision` bypass not implemented in CPS sequence). Cluster strengthens.
 
+**Closure (2026-05-23):** Event 12 fixed in `fnsr_daemon.py` `cps_check()` — `awaiting_operator_decision` shape now bypasses `required_outputs` check per CLAUDE.md §7.6 spec. The shape's well-formedness is validated via `_validate_awaiting_decision_shape` BEFORE the required_outputs check is consulted; valid shapes commit cleanly (anti-pattern checks still apply), malformed shapes raise shape-specific vetoes. Regression covered by `TestCpsCheckAwaitingDecisionBypass` (3 cases: valid bypass; malformed-shape veto; normal-path preserved). Full substrate test suite: 475/475 OK. Any future feedback-round chain that hits scope-too-broad will commit cleanly per spec instead of stalling at CPS.
+
 ### Event 13: Recurring chain-stall pattern + proposed daemon-notification substrate primitive
 
 - **Type:** Substrate-discipline gap (compound: Event 11 recurrence x2 in one session + new gap: developer token-overflow truncation + new gap: no daemon→orchestrator push notification)

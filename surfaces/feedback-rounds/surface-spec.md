@@ -139,6 +139,9 @@ Chain-hashed via the substrate's `hiri_sign` mechanism; append-only; one file pe
     }
   ],
   "implementation_task_ids": [],
+  "touches_ontology_content": false,
+  "sme_verdict": "confirm | confirm-with-detail | dispute | null",
+  "sme_verdict_note": "<string | null>",
   "reconciliation_status": "pending | verified | gap | skipped | null",
   "reconciliation_gaps": [
     {
@@ -155,6 +158,14 @@ Chain-hashed via the substrate's `hiri_sign` mechanism; append-only; one file pe
 **reconciliation_status: skipped**: indicates the item was adjudicated `defer` in Phase 05a. Reconciliation is not applicable to deferred items (no implementation chain was dispatched); `reconciliation_status` MUST be set to `skipped` when Phase 07 processes a deferred item.
 
 **adjudicated_by field**: Two-actor field per Phase 05a/05b split. `operator` is set at Phase 05a (populated by `state_admin feedback-round adjudicate --adjudicated-by <operator-id>`); `architect` is the task-ref for the Pass 2a ruling task, set at Phase 05b. Both are null until the respective phase completes.
+
+**touches_ontology_content field (v0.3)**: A boolean classification set at Phase 02 (Atomic Decomposition) and verifiable at Phase 03 (Categorize). True when the atomic provision involves IRIs, semantic categories, namespace bindings, RDF/OWL/RDFS vocabulary, term-type classification, validator-code semantics, or any other ontological content where canonical-form correctness depends on OWL 2 DL / RDF 1.1 conformance. False when the provision is purely UI polish, build configuration, or other non-ontological work. When true:
+
+- Phase 03 outputs MUST include the recon-stage classification + an SME pre-verdict (recon may invoke semantic-sme inline during Phase 02-03; the decomposition document records the verdict before reaching Phase 05a).
+- Phase 06 implementation chain MUST insert a `semantic-sme` task UPSTREAM of the developer task (chain shape: `recon → semantic-sme → developer → architect → applier → test-runner`). This ensures the developer's authoring is constrained by SME guidance, not retrofit post-implementation.
+- Phase 07 reconciliation MUST verify the SME's verdict was honored in the landed artifact (no override without explicit operator decision recorded in `sme_verdict_note`).
+
+**sme_verdict / sme_verdict_note fields (v0.3)**: Populated when `touches_ontology_content` is true. Possible values: `confirm` (SME agrees with the atomic provision as stated), `confirm-with-detail` (SME agrees but adds clarifying constraints or surfaces adjacent gaps), `dispute` (SME disputes the ontological soundness with rationale). When `dispute`, Phase 05a operator adjudication SHOULD weight the SME's rationale; the operator MAY override but the override MUST be recorded in `sme_verdict_note`.
 
 ## Schema Extensions
 
@@ -339,6 +350,14 @@ When Phase 07-reconcile records `reconciliation_status: gap` for an atomic item,
 
 **Prevention**: Agents dispatched within feedback-round chains MUST use `outputs.status: "awaiting_operator_decision"` (with non-empty `options[]` and `recommendation`) for capacity or scope handoffs to the operator. `outputs.error` is reserved for genuine structured failures that SHOULD block the chain. Chain operators MUST verify dispatched agents honor the `awaiting_operator_decision` bypass contract per CLAUDE.md section 7.6.
 
+### AP-7: Ontology-content authored without semantic-sme review (v0.3 amendment)
+
+**Pattern**: An atomic provision touches ontology content (IRIs, semantic categories, namespace bindings, RDF/OWL/RDFS vocabulary, term-type classification, validator-code semantics) and the implementation chain dispatches developer → architect → applier WITHOUT a `semantic-sme` task between recon and developer. The developer authors ontologically incorrect content; the architect ratifies on structural completeness without ontological verification; the applier lands the defect. Downstream consequences emerge as active defects in shipped builds (e.g., OWL Full violations passing as OWL 2 DL; silent term-type filtering dropping user data).
+
+**Canonical empirical instance**: Round 3 Chain γ (commit `880d53c`) shipped 16 starter terms authored by the developer without SME review. Aaron's Round 4 feedback exposed multiple structural errors: 12 inappropriate entries (3 owl: metaclasses + 9 schema-vocabulary predicates classified as ObjectProperty); 3 entries misclassified as DatatypeProperty when canonical OWL 2 typing is AnnotationProperty. Semantic-sme review, when invoked formally in R4-1/R4-2/R4-3/R4-4 chains, additionally surfaced two active defects that had survived prior architect ratifications: SA1 (OWL Full violation in every Turtle export — `rdfs:label rdf:type owl:DatatypeProperty` conflicting with OWL 2 built-in declarations) and SA3 (silent annotation-property drop in `src/projection/index.ts` SEMANTIC_TYPE_ALLOWLIST filter). Both defects predated Round 4 and would not have been caught by any non-SME reviewer.
+
+**Prevention**: Phase 02 (Atomic Decomposition) MUST classify each atomic item via the `touches_ontology_content` field. Phase 06 implementation chains for items where `touches_ontology_content == true` MUST insert a `semantic-sme` task UPSTREAM of the developer (`recon → semantic-sme → developer → architect → applier → test-runner`). The semantic-sme's verdict is recorded in the item's `sme_verdict` field at the decomposition document and informs Phase 05a operator adjudication. Phase 07 reconciliation verifies the SME verdict was honored in the landed artifact.
+
 ## Open questions (v1 draft)
 
 1. **feedback-decomposer / feedback-reconciler agent shape**: New dedicated agent contracts or modes of the existing `reconnaissance` agent? Output shapes differ (decomposed items vs. findings + evidence_paths). Dedicated contracts are cleaner; defer to the agent-contract authoring chain.
@@ -380,4 +399,10 @@ This document is the **protocol specification only**. The following are downstre
 - FNSR Protocol Spec 07 (forward-track lifecycle; subject.type + declaration_kind extension pattern)
 - `surfaces/_primitives/bounded-authority-orchestrator.md` (BAO pattern; four-bounds enumeration requirement)
 - `surfaces/retro/surface-spec.md` (surface-spec frontmatter convention; parallel phase-spec layout)
+
+### Amendment history
+
+- **v0.1** (2026-05-22): initial draft; 14 spec-reviewer findings.
+- **v0.2** (2026-05-22): all v0.1 findings resolved; spec-reviewer "accept" + architect "ratified" clean.
+- **v0.3** (2026-05-23): semantic-sme amendment. Added `touches_ontology_content` field on item shape (Phase 02 classification); added `sme_verdict` + `sme_verdict_note` fields; updated Phase 06 implementation chain shape to insert `semantic-sme` upstream of developer when `touches_ontology_content == true`; added AP-7 (ontology-content authored without semantic-sme review). Empirical motivation: Round 3 Chain γ shipped 16 starter terms with structural ontology errors that no non-SME reviewer caught; Round 4 SME review of subsequent chains surfaced two active defects (SA1 OWL Full violation; SA3 silent annotation-property drop) that had been live since Round 3. Spec 08 v0.3 institutionalizes the SME-review insertion that Round 4 applied informally.
 - `surfaces/verification/surface-spec.md` (surface-spec frontmatter convention)

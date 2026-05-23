@@ -721,11 +721,25 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
                 f"agent reported structured error: {err!r}"
             )
         agent_name = task.get("agent")
-        if agent_name:
+        inputs = task.get("inputs") or {}
+        # CLAUDE.md §7.6: when an agent returns the
+        # awaiting_operator_decision shape, it is explicitly handing back
+        # to the operator and is NOT expected to satisfy its frontmatter
+        # `required_outputs`. The shape is validated for well-formedness
+        # (non-empty options + non-empty recommendation); malformed shapes
+        # raise their own veto. Anti-pattern checks still apply below.
+        is_awaiting = (
+            proposed_outputs.get("status") == "awaiting_operator_decision"
+        )
+        if is_awaiting:
+            shape_err = _validate_awaiting_decision_shape(proposed_outputs)
+            if shape_err is not None:
+                raise ContainmentVeto(shape_err)
+            # Valid awaiting_operator_decision: bypass required_outputs.
+        elif agent_name:
             # Multi-mode agents (architect: review|ratification) declare
             # required_outputs keyed by mode in frontmatter. The task's
             # inputs.mode selects which list applies.
-            inputs = task.get("inputs") or {}
             mode = inputs.get("mode") if isinstance(inputs, dict) else None
             required = _agent_required_outputs(agent_name, mode=mode)
             missing = [k for k in required if k not in proposed_outputs]
