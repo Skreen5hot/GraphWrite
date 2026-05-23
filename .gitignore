@@ -36,8 +36,11 @@ playwright-report/
 # Internal operator scratch
 .claude/scheduled_tasks.lock
 
-# Round 4 chain dispatch JSONs (operator scratch; canonical record in state.jsonld)
+# Round N chain dispatch JSONs + generators (operator scratch; canonical record in state.jsonld)
 round*-chain-*.json
+round*-chains.json
+round*-chains-build.py
+round*-sme-review-task.json
 feedback-round-*-decomposition-chain.json
 fnsr-spec-*-chain.json
 r43-split-tmp.txt
