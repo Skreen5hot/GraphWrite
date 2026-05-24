@@ -37,17 +37,25 @@ HUNG_IN_PROGRESS_MINUTES = 30  # in_progress > N minutes counts as hung
 
 
 def _is_daemon_alive(pid_file: Path) -> tuple[bool, int | None]:
-    """Check if fnsr.pid file points at a live process."""
+    """Check if fnsr.pid file points at a live process.
+
+    Windows-aware: the daemon holds an exclusive lock on fnsr.pid while
+    running, so `read_text` fails with PermissionError / OSError. That
+    failure is itself strong evidence the daemon is ALIVE and holding the
+    file. We fall back to a brute-force scan of running python processes
+    when the lock prevents reading.
+    """
     if not pid_file.exists():
         return False, None
     try:
         pid_text = pid_file.read_text(encoding="utf-8").strip()
         pid = int(pid_text)
     except (OSError, ValueError):
-        return False, None
+        # The file is locked by the daemon — daemon is alive but we can't
+        # read which PID. Scan running python processes for an fnsr_daemon.
+        return _scan_for_running_daemon(), None
     # Probe via OS
     if os.name == "nt":
-        # Windows: use tasklist
         import subprocess
         try:
             out = subprocess.run(
@@ -64,6 +72,31 @@ def _is_daemon_alive(pid_file: Path) -> tuple[bool, int | None]:
         except (OSError, ProcessLookupError):
             alive = False
     return alive, pid
+
+
+def _scan_for_running_daemon() -> bool:
+    """Fallback: scan for any python process running fnsr_daemon.py."""
+    if os.name == "nt":
+        import subprocess
+        try:
+            out = subprocess.run(
+                ["wmic", "process", "where",
+                 "name='python.exe'", "get", "CommandLine"],
+                capture_output=True, text=True, timeout=10,
+            )
+            return "fnsr_daemon" in out.stdout
+        except Exception:
+            return False
+    # POSIX fallback
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["pgrep", "-f", "fnsr_daemon.py"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return bool(out.stdout.strip())
+    except Exception:
+        return False
 
 
 def _load_state(state_path: Path) -> dict | None:
