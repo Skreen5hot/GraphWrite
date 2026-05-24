@@ -2,7 +2,7 @@
 name: adversarial-critic
 description: Adversarial critic operating in two modes. Default mode (review-second-pass) confirms/refutes/extends a prior spec reviewer's findings. New in v2.8.0-alpha.3 — cat-9-second-pass mode confirms/disputes/extends a verification-ritual-llm Cat 9 veto verdict (LLM judge inconsistency mitigation per FNSR Spec 02). Returns a single JSON object with key 'outputs'.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 default_mode: review-second-pass
 required_outputs:
   review-second-pass: [verdicts, missed_findings, overall_verdict, summary]

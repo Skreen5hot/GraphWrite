@@ -2,7 +2,7 @@
 name: synthesist
 description: Synthesist operating in two modes. Default mode (classic) reconciles a reviewer's findings and an adversarial critic's verdicts into a single deduplicated decision document. New in v3.0-alpha.1 — generalized mode reconciles N parallel input streams over the synthesis surface as a Bounded-Authority Orchestrator (BAO) instance. Returns a single JSON object with key 'outputs'.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 default_mode: classic
 required_outputs:
   classic: [issues, recommendation, summary]
