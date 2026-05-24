@@ -7,7 +7,7 @@ import { TermSidebar } from "./TermSidebar.js";
 import { migrate } from "../migrate/index.js";
 import { normalizeOnLoad } from "../normalize/index.js";
 import { validate, type ValidationReport } from "../validate/index.js";
-import { STARTER_TERMS } from "../validate/starter-terms.js";
+import { STARTER_TERMS, injectStarterTerms } from "../validate/starter-terms.js";
 import { serializeVmp } from "../kernel/canonicalize.js";
 import { emitTurtle } from "../emit/turtle.js";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog.js";
@@ -172,7 +172,19 @@ export function App() {
         migrationReport.removedFields.length > 0 ||
         migrationReport.info.length > 0;
 
-      const { document: normalized } = normalizeOnLoad(migrated);
+      // FR-U002 / R5-A2: Inject missing starter terms before normalization.
+      // Preserves EPOCH timestamps from STARTER_TERMS for determinism: the same
+      // document loaded twice produces identical canonical form (SPEC Â§9 / ADR-001).
+      const rawTerms = migrated["ecm:terms"];
+      let withStarters = migrated;
+      if (Array.isArray(rawTerms)) {
+        const injected = injectStarterTerms(rawTerms);
+        if (injected !== rawTerms) {
+          withStarters = { ...migrated, "ecm:terms": injected };
+        }
+      }
+
+      const { document: normalized } = normalizeOnLoad(withStarters);
       // Call validate per FR-U002; findings displayed in ValidationPanel (task 2.10).
       setValidationReport(validate(normalized));
 

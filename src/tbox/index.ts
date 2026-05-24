@@ -19,6 +19,7 @@ const PROJECT_TBOX_TURTLE = `@prefix ecm:  <https://edgecanonical.org/ns/modeler
 @prefix cco:  <https://www.commoncoreontologies.org/> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
 # Realist anchoring of the Ontology Design Pattern concept
 ecm:OntologyDesignPattern  a            owl:Class ;
@@ -34,19 +35,20 @@ ecm:Project                a            owl:Class ;
 # Serializations are concrete ICEs of a project
 ecm:Serialization          a            owl:Class ;
                            rdfs:label   "Project Serialization" ;
-                           rdfs:comment "An Information Content Entity that is a concrete encoding of a project (Ontology Design Pattern) in a specific representational format." ;
+                           rdfs:comment "An Information Content Entity that represents a project according to the syntax of some serialization format." ;
                            rdfs:subClassOf cco:ont00000958 .
 
 # Object property linking serializations to their source project
 ecm:isSerializationOf      a            owl:ObjectProperty ;
                            rdfs:label   "is serialization of" ;
                            rdfs:domain  ecm:Serialization ;
-                           rdfs:range   ecm:OntologyDesignPattern .
+                           rdfs:range   ecm:OntologyDesignPattern ;
+                           skos:definition "s is serialization of p iff s is an Information Content Entity that represents p according to the syntax of some serialization format." .
 
 # Placeholder subject class used during onboarding
 ecm:UnspecifiedSubjectMatter a          owl:Class ;
                              rdfs:label "Unspecified Subject Matter" ;
-                             rdfs:comment "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence in iao:isAbout produces a MISSING_REALIST_ANCHOR validation finding." .
+                             rdfs:comment "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence as the object of obo:IAO_0000136 produces a MISSING_REALIST_ANCHOR validation finding." .
 
 `;
 
@@ -93,7 +95,7 @@ export function getProjectTBoxNodes(): object[] {
       id: "ecm:Serialization",
       type: ["owl:Class"],
       "rdfs:label": "Project Serialization",
-      "rdfs:comment": "An Information Content Entity that is a concrete encoding of a project (Ontology Design Pattern) in a specific representational format.",
+      "rdfs:comment": "An Information Content Entity that represents a project according to the syntax of some serialization format.",
       "rdfs:subClassOf": ["cco:ont00000958"],
     },
     {
@@ -102,12 +104,13 @@ export function getProjectTBoxNodes(): object[] {
       "rdfs:label": "is serialization of",
       "rdfs:domain": "ecm:Serialization",
       "rdfs:range": "ecm:OntologyDesignPattern",
+      "skos:definition": "s is serialization of p iff s is an Information Content Entity that represents p according to the syntax of some serialization format.",
     },
     {
       id: "ecm:UnspecifiedSubjectMatter",
       type: ["owl:Class"],
       "rdfs:label": "Unspecified Subject Matter",
-      "rdfs:comment": "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence in iao:isAbout produces a MISSING_REALIST_ANCHOR validation finding.",
+      "rdfs:comment": "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence as the object of obo:IAO_0000136 produces a MISSING_REALIST_ANCHOR validation finding.",
     },
   ];
 }

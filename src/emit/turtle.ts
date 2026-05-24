@@ -176,6 +176,10 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
 
   // rdf:type from `type` field
   for (const t of typesOf(node)) {
+    // R5-B5: strip tool-internal bookkeeping class from consumer-facing Turtle export.
+    // ecm:Instance is retained in the internal JSON-LD projection (SEMANTIC_TYPE_ALLOWLIST)
+    // and in Inspector.tsx type guards; it must not appear as a domain type assertion.
+    if (expandIri(t) === "https://edgecanonical.org/ns/modeler#Instance") continue;
     result.push(makeQuad(subj, rdfTypeNode, termForIri(t)));
   }
 

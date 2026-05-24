@@ -4,6 +4,7 @@ import { deleteInstance } from "../kernel/delete-instance.js";
 import { AddLiteralDialog } from "./AddLiteralDialog.js";
 import { narrateTriple } from "../emit/triple-narration.js";
 import { buildInstanceLabelMap, iriTail, resolveInstanceDisplay, resolveTermLabel } from "./label-resolution.js";
+import { STARTER_TERMS } from "../validate/starter-terms.js";
 
 // ---------------------------------------------------------------------------
 // Domain types (local to Inspector; shared extraction is a future refactor)
@@ -172,6 +173,69 @@ function getDatatypePropertyOptions(project: Record<string, unknown>): DatatypeP
   return result;
 }
 
+/** Shape of an owl:AnnotationProperty option for the annotation predicate display. */
+interface AnnotationPropOption {
+  iri: string;
+  label: string;
+}
+
+/**
+ * Extract all owl:AnnotationProperty entries from the project's ecm:terms, with
+ * STARTER_TERMS fallback for system annotation properties not yet in ecm:terms.
+ * Per SME R5-A3: partition lookup must check ecm:terms by id, falling back to
+ * STARTER_TERMS for system properties.
+ */
+function getAnnotationPropertyOptions(project: Record<string, unknown>): AnnotationPropOption[] {
+  const raw = project["ecm:terms"];
+  const seen = new Set<string>();
+  const result: AnnotationPropOption[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw as unknown[]) {
+      if (typeof item !== "object" || item === null) continue;
+      const obj = item as Record<string, unknown>;
+      if (typeof obj["id"] !== "string") continue;
+      if (obj["type"] !== "owl:AnnotationProperty") continue;
+      const iri = obj["id"] as string;
+      seen.add(iri);
+      const labelText = resolveTermLabel(obj["rdfs:label"]);
+      const label = labelText.length > 0 ? labelText : iriTail(iri);
+      result.push({ iri, label });
+    }
+  }
+  // Fallback: include STARTER_TERMS annotation properties not already in ecm:terms.
+  for (const st of STARTER_TERMS) {
+    if (st.type === "owl:AnnotationProperty" && !seen.has(st.id)) {
+      const labelText = resolveTermLabel(st["rdfs:label"]);
+      const label = labelText.length > 0 ? labelText : iriTail(st.id);
+      result.push({ iri: st.id, label });
+    }
+  }
+  return result;
+}
+
+/**
+ * Build a map from predicate IRI to OWL term type, checking ecm:terms first
+ * then STARTER_TERMS as fallback. Used to partition ecm:LiteralAssertion entries
+ * by OWL 2 DL axiom type (AnnotationAssertion vs DataPropertyAssertion).
+ */
+function getTermTypeByIri(project: Record<string, unknown>): Map<string, string> {
+  const map = new Map<string, string>();
+  // Seed with STARTER_TERMS (lower priority; ecm:terms entries override).
+  for (const st of STARTER_TERMS) {
+    map.set(st.id, st.type);
+  }
+  const raw = project["ecm:terms"];
+  if (Array.isArray(raw)) {
+    for (const item of raw as unknown[]) {
+      if (typeof item !== "object" || item === null) continue;
+      const obj = item as Record<string, unknown>;
+      if (typeof obj["id"] !== "string" || typeof obj["type"] !== "string") continue;
+      map.set(obj["id"] as string, obj["type"] as string);
+    }
+  }
+  return map;
+}
+
 /** Shape of an owl:Class option for the class-assignment <select>. */
 interface OwlClassOption {
   iri: string;
@@ -250,6 +314,14 @@ export function Inspector({
         isEcmLiteralAssertion(la) && la["ecm:subjectIri"] === selectedInstanceId,
     );
     const dtPropOptions = getDatatypePropertyOptions(project);
+    const annPropOptions = getAnnotationPropertyOptions(project);
+    const termTypeMap = getTermTypeByIri(project);
+    const annotationLiterals = instanceLiterals.filter(
+      (la) => termTypeMap.get(la["ecm:predicateIri"]) === "owl:AnnotationProperty",
+    );
+    const datatypeLiterals = instanceLiterals.filter(
+      (la) => termTypeMap.get(la["ecm:predicateIri"]) !== "owl:AnnotationProperty",
+    );
 
     const rawInstances = Array.isArray(project["ecm:instances"])
       ? (project["ecm:instances"] as unknown[])
@@ -366,17 +438,6 @@ export function Inspector({
         <div data-testid="gw-inspector-instance">
           <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Instance</p>
           <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
-            Label
-          </p>
-          <input
-            type="text"
-            value={typeof selectedInstance["rdfs:label"] === "string" ? selectedInstance["rdfs:label"] : ""}
-            onChange={(e) => { handleLabelChange(e.target.value); }}
-            data-testid="gw-inspector-instance-label-input"
-            placeholder="(no label)"
-            style={{ fontSize: "0.8rem", width: "100%", marginBottom: "0.75rem", boxSizing: "border-box" }}
-          />
-          <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
             IRI
           </p>
           <p
@@ -444,10 +505,74 @@ export function Inspector({
               </button>
             </div>
           </div>
-          <p style={{ fontWeight: 600, marginBottom: "0.5rem", marginTop: "0.75rem" }}>
-            Literal Assertions
+          {/* ---- Annotation Assertions (owl:AnnotationProperty axioms; no semantic entailments) ---- */}
+          <p
+            style={{ fontWeight: 600, marginBottom: "0.5rem", marginTop: "0.75rem" }}
+            data-testid="gw-inspector-annotation-assertions"
+          >
+            Annotation Assertions
           </p>
-          {instanceLiterals.length === 0 && (
+          <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+            Label (rdfs:label)
+          </p>
+          <input
+            type="text"
+            value={typeof selectedInstance["rdfs:label"] === "string" ? selectedInstance["rdfs:label"] : ""}
+            onChange={(e) => { handleLabelChange(e.target.value); }}
+            data-testid="gw-inspector-instance-label-input"
+            placeholder="(no label)"
+            style={{ fontSize: "0.8rem", width: "100%", marginBottom: "0.75rem", boxSizing: "border-box" }}
+          />
+          {annotationLiterals.map((la) => {
+            const predLabel =
+              annPropOptions.find((ap) => ap.iri === la["ecm:predicateIri"])?.label ??
+              iriTail(la["ecm:predicateIri"]);
+            return (
+              <div
+                key={la.id}
+                data-testid="gw-annotation-literal-entry"
+                style={{
+                  borderBottom: "1px solid #e2e8f0",
+                  paddingBottom: "0.5rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+                  {predLabel}
+                </p>
+                <p
+                  style={{ fontSize: "0.8rem", marginBottom: "0.25rem" }}
+                  data-testid="gw-literal-value"
+                >
+                  {la["ecm:value"]}
+                  {la["ecm:language"] !== null && la["ecm:language"] !== undefined && (
+                    <span
+                      style={{ color: "#64748b", fontSize: "0.7rem", marginLeft: "0.25rem" }}
+                      data-testid="gw-literal-lang"
+                    >
+                      @{la["ecm:language"]}
+                    </span>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  data-testid="gw-btn-delete-literal"
+                  onClick={() => { handleDeleteLiteral(la.id); }}
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  Delete
+                </button>
+              </div>
+            );
+          })}
+          {/* ---- DataType Assertions (owl:DatatypeProperty axioms; participate in datatype reasoning) ---- */}
+          <p
+            style={{ fontWeight: 600, marginBottom: "0.5rem", marginTop: "0.75rem" }}
+            data-testid="gw-inspector-datatype-assertions"
+          >
+            DataType Assertions
+          </p>
+          {datatypeLiterals.length === 0 && (
             <p
               style={{ fontSize: "0.8rem", color: "#94a3b8" }}
               data-testid="gw-inspector-no-literals"
@@ -455,7 +580,7 @@ export function Inspector({
               No literal assertions.
             </p>
           )}
-          {instanceLiterals.map((la) => {
+          {datatypeLiterals.map((la) => {
             const predLabel =
               dtPropOptions.find((dp) => dp.iri === la["ecm:predicateIri"])?.label ??
               iriTail(la["ecm:predicateIri"]);

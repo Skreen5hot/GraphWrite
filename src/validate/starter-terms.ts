@@ -6,7 +6,8 @@
  * Sorted lexicographically by id (SPEC section 5.3 rule 4).
  *
  * Shared by:
- *   src/ui/App.tsx  -- buildNewDocument() injects these into ecm:terms
+ *   src/ui/App.tsx  -- buildNewDocument() injects these into ecm:terms;
+ *                      handleFileChange() calls injectStarterTerms() on upload
  *   tests/starter-terms.test.ts -- well-formedness verification
  */
 
@@ -69,3 +70,50 @@ export const STARTER_TERMS: ReadonlyArray<EcmTerm> = [
     "rdfs:label": { text: "seeAlso", lang: "en" },
   },
 ];
+
+/**
+ * Inject any missing STARTER_TERMS entries into an ecm:terms array.
+ *
+ * Idempotent: if an entry with a matching id already exists (regardless of
+ * ecm:source or other fields), it is preserved as-is; no duplicate is
+ * inserted. Injected entries are shallow copies of STARTER_TERMS constants,
+ * including EPOCH timestamps (1970-01-01T00:00:00Z) for determinism: the
+ * same document loaded twice must produce identical canonical form.
+ *
+ * The returned array is sorted lexicographically by id. If all three starter
+ * terms are already present, the original array reference is returned unchanged.
+ *
+ * Used on the upload-deserialization path (FR-U002) to ensure rdfs:label,
+ * rdfs:comment, and rdfs:seeAlso are always present after loading a document
+ * that predates or omits them (R5-A2).
+ *
+ * @param terms - The ecm:terms array from the loaded document (entries may be
+ *   any object shape from JSON.parse; only the id field is consulted for
+ *   presence detection).
+ * @returns The merged and sorted terms array, or the original if unchanged.
+ */
+export function injectStarterTerms(terms: unknown[]): unknown[] {
+  const existingIds = new Set<unknown>(
+    terms.map((t) =>
+      typeof t === "object" && t !== null
+        ? (t as Record<string, unknown>)["id"]
+        : undefined,
+    ),
+  );
+  const missing = STARTER_TERMS.filter((st) => !existingIds.has(st.id));
+  if (missing.length === 0) return terms;
+  const merged: unknown[] = [
+    ...terms,
+    ...missing.map((st): Record<string, unknown> => ({ ...st })),
+  ];
+  merged.sort((a, b) => {
+    const idOf = (v: unknown): string =>
+      typeof v === "object" && v !== null
+        ? String((v as Record<string, unknown>)["id"] ?? "")
+        : "";
+    const ai = idOf(a);
+    const bi = idOf(b);
+    return ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+  return merged;
+}

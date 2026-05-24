@@ -73,6 +73,7 @@ export const VMP_CONTEXT: Record<string, unknown> = {
   cco: "https://www.commoncoreontologies.org/",
   foaf: "http://xmlns.com/foaf/0.1/",
   schema: "https://schema.org/",
+  skos: "http://www.w3.org/2004/02/skos/core#",
   id: "@id",
   type: "@type",
   text: "@value",

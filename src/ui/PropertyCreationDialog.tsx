@@ -6,7 +6,7 @@
  *
  * Five fields per FR-U033:
  *   (a) Property Type Toggle  -- AnnotationProperty (default) / DatatypeProperty
- *   (b) Prefix / Namespace Selector -- ex:, foaf:, schema: (rdf: excluded per SPEC)
+ *   (b) Prefix / Namespace Selector -- ex:, foaf:, schema:, Custom... (rdf: excluded per SPEC)
  *   (c) Local Name field      -- regex ^[a-zA-Z_][a-zA-Z0-9_.-]*$
  *   (d) Label + BCP 47 lang tag -- required text; default "en"
  *   (e) Target Data Type Dropdown -- XSD primitives (DatatypeProperty only)
@@ -73,6 +73,12 @@ const BCP47_RE = /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$/;
 /** Local name pattern per FR-U033 (c). */
 const LOCAL_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/;
 
+/** Custom namespace IRI: must end with '#' or '/' (R5-A1a). */
+const CUSTOM_NS_IRI_RE = /^(https?:\/\/[^\s]+[#\/]|urn:[^\s]+#)$/;
+
+/** Custom prefix label: NCName-compatible (R5-A1a). */
+const CUSTOM_PREFIX_RE = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -115,15 +121,23 @@ export function PropertyCreationDialog({
   const [langTag, setLangTag] = useState("en");
   const [dataType, setDataType] = useState<string>(XSD_DATATYPES[0]);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [customNsIri, setCustomNsIri] = useState("");
+  const [customPrefixLabel, setCustomPrefixLabel] = useState("");
 
-  const selectedNs =
-    NAMESPACE_OPTIONS.find((o) => o.prefix === selectedPrefix)?.ns ?? "";
+  const isCustomPrefix = selectedPrefix === "custom";
+  const selectedNs = isCustomPrefix
+    ? customNsIri
+    : NAMESPACE_OPTIONS.find((o) => o.prefix === selectedPrefix)?.ns ?? "";
   const trimmedLocal = localName.trim();
   const composedIri =
     trimmedLocal.length > 0 ? `${selectedNs}${trimmedLocal}` : "";
   const localNameValid = trimmedLocal.length === 0 || LOCAL_NAME_RE.test(trimmedLocal);
   const langTagTrimmed = langTag.trim();
   const langTagValid = langTagTrimmed.length === 0 || BCP47_RE.test(langTagTrimmed);
+  const customNsIriValid =
+    !isCustomPrefix || customNsIri.length === 0 || CUSTOM_NS_IRI_RE.test(customNsIri);
+  const customPrefixLabelValid =
+    !isCustomPrefix || customPrefixLabel.length === 0 || CUSTOM_PREFIX_RE.test(customPrefixLabel);
   const iriAlreadyExists =
     composedIri.length > 0 && collectExistingIris(project).has(composedIri);
   const isAnnotation = propertyType === "owl:AnnotationProperty";
@@ -148,6 +162,28 @@ export function PropertyCreationDialog({
     if (langTagTrimmed.length === 0 || !BCP47_RE.test(langTagTrimmed)) {
       setSubmitError("Language tag must be a valid BCP 47 tag (e.g. en, fr, zh-Hans).");
       return;
+    }
+    if (isCustomPrefix) {
+      if (customNsIri.length === 0) {
+        setSubmitError("Namespace IRI is required for a custom prefix.");
+        return;
+      }
+      if (!CUSTOM_NS_IRI_RE.test(customNsIri)) {
+        setSubmitError(
+          "Namespace IRI must be https://, http://, or urn: and end with '#' or '/'.",
+        );
+        return;
+      }
+      if (customPrefixLabel.length === 0) {
+        setSubmitError("Prefix label is required for a custom prefix.");
+        return;
+      }
+      if (!CUSTOM_PREFIX_RE.test(customPrefixLabel)) {
+        setSubmitError(
+          "Prefix label must match ^[A-Za-z_][A-Za-z0-9_-]*$ (NCName-compatible).",
+        );
+        return;
+      }
     }
     const now = new Date().toISOString();
     const newTerm: Record<string, unknown> = {
@@ -233,8 +269,60 @@ export function PropertyCreationDialog({
                 {o.prefix}: ({o.ns})
               </option>
             ))}
+            <option value="custom">Custom...</option>
           </select>
         </label>
+
+        {isCustomPrefix && (
+          <>
+            <label className="gw-form-label">
+              Namespace IRI *
+              <input
+                className="gw-form-input"
+                type="text"
+                value={customNsIri}
+                onChange={(e) => {
+                  setCustomNsIri(e.target.value);
+                  setSubmitError(null);
+                }}
+                placeholder="e.g. https://example.org/myvocab#"
+                data-testid="gw-input-custom-ns-iri"
+              />
+            </label>
+            {!customNsIriValid && (
+              <p
+                className="gw-form-error"
+                role="alert"
+                data-testid="gw-custom-ns-iri-error"
+              >
+                Namespace IRI must be https://, http://, or urn: and end with # or /.
+              </p>
+            )}
+            <label className="gw-form-label">
+              Prefix Label *
+              <input
+                className="gw-form-input"
+                type="text"
+                value={customPrefixLabel}
+                onChange={(e) => {
+                  setCustomPrefixLabel(e.target.value);
+                  setSubmitError(null);
+                }}
+                placeholder="e.g. myns"
+                data-testid="gw-input-custom-prefix-label"
+              />
+            </label>
+            {!customPrefixLabelValid && (
+              <p
+                className="gw-form-error"
+                role="alert"
+                data-testid="gw-custom-prefix-label-error"
+              >
+                Prefix label must match ^[A-Za-z_][A-Za-z0-9_-]*$ (NCName-compatible).
+              </p>
+            )}
+          </>
+        )}
 
         {/* (c) Local Name */}
         <label className="gw-form-label">

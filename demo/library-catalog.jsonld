@@ -1,66 +1,36 @@
 {
   "@context": {
-    "cco": "https://www.commoncoreontologies.org/",
     "ecm": "https://edgecanonical.org/ns/modeler#",
-    "ecm:classIris": {
-      "@container": "@set",
-      "@type": "@id"
-    },
-    "ecm:instances": {
-      "@container": "@set"
-    },
-    "ecm:isSerializationOf": {
-      "@type": "@id"
-    },
-    "ecm:layouts": {
-      "@container": "@set"
-    },
-    "ecm:literalAssertions": {
-      "@container": "@set"
-    },
-    "ecm:objectIri": {
-      "@type": "@id"
-    },
-    "ecm:ontologies": {
-      "@container": "@set"
-    },
-    "ecm:predicateIri": {
-      "@type": "@id"
-    },
-    "ecm:relations": {
-      "@container": "@set"
-    },
-    "ecm:serializations": {
-      "@container": "@set"
-    },
-    "ecm:snapshots": {
-      "@container": "@set"
-    },
-    "ecm:subjectIri": {
-      "@type": "@id"
-    },
-    "ecm:terms": {
-      "@container": "@set"
-    },
-    "iao": "http://purl.obolibrary.org/obo/iao#",
-    "iao:isAbout": {
-      "@container": "@set",
-      "@type": "@id"
-    },
-    "id": "@id",
-    "owl": "http://www.w3.org/2002/07/owl#",
     "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    "rdfs:subClassOf": {
-      "@container": "@set",
-      "@type": "@id"
-    },
-    "rdfs:subPropertyOf": {
-      "@container": "@set",
-      "@type": "@id"
-    },
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "obo": "http://purl.obolibrary.org/obo/",
+    "cco": "https://www.commoncoreontologies.org/",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "schema": "https://schema.org/",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "id": "@id",
     "type": "@type",
-    "xsd": "http://www.w3.org/2001/XMLSchema#"
+    "text": "@value",
+    "lang": "@language",
+    "ecm:terms":             { "@container": "@set" },
+    "ecm:instances":         { "@container": "@set" },
+    "ecm:relations":         { "@container": "@set" },
+    "ecm:literalAssertions": { "@container": "@set" },
+    "ecm:ontologies":        { "@container": "@set" },
+    "ecm:layouts":           { "@container": "@set" },
+    "ecm:snapshots":         { "@container": "@set" },
+    "ecm:serializations":    { "@container": "@set" },
+    "ecm:classIris":         { "@type": "@id", "@container": "@set" },
+    "ecm:subjectIri":        { "@type": "@id" },
+    "ecm:predicateIri":      { "@type": "@id" },
+    "ecm:objectIri":         { "@type": "@id" },
+    "ecm:isSerializationOf": { "@type": "@id" },
+    "iao:isAbout":           { "@id": "obo:IAO_0000136", "@type": "@id", "@container": "@set" },
+    "rdfs:range":            { "@type": "@id" },
+    "rdfs:subClassOf":       { "@type": "@id", "@container": "@set" },
+    "rdfs:subPropertyOf":    { "@type": "@id", "@container": "@set" }
   },
   "id": "urn:uuid:11111111-1111-4111-8111-111111110001",
   "type": [
@@ -220,7 +190,8 @@
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0001",
       "type": "owl:Class",
       "ecm:source": "ecm:project-created",
-      "rdfs:label": { "text": "Book", "lang": "en" }
+      "rdfs:label": { "text": "Book", "lang": "en" },
+      "rdfs:subClassOf": ["cco:ont00000064"]
     },
     {
       "id": "urn:uuid:11111111-1111-4111-8111-cccccccc0002",
