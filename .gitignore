@@ -11,6 +11,7 @@ Thumbs.db
 state.jsonld.lock
 fnsr.pid
 fnsr_test.pid
+fnsr.stall_status.json
 raw_output.txt
 
 # Per-user Claude Code preferences (allowlist; not portable)
@@ -40,6 +41,17 @@ playwright-report/
 round*-chain-*.json
 round*-chains.json
 round*-chains-build.py
+round*-chains-fix.json
+round*-chains-fix.py
+round*-chains-v5.json
+round*-chains-v5-build.py
+round*-chains-v5-abandon.sh
+round*-c6-retry.json
+round*-c6-retry-build.py
+round*-c6-retry-abandon.sh
+round*-cmd-fix.json
+round*-cmd-fix-build.py
+round*-cmd-fix-abandon.sh
 round*-sme-review-task.json
 feedback-round-*-decomposition-chain.json
 fnsr-spec-*-chain.json

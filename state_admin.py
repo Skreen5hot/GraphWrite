@@ -1473,6 +1473,7 @@ def cmd_promote_candidate(args: argparse.Namespace) -> int:
 # var or --manifest CLI flag.
 _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "fnsr_daemon.py",
+    "fnsr_stall_watch.py",
     "state_admin.py",
     "PLAYBOOK.md",
     ".gitignore",

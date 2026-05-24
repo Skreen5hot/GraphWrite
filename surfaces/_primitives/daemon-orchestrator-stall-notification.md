@@ -11,7 +11,11 @@ canonical_reference: OPERATOR-MEDIATION-LOG.md Event 13 (2026-05-22; "Recurring 
 
 ## Status
 
-**Draft candidate** for v3.2+ substrate work. This document establishes the primitive's contract so subsequent v3.2 implementation can build against a stable specification; it does NOT ship enforcement in the current release.
+**v3.1.0-bridge implementation landed (2026-05-24)** — the operational watchdog form of this primitive ships as [`fnsr_stall_watch.py`](../../fnsr_stall_watch.py) (read-only probe over state.jsonld + fnsr.pid; emits `fnsr.stall_status.json`). Triggered by Aaron's operational request: *"Can we make a small listener that when it is done it posts a status to you the orchestrator. IF the state has stopped and we are in a demo that is fine but if we have ready work and we have stop you investigate and fix if you can?"*
+
+The bridge form implements detection categories A (dispatch-impossible by deps), B (hung in_progress), and C (Pass 2a gated). Category D (developer truncation) is deferred to v3.2.
+
+**v3.2 candidate (deferred):** daemon-side emission — the daemon's main loop calls `_detect_stalls(state)` and writes structured `stall_detected` audit events when the picker returns None. The bridge watchdog is a read-only probe; v3.2 promotes it into the chain-hashed audit trail as first-class events.
 
 ## What it is
 
