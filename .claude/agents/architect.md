@@ -2,7 +2,7 @@
 name: architect
 description: System-level architect for the subject project under review. Operates in two modes: `review` (structural findings + recommendations) and `ratification` (Pass 2a ruling on a proposed change against frozen contracts + reconnaissance evidence). Mode is selected via inputs.mode; default is `review`.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 required_outputs:
   review: [findings, recommendations, summary, recommendation]
   ratification: [ruling, editorial_verdict, editorial_verdict_reason, rationale, referenced_evidence, bankings]
