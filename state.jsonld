@@ -41533,6 +41533,23 @@
           },
           "prev_hash": "fed9f5efe5f1f1d2eb68eb3d9fa3fc57ef7ec3757d66b54853baab0ed12ddfc9",
           "chain_hash": "827d3adac2041523c72d7775f2a7e98cd19bb414583da75c5374eec82df5c455"
+        },
+        {
+          "ts": "2026-05-25T20:48:15Z",
+          "event": "forward_track_state_transition",
+          "payload": {
+            "forward_track_id": "ft-r3-s4-01-label-text-collision",
+            "from_state": "A",
+            "to_state": "C",
+            "trigger": "FT registry cleanup; auto-discovered alongside ft-r3-s2-05 resolution",
+            "reason": "Operator-decision from Round 3: 'Operator opted to keep IRI-only check + starter terms make label-text-collision-by-accident moot. Expected unused but tracked for completeness.' (per ft creation payload). Starter terms (R4-2) + AddAnnotationDialog (R5b-1) shipped without label-text collision becoming a real issue. Withdrawing the forward-track per the operator's documented adjudication; no code change needed.",
+            "transitioning_cycle": null,
+            "timestamp": "2026-05-25T20:48:15Z",
+            "operator": "operator",
+            "resolution_path": "withdrawn"
+          },
+          "prev_hash": "827d3adac2041523c72d7775f2a7e98cd19bb414583da75c5374eec82df5c455",
+          "chain_hash": "534cc7351703395ab8fda43dfb0b7412ee21ade9ed45cf88f067b57ab54e4b9d"
         }
       ]
     },
