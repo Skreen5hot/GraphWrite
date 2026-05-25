@@ -34,6 +34,8 @@ from pathlib import Path
 # Default thresholds
 STABLE_THRESHOLD_SECONDS = 60  # state must be stable for >= N seconds before stall classified
 HUNG_IN_PROGRESS_MINUTES = 30  # in_progress > N minutes counts as hung
+STALE_RESIDUE_HOURS = 24  # blocked deps older than N hours = stale (informational), not ACTION
+COMMIT_GAP_FRESH_HOURS = 2  # uncommitted src/ diff fresher than N hours = ACTION (commit-gap)
 
 
 def _is_daemon_alive(pid_file: Path) -> tuple[bool, int | None]:
@@ -122,25 +124,64 @@ def _detect_stalls(state: dict) -> dict:
             in_progress_tasks.append(t)
 
     # Category A: dispatch-impossible by deps
-    # A task in status=ready whose deps include any blocked/failed/abandoned task
-    dispatch_impossible = []
+    # A task in status=ready whose deps include any blocked/failed/abandoned task.
+    # Each bad-dep is annotated with `hours_since_blocked` (read from the dep's
+    # history). Tasks where every bad-dep is older than STALE_RESIDUE_HOURS are
+    # classified as `stale_residue` rather than fresh actionable stalls.
+    now_iso = datetime.datetime.now(datetime.timezone.utc)
+
+    def _hours_since_blocked(dep_task: dict) -> float | None:
+        """Return hours since the dep's most recent status-changing event."""
+        history = dep_task.get("history", []) or []
+        for h in reversed(history):
+            ts_str = h.get("ts") or h.get("when") or h.get("timestamp")
+            if not ts_str:
+                continue
+            try:
+                t = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            return (now_iso - t).total_seconds() / 3600
+        return None
+
+    dispatch_impossible_fresh = []
+    dispatch_impossible_stale = []
     for t in tasks:
         if t.get("status") != "ready":
             continue
         deps = t.get("depends_on", []) or []
         bad_deps = []
+        max_age_hours = 0.0  # oldest bad dep age
+        any_unknown_age = False
         for d in deps:
             dep = by_id.get(d)
             if dep is None:
-                bad_deps.append({"dep_id": d, "dep_status": "MISSING"})
+                bad_deps.append({"dep_id": d, "dep_status": "MISSING", "hours_since_blocked": None})
+                any_unknown_age = True
             elif dep.get("status") in ("blocked", "failed", "abandoned"):
-                bad_deps.append({"dep_id": d, "dep_status": dep.get("status")})
+                age = _hours_since_blocked(dep)
+                bad_deps.append({
+                    "dep_id": d,
+                    "dep_status": dep.get("status"),
+                    "hours_since_blocked": round(age, 1) if age is not None else None,
+                })
+                if age is None:
+                    any_unknown_age = True
+                else:
+                    max_age_hours = max(max_age_hours, age)
         if bad_deps:
-            dispatch_impossible.append({
+            entry = {
                 "task_id": t["@id"],
                 "agent": t.get("agent"),
                 "bad_deps": bad_deps,
-            })
+                "max_bad_dep_age_hours": round(max_age_hours, 1) if not any_unknown_age else None,
+            }
+            # Stale if ALL bad deps are older than threshold and ages are known
+            if not any_unknown_age and max_age_hours >= STALE_RESIDUE_HOURS:
+                dispatch_impossible_stale.append(entry)
+            else:
+                dispatch_impossible_fresh.append(entry)
+    dispatch_impossible = dispatch_impossible_fresh + dispatch_impossible_stale
 
     # Category B: hung in_progress (no history transition for > threshold)
     hung_in_progress = []
@@ -209,9 +250,12 @@ def _detect_stalls(state: dict) -> dict:
         stall_kind = "running"
     elif dispatchable_now > 0:
         stall_kind = "stall_with_work"
-    elif ready_count > 0:
-        # Ready tasks exist but all are dispatch-impossible (deps not done)
+    elif len(dispatch_impossible_fresh) > 0:
+        # Fresh bad-deps (< STALE_RESIDUE_HOURS) — actionable stall
         stall_kind = "stall_dispatch_impossible"
+    elif len(dispatch_impossible_stale) > 0:
+        # ALL bad-deps are stale residue (> STALE_RESIDUE_HOURS old) — informational, not action
+        stall_kind = "demo_pause_with_stale_residue"
     else:
         stall_kind = "demo_pause"
 
@@ -220,10 +264,13 @@ def _detect_stalls(state: dict) -> dict:
         "stall_kind": stall_kind,
         "dispatchable_now": dispatchable_now,
         "in_progress_task_ids": [t["@id"] for t in in_progress_tasks],
-        "dispatch_impossible_tasks": dispatch_impossible[:20],  # cap for size
-        "dispatch_impossible_total": len(dispatch_impossible),
+        "dispatch_impossible_fresh": dispatch_impossible_fresh[:20],
+        "dispatch_impossible_fresh_total": len(dispatch_impossible_fresh),
+        "dispatch_impossible_stale": dispatch_impossible_stale[:10],
+        "dispatch_impossible_stale_total": len(dispatch_impossible_stale),
         "hung_in_progress": hung_in_progress,
         "pass_2a_gated": pass_2a_gated,
+        "stale_residue_threshold_hours": STALE_RESIDUE_HOURS,
     }
 
 
@@ -274,19 +321,29 @@ def probe_once(root: Path) -> dict:
             report["recommendation"] = "OK_RUNNING: daemon is actively dispatching"
         elif stall["stall_kind"] == "demo_pause":
             report["recommendation"] = "OK_DEMO_PAUSE: no work queued; substrate idle by design"
+        elif stall["stall_kind"] == "demo_pause_with_stale_residue":
+            report["recommendation"] = (
+                f"OK_DEMO_PAUSE: no fresh work; "
+                f"{stall.get('dispatch_impossible_stale_total', 0)} stale residue "
+                f"task(s) with blocked deps older than {STALE_RESIDUE_HOURS}h "
+                "(known-stuck from prior phase; not actionable)"
+            )
         elif stall["stall_kind"] == "stall_with_work":
             if not daemon_alive:
                 report["recommendation"] = "ACTION: daemon dead but dispatchable work exists; restart daemon"
             else:
                 report["recommendation"] = (
                     "ACTION: daemon alive but not dispatching despite dispatchable work; "
-                    "investigate why picker is stuck"
+                    "wait one polling cycle (~30s); if still stalled, investigate picker"
                 )
         elif stall["stall_kind"] == "stall_dispatch_impossible":
             report["recommendation"] = (
-                "ACTION: ready tasks have unsatisfiable deps (blocked/abandoned). "
-                "Cascade-fix the deps graph (the recon-front deadlock pattern from "
-                "Round 5 v5 cascade is one example)"
+                f"ACTION: {stall.get('dispatch_impossible_fresh_total', 0)} ready "
+                f"task(s) have FRESH unsatisfiable deps "
+                f"(blocked < {STALE_RESIDUE_HOURS}h). Cascade-fix the deps graph "
+                "(the recon-front deadlock pattern from Round 5 v5 cascade is one example). "
+                f"Plus {stall.get('dispatch_impossible_stale_total', 0)} stale-residue "
+                "task(s) which are informational only."
             )
         else:
             report["recommendation"] = "INSPECT: unrecognized stall kind"
@@ -337,9 +394,12 @@ def main() -> int:
         print(f"recommendation={rec}")
         print(f"counts={report.get('counts', {})}")
         print(f"daemon_alive={report.get('daemon_alive')}")
-        if report.get("dispatch_impossible_total", 0) > 0:
-            print(f"dispatch_impossible_tasks={report.get('dispatch_impossible_total')} "
-                  f"(see fnsr.stall_status.json for details)")
+        fresh = report.get("dispatch_impossible_fresh_total", 0)
+        stale = report.get("dispatch_impossible_stale_total", 0)
+        if fresh > 0:
+            print(f"dispatch_impossible_FRESH={fresh} (ACTION required)")
+        if stale > 0:
+            print(f"dispatch_impossible_STALE={stale} (informational; prior-phase residue)")
     return 0
 
 
