@@ -16,11 +16,11 @@ This document is the per-phase tactical companion to ROADMAP.md. It provides sub
 
 **Depends on:** No predecessors.
 
-**Status:** Substantively Complete — all 12 Phase 1 tasks (1.1–1.12) shipped at substrate-side with 106/106 tests passing across 14 spec test files. Per-task closure canonical-doc updates (this section's per-task Status reflections) deferred to v3.2 via the H2 preventive-deferral pattern per PLAYBOOK §7.5 Property 4; the canonical-doc closure chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. Known follow-ups tracked in [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md): per-code fixtures for structural-validator's remaining 24 codes (ft-097-test-validator-2); emitter scope-split for semantic-jsonld + mermaid + markdown (ft-112-test-emitter-typefix-2); OED-303 + OED-313 closure pending; coverage AC (§21.2) wired to CI when CI lands.
+**Status:** Substantively Complete EXCEPT exit-gate OEDs (301, 303, 306, 313) — all 12 Phase 1 tasks (1.1–1.12) shipped at substrate-side with 106/106 tests passing across 14 spec test files; formal Phase 1 completion blocked on OED resolution. OED-307 resolved (ROADMAP §Phase 1 Decisions Deferred). Per-task closure canonical-doc updates (this section's per-task Status reflections) deferred to v3.2 via the H2 preventive-deferral pattern per PLAYBOOK §7.5 Property 4; the canonical-doc closure chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. Known follow-ups tracked in [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md): per-code fixtures for structural-validator's remaining 24 codes (ft-097-test-validator-2); emitter scope-split for semantic-jsonld + mermaid + markdown (ft-112-test-emitter-typefix-2); OED-301 + OED-303 + OED-306 + OED-313 closure pending; coverage AC (§21.2) wired to CI when CI lands.
 
 **OED gates:**
 - OED-306 must close before Phase 1 golden files are committed.
-- OED-307 must close before CLI integration tests for stub commands are authored.
+- OED-307 RESOLVED (CLI stub strategy ratified per ROADMAP §Phase 1 Decisions Deferred; stubs return exit 2 with "not yet implemented").
 - OED-301 must close before Mermaid golden files are committed; structural (non-golden) Mermaid tests may proceed.
 - OED-303 must close before Phase 1 exits; the retention-policy ruling governs the `ecm:validationReports` shape committed to Phase 1 golden files.
 - OED-313 must close before any golden files are committed. Conformance fixture set — exact input fixture set for Phase 1 vs Phase 4 golden files. Resolution required before any golden files are committed.
@@ -296,6 +296,8 @@ al round-trip bytewise for all conformance fixtures.
 **Goal:** Make the kernel interactive in the browser with minimum modeling and editing flows.
 
 **Depends on:** Phase 1 complete.
+
+**Status:** In Progress (informal) — Phase 1 dependency overridden per ROADMAP Phase 2 Status; OEDs 301/303/306/313 deferred to v3.2 per H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4). Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b complete (commits 880d53c through 7cd0c22). Formal Phase 2 completion deferred until Phase 1 exit-gate OEDs resolve OR the override pattern is canonicalized.
 
 **OED gates:** No blocking OEDs for core Phase 2 scope. FR-U028 acknowledgement-persistence interaction with OED-303 is deferred to Phase 3.
 
@@ -1102,7 +1104,7 @@ Any phase that modifies canonical output shape MUST update all affected golden f
 | OED-304 | 4 | Public release (not Phase 4 exit) | Open |
 | OED-305 | 6 | Help loader | Open |
 | OED-306 | 1 | Phase 1 golden files | Open |
-| OED-307 | 1 | CLI integration tests for stub commands | Open |
+| OED-307 | 1 | CLI integration tests for stub commands | Resolved (ROADMAP §Phase 1 Decisions Deferred: `import-ontology` + `export --format zip` registered as stubs returning exit 2 with "not yet implemented") |
 | OED-308 | 5 | FSA derived-cache implementation | Open |
 | OED-309 | 5 | BroadcastChannel implementation | Open |
 | OED-310 | 5 | FSA permission-revocation UX | Open |

@@ -59261,6 +59261,18 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-05-25T12:56:19Z",
+          "event": "phase_boundary_declared",
+          "payload": {
+            "from_phase": "phase-1",
+            "to_phase": "phase-2",
+            "declared_by": "operator",
+            "notes": "B1-\u03b2 operator-honest reconciliation per Aaron 2026-05-25. Phase 2 declared 'In Progress (informal); Phase 1 dependency overridden \u2014 OEDs 301/303/306/313 deferred to v3.2 per H2 preventive-deferral pattern (PLAYBOOK \u00a77.5 Property 4).' Browser UI shipped at commit 4910d78; stakeholder iterations 3-5b complete (880d53c through 7cd0c22). Anchored on R5b-1 chain test as the most recent completed task representing Phase 2 work. Surfaced by SVG v3.1.0-bridge probe (commit 02b8bc0)."
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "95971e320c765fb587c4481e542e1f46f2770f711baaf3e2c631e8e06f69f17b"
         }
       ]
     }

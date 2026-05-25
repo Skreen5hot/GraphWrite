@@ -33,7 +33,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Goal:** Deliver the deterministic Node.js core that validates VMP projects and emits every required artifact.
 
-**Status:** Substantively Complete (12 of 12 P1 tasks; 106/106 tests passing across 14 spec test files). Per-task closure canonical-doc updates (this section's per-task status reflections) deferred to v3.2 via the H2 preventive-deferral pattern documented in PLAYBOOK §7.5 Property 4; canonical-doc chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. See [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md) for the 14 gaps surfaced and the 12 forward-tracks at v3.2-design cycle. Phase 1 exit-gate items (OED-303, OED-313) remain open; per-code fixtures + comprehensive golden files + emitter scope-split follow-ups (semantic-jsonld, mermaid, markdown) also pending per the audit chain.
+**Status:** Substantively Complete EXCEPT exit-gate OEDs (303, 306, 313) — 12 of 12 P1 tasks shipped; 106/106 tests passing across 14 spec test files; formal Phase 1 completion blocked on OED resolution. Per-task closure canonical-doc updates (this section's per-task status reflections) deferred to v3.2 via the H2 preventive-deferral pattern documented in PLAYBOOK §7.5 Property 4; canonical-doc chains re-dispatch as v3.2's first 12 validation tasks once contract-visibility refinement lands. See [V3.2-GAP-REGISTRY.md](../V3.2-GAP-REGISTRY.md) for the 14 gaps surfaced and the 12 forward-tracks at v3.2-design cycle. Phase 1 exit-gate items (OED-303, OED-306, OED-313) remain open; per-code fixtures + comprehensive golden files + emitter scope-split follow-ups (semantic-jsonld, mermaid, markdown) also pending per the audit chain.
 
 **Scope:**
 - VMP profile and canonical serializer (§5, §5.3).
@@ -71,7 +71,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Goal:** Make the kernel interactive in the browser with the minimum modeling and editing flows.
 
-**Status:** Not Started
+**Status:** In Progress (informal) — Phase 1 dependency overridden; OEDs 301/303/306/313 deferred to v3.2 per H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4). Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b complete (commits 880d53c through 7cd0c22); UI live at https://skreen5hot.github.io/GraphWrite/. Formal Phase 2 completion deferred until Phase 1 exit-gate OEDs resolve OR the override pattern is canonicalized. Substrate phase-boundary audit event: see state.jsonld for the `phase_boundary_declared` entry anchored on the SVG v3.1.0-bridge ship commit.
 
 **Scope:**
 - React UI shell with the §26 layout: header, term sidebar, instance canvas, inspector / explanation panel, outputs panel.
