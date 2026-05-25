@@ -52438,6 +52438,46 @@
           },
           "prev_hash": "b7ddc1c293d71f1c3b71795e4492c260c1e41073af6c372e7939aabc53b2a139",
           "chain_hash": "dea03ad096d75b83340be78e3dd3818d0bbc6af6b73a83852ee73bcfc92037d8"
+        },
+        {
+          "ts": "2026-05-25T10:19:32Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-374-sme-r5-decomposition-1",
+            "category": "discipline-correction",
+            "state": 1,
+            "content": "Auto-mode commit-gap: applier writes to disk; chains report status=done; but git commit is a separate operator-action step. In Round 5 I reported 'Chain N landed' meaning 'applier wrote files' but Aaron reasonably expected 'landed = deployed.' Production deploy stayed on Round 4 for hours because I never committed the source diff. Discipline: in Auto Mode, when chains land source changes that affect the deployed artifact, I MUST either commit and push proactively OR surface the gap explicitly. Aaron-2026-05-25.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-25T10:19:32Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "dea03ad096d75b83340be78e3dd3818d0bbc6af6b73a83852ee73bcfc92037d8",
+          "chain_hash": "dc6d15d575aec1e6a7228b4723a775f3bf2ae95e93b338a5dceff8ad640ba8df"
+        },
+        {
+          "ts": "2026-05-25T10:19:34Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-374-sme-r5-decomposition-2",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "Listener push-vs-pull architecture gap: Spec 09 v3.1.0-bridge ships fnsr_stall_watch.py as a read-only probe that orchestrator-Agent must INVOKE to see status. True push (per the original Spec 09 candidate doc) requires daemon-side emission \u2014 the daemon detects stall conditions in next_ready_task() and writes stall_detected audit events. Aaron 2026-05-25: in Auto Mode I should be invoking the probe on every conversational turn to honestly answer 'are we making progress?' Until v3.2 ships daemon-side push, the pattern is: orchestrator-Agent runs python fnsr_stall_watch.py FIRST on every turn that touches chain progress, reports its classification verbatim, then acts.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-25T10:19:34Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "dc6d15d575aec1e6a7228b4723a775f3bf2ae95e93b338a5dceff8ad640ba8df",
+          "chain_hash": "ddc308dc3aa314d0c6f5881df5c2bb2d43015a876a27fb33340ecebc05a5afc8"
         }
       ],
       "outputs": {
@@ -54922,6 +54962,26 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-05-25T10:19:33Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-425-apply-r5-c1-c6-only-1",
+            "category": "pattern-observation",
+            "state": 1,
+            "content": "Recon-front cascade deadlock pattern: when I cascade-abandon chain tail tasks, the chain front (recon depending on prior-chain's abandoned test) remains pointing at the abandoned ID and the next chain wedges. This bit Round 5 four times (v2/v3/v4/v5 cascades) \u2014 each cascade fix only repaired the side I was looking at, leaving the other side broken. Detection: state_admin verify-deps-graph would catch this immediately by reporting ready tasks with non-done deps. The fnsr_stall_watch.py v3.1.0-bridge now detects it as stall_dispatch_impossible. Substrate-discipline lesson: when abandoning a task and replacing it, walk BOTH the downstream deps (tasks that depend on the abandoned task \u2014 known cascade) AND the upstream deps (tasks the abandoned task depended on \u2014 likely fine but tracked) AND the SIBLING-chain front deps (the recon-front pattern \u2014 frequently missed).",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-25T10:19:33Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "0133736f82b89548113d8ad3a8546dbbd7e098d88c99d7f0e159b0ac8d3fe88e"
         }
       ]
     },
@@ -55450,6 +55510,26 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-05-25T10:19:35Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-439-test-r5-c1-v4-1",
+            "category": "pattern-observation",
+            "state": 1,
+            "content": "test-runner Windows subprocess.run('npm') failure: daemon's _test_runner uses shell=False and subprocess.run resolves 'npm' to nothing on Windows because npm is actually npm.cmd. inputs.cmd must use the absolute path: '\"C:/Program Files/nodejs/npm.cmd\" test'. Caused chain 1 v3 test 426 to block with WinError 2; cascaded to chains 2-7 being unable to run. v3.2 substrate candidate: detect Windows + 'npm' in cmd_list and rewrite to npm.cmd, OR set shell=True for Windows test-runner invocations.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-25T10:19:35Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "10e5b6dd9aca9edaa36d9acefdb6a55de2d0ac0f88853e56c9e9d2dcb2ab8312"
         }
       ]
     },
@@ -58968,6 +59048,213 @@
       "history": [
         {
           "ts": "2026-05-24T10:40:47Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:482-dev-r5b-add-annotation",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:481-test-r5-c7-v5",
+        "urn:fnsr:task:459-rat-r5-c3-v5"
+      ],
+      "inputs": {
+        "round": "5b",
+        "chain_label": "R5b-1: Add Annotation button (parallel to existing Add literal button)",
+        "item_ids": [
+          "R5b-1"
+        ],
+        "purpose": "Add an 'Add Annotation' button to the Annotation Assertion section of Inspector.tsx, mirroring the existing 'Add literal' button in the DataType Assertion section. Aaron 2026-05-25 testing: 'there is NO way to add another Annotation Assertion there should be an Add Annotation button.' This completes the symmetry that Chain 3's R5-A3 split established. Pure UX follow-up; no ontology semantics change.",
+        "files_in_scope": [
+          "src/ui/Inspector.tsx",
+          "src/ui/App.tsx",
+          "src/composition/"
+        ],
+        "constraint": "Mirror the existing 'Add literal' affordance: button at the bottom of the section; clicking opens (or inline-reveals) a form for picking which annotation property (rdfs:label / rdfs:comment / rdfs:seeAlso / user-created annotation properties from the Term Sidebar Annotation Properties section) + the value. Use the SAME shape as literal-add but route to the owl:AnnotationProperty assertion path in the underlying data model. Determinism MUST be preserved (no live timestamps in newly-created assertions). Per Spec 03 brief-confirmation pattern: this completes the symmetry the architect ratified at 459-rat-r5-c3-v5 \u2014 no fresh ratification needed.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Brief-confirmation chain",
+          "Round 5 R5-A3 architect ratification 459-rat-r5-c3-v5 (parent ratification)"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/AddAnnotationDialog.tsx",
+            "rationale": "New dialog component mirroring AddLiteralDialog.tsx exactly \u00e2\u20ac\u201d same form fields (property, value, datatype, language tag), same ecm:LiteralAssertion output shape, same crypto.randomUUID() ID generation \u00e2\u20ac\u201d but populating the property dropdown from owl:AnnotationProperty terms (with STARTER_TERMS fallback per the Inspector's getAnnotationPropertyOptions pattern) instead of owl:DatatypeProperty terms. Distinct testIds (gw-dialog-add-annotation, gw-form-add-annotation, gw-select-annotation-predicate, etc.) preserve testability separation from the literal dialog.",
+            "before": null,
+            "after": "/**\n * AddAnnotationDialog -- form for adding owl:AnnotationProperty assertions.\n *\n * Produces an ecm:LiteralAssertion routed to the AnnotationAssertion section\n * per OWL 2 DL axiom-type partition (R5-A3 / ratification 459-rat-r5-c3-v5).\n * Literal-assertion shape: SPEC section 5.10.\n * IRI generation: uses crypto.randomUUID() (Web Crypto API; browser-native;\n * typed in tsconfig.ui.json lib:DOM).\n */\n\nimport { useState, type FormEvent } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\nimport { iriTail, resolveTermLabel } from \"./label-resolution.js\";\nimport { STARTER_TERMS } from \"../validate/starter-terms.js\";\n\n/** Allowed Phase 2 datatypes per SPEC section 5.10. */\nconst DATATYPE_OPTIONS = [\n  \"xsd:string\",\n  \"xsd:boolean\",\n  \"xsd:integer\",\n  \"xsd:decimal\",\n  \"xsd:double\",\n  \"xsd:date\",\n  \"xsd:dateTime\",\n  \"xsd:anyURI\",\n  \"rdf:langString\",\n] as const;\n\ninterface AnnotationPropOption {\n  iri: string;\n  label: string;\n}\n\ninterface AddAnnotationDialogProps {\n  /** The project document; used to extract owl:AnnotationProperty terms. */\n  project: Record<string, unknown>;\n  /** IRI of the ecm:Instance this assertion attaches to (ecm:subjectIri). */\n  subjectIri: string;\n  /** Called with the new SPEC section 5.10-shaped ecm:LiteralAssertion on submit. */\n  onConfirm: (newAssertion: Record<string, unknown>) => void;\n  onClose: () => void;\n}\n\n/**\n * Extract owl:AnnotationProperty options from ecm:terms with STARTER_TERMS fallback.\n * Mirrors getAnnotationPropertyOptions() in Inspector.tsx; kept local per the\n * AddLiteralDialog pattern (self-contained option computation from project).\n */\nfunction getAnnotationPropertyOptions(\n  project: Record<string, unknown>,\n): AnnotationPropOption[] {\n  const raw = project[\"ecm:terms\"];\n  const seen = new Set<string>();\n  const result: AnnotationPropOption[] = [];\n  if (Array.isArray(raw)) {\n    for (const item of raw as unknown[]) {\n      if (typeof item !== \"object\" || item === null) continue;\n      const obj = item as Record<string, unknown>;\n      if (typeof obj[\"id\"] !== \"string\") continue;\n      if (obj[\"type\"] !== \"owl:AnnotationProperty\") continue;\n      const iri = obj[\"id\"] as string;\n      seen.add(iri);\n      const labelText = resolveTermLabel(obj[\"rdfs:label\"]);\n      const label = labelText.length > 0 ? labelText : iriTail(iri);\n      result.push({ iri, label });\n    }\n  }\n  // Fallback: include STARTER_TERMS annotation properties not already in ecm:terms.\n  for (const st of STARTER_TERMS) {\n    if (st.type === \"owl:AnnotationProperty\" && !seen.has(st.id)) {\n      const labelText = resolveTermLabel(st[\"rdfs:label\"]);\n      const label = labelText.length > 0 ? labelText : iriTail(st.id);\n      result.push({ iri: st.id, label });\n    }\n  }\n  return result;\n}\n\nexport function AddAnnotationDialog({\n  project,\n  subjectIri,\n  onConfirm,\n  onClose,\n}: AddAnnotationDialogProps) {\n  const annPropOptions = getAnnotationPropertyOptions(project);\n  const [predicateIri, setPredicateIri] = useState(annPropOptions[0]?.iri ?? \"\");\n  const [value, setValue] = useState(\"\");\n  const [language, setLanguage] = useState(\"\");\n  const [datatype, setDatatype] = useState<string>(\"xsd:string\");\n  const [error, setError] = useState<string | null>(null);\n\n  function handleSubmit(e: FormEvent<HTMLFormElement>) {\n    e.preventDefault();\n    if (predicateIri.length === 0) {\n      setError(\n        \"No owl:AnnotationProperty terms in this project. Add one via the Term Manager first.\",\n      );\n      return;\n    }\n    const trimmedValue = value.trim();\n    if (trimmedValue.length === 0) {\n      setError(\"Value is required.\");\n      return;\n    }\n    const trimmedLang = language.trim();\n    const newAssertion: Record<string, unknown> = {\n      \"ecm:datatype\": datatype,\n      \"ecm:language\": trimmedLang.length > 0 ? trimmedLang : null,\n      \"ecm:predicateIri\": predicateIri,\n      \"ecm:subjectIri\": subjectIri,\n      \"ecm:value\": trimmedValue,\n      id: `urn:uuid:${crypto.randomUUID()}`,\n      type: \"ecm:LiteralAssertion\",\n    };\n    onConfirm(newAssertion);\n  }\n\n  return (\n    <Dialog title=\"Add Annotation\" onClose={onClose} testId=\"gw-dialog-add-annotation\">\n      <form\n        className=\"gw-term-form\"\n        onSubmit={handleSubmit}\n        data-testid=\"gw-form-add-annotation\"\n      >\n        {error !== null && (\n          <p className=\"gw-form-error\" role=\"alert\" data-testid=\"gw-form-error\">\n            {error}\n          </p>\n        )}\n        <label className=\"gw-form-label\">\n          Property *\n          <select\n            className=\"gw-form-input\"\n            value={predicateIri}\n            onChange={(e) => {\n              setPredicateIri(e.target.value);\n              setError(null);\n            }}\n            data-testid=\"gw-select-annotation-predicate\"\n          >\n            {annPropOptions.length === 0 && (\n              <option value=\"\">(no annotation properties available)</option>\n            )}\n            {annPropOptions.map((opt) => (\n              <option key={opt.iri} value={opt.iri}>\n                {opt.label}\n              </option>\n            ))}\n          </select>\n        </label>\n        <label className=\"gw-form-label\">\n          Value *\n          <input\n            className=\"gw-form-input\"\n            type=\"text\"\n            value={value}\n            onChange={(e) => {\n              setValue(e.target.value);\n              setError(null);\n            }}\n            data-testid=\"gw-input-annotation-value\"\n            autoFocus\n          />\n        </label>\n        <label className=\"gw-form-label\">\n          Datatype\n          <select\n            className=\"gw-form-input\"\n            value={datatype}\n            onChange={(e) => { setDatatype(e.target.value); }}\n            data-testid=\"gw-select-annotation-datatype\"\n          >\n            {DATATYPE_OPTIONS.map((dt) => (\n              <option key={dt} value={dt}>\n                {dt}\n              </option>\n            ))}\n          </select>\n        </label>\n        <label className=\"gw-form-label\">\n          Language tag{\" \"}\n          <span className=\"gw-form-hint\">(optional; e.g. en)</span>\n          <input\n            className=\"gw-form-input\"\n            type=\"text\"\n            value={language}\n            onChange={(e) => { setLanguage(e.target.value); }}\n            data-testid=\"gw-input-annotation-language\"\n          />\n        </label>\n        <div className=\"gw-form-actions\">\n          <button\n            type=\"button\"\n            className=\"gw-btn gw-btn--secondary\"\n            onClick={onClose}\n            data-testid=\"gw-btn-annotation-cancel\"\n          >\n            Cancel\n          </button>\n          <button\n            type=\"submit\"\n            className=\"gw-btn\"\n            disabled={annPropOptions.length === 0}\n            data-testid=\"gw-btn-annotation-submit\"\n          >\n            Add Annotation\n          </button>\n        </div>\n      </form>\n    </Dialog>\n  );\n}\n",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2a",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Import the new AddAnnotationDialog alongside AddLiteralDialog.",
+            "before": "import { AddLiteralDialog } from \"./AddLiteralDialog.js\";",
+            "after": "import { AddLiteralDialog } from \"./AddLiteralDialog.js\";\nimport { AddAnnotationDialog } from \"./AddAnnotationDialog.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2b",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Add addAnnotationOpen state variable parallel to addLiteralOpen. Both control their respective dialog open/close.",
+            "before": "  const [addLiteralOpen, setAddLiteralOpen] = useState(false);\n  const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);",
+            "after": "  const [addLiteralOpen, setAddLiteralOpen] = useState(false);\n  const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);\n  const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2c",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Insert 'Add Annotation' button at the bottom of the Annotation Assertions section, immediately before the DataType Assertions section comment. Mirrors the 'Add literal' button placement at the bottom of the DataType Assertions section (gw-btn-add-literal). Uses the same style (marginTop 0.5rem, width 100%) for visual symmetry.",
+            "before": "          {/* ---- DataType Assertions (owl:DatatypeProperty axioms; participate in datatype reasoning) ---- */}",
+            "after": "          <button\n            type=\"button\"\n            data-testid=\"gw-btn-add-annotation\"\n            onClick={() => { setAddAnnotationOpen(true); }}\n            style={{ marginTop: \"0.5rem\", width: \"100%\" }}\n          >\n            Add Annotation\n          </button>\n          {/* ---- DataType Assertions (owl:DatatypeProperty axioms; participate in datatype reasoning) ---- */}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2d",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Render AddAnnotationDialog conditionally on addAnnotationOpen, directly after the AddLiteralDialog block. The onConfirm handler is identical to the literal handler \u00e2\u20ac\u201d both append to ecm:literalAssertions \u00e2\u20ac\u201d because the data model for annotation assertions is also ecm:LiteralAssertion (partitioned at render time by termTypeMap, not at storage time).",
+            "before": "        {addLiteralOpen && (\n          <AddLiteralDialog\n            project={project}\n            subjectIri={selectedInstanceId}\n            onConfirm={(newAssertion) => {\n              if (onProjectChange !== undefined && project !== null) {\n                const existing = Array.isArray(project[\"ecm:literalAssertions\"])\n                  ? (project[\"ecm:literalAssertions\"] as unknown[])\n                  : [];\n                onProjectChange({\n                  ...project,\n                  \"ecm:literalAssertions\": [...existing, newAssertion],\n                });\n              }\n              setAddLiteralOpen(false);\n            }}\n            onClose={() => { setAddLiteralOpen(false); }}\n          />\n        )}\n        {deleteInstanceConfirmOpen && (",
+            "after": "        {addLiteralOpen && (\n          <AddLiteralDialog\n            project={project}\n            subjectIri={selectedInstanceId}\n            onConfirm={(newAssertion) => {\n              if (onProjectChange !== undefined && project !== null) {\n                const existing = Array.isArray(project[\"ecm:literalAssertions\"])\n                  ? (project[\"ecm:literalAssertions\"] as unknown[])\n                  : [];\n                onProjectChange({\n                  ...project,\n                  \"ecm:literalAssertions\": [...existing, newAssertion],\n                });\n              }\n              setAddLiteralOpen(false);\n            }}\n            onClose={() => { setAddLiteralOpen(false); }}\n          />\n        )}\n        {addAnnotationOpen && (\n          <AddAnnotationDialog\n            project={project}\n            subjectIri={selectedInstanceId}\n            onConfirm={(newAssertion) => {\n              if (onProjectChange !== undefined && project !== null) {\n                const existing = Array.isArray(project[\"ecm:literalAssertions\"])\n                  ? (project[\"ecm:literalAssertions\"] as unknown[])\n                  : [];\n                onProjectChange({\n                  ...project,\n                  \"ecm:literalAssertions\": [...existing, newAssertion],\n                });\n              }\n              setAddAnnotationOpen(false);\n            }}\n            onClose={() => { setAddAnnotationOpen(false); }}\n          />\n        )}\n        {deleteInstanceConfirmOpen && (",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/inspector-annotation-add.spec.ts",
+            "describe": "Add Annotation button: clicking 'Add Annotation' (gw-btn-add-annotation) opens dialog (gw-dialog-add-annotation); gw-select-annotation-predicate is pre-populated with annotation properties from STARTER_TERMS (rdfs:comment, rdfs:label, rdfs:seeAlso); submitting with a value appends an ecm:LiteralAssertion with the selected predicateIri and type='ecm:LiteralAssertion' to ecm:literalAssertions; the new assertion appears in the gw-annotation-literal-entry list; Cancel closes without mutation. Fixture: project with no user-defined owl:AnnotationProperty terms (to exercise the STARTER_TERMS fallback path) and at least one with a user-defined owl:AnnotationProperty term (to exercise the ecm:terms path)."
+          },
+          {
+            "file": "tests/inspector-annotation-add.spec.ts",
+            "describe": "Empty-value validation: submitting with blank Value field shows gw-form-error and does not call onConfirm. Mirrors the equivalent test for AddLiteralDialog."
+          }
+        ],
+        "open_questions": [
+          "rdfs:label appears in the annotation property dropdown (it is an owl:AnnotationProperty in STARTER_TERMS). A user can therefore create an ecm:LiteralAssertion with predicateIri=rdfs:label via 'Add Annotation', which is semantically valid but potentially confusing alongside the existing inline rdfs:label text input. The R5-A3 developer open question (migrating rdfs:label storage into ecm:LiteralAssertion) is the correct resolution path. No action needed for this task, but a follow-on chain should decide whether to filter rdfs:label from the AddAnnotationDialog property list or migrate the inline input to the LiteralAssertion model.",
+          "AddAnnotationDialog.tsx duplicates the DATATYPE_OPTIONS constant and getAnnotationPropertyOptions logic already present in AddLiteralDialog.tsx and Inspector.tsx respectively. A future refactor could extract these to a shared utility (e.g. src/ui/literal-form-utils.ts), but that is a separate chain and not gating for this button."
+        ],
+        "summary": "Adds 'Add Annotation' button to the Annotation Assertions section of Inspector.tsx, mirroring the existing 'Add literal' button in the DataType Assertions section. New file AddAnnotationDialog.tsx is a structural mirror of AddLiteralDialog.tsx \u00e2\u20ac\u201d same form shape, same ecm:LiteralAssertion output, same crypto.randomUUID() ID generation \u00e2\u20ac\u201d but populates the property dropdown from owl:AnnotationProperty terms (with STARTER_TERMS fallback) instead of owl:DatatypeProperty terms. The ecm:literalAssertions storage model is unchanged; the annotation/datatype partition at render time via termTypeMap is unchanged. 5 changes across 2 files (1 new file + 4 targeted edits to Inspector.tsx).",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-05-25T10:24:10Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:483-apply-r5b-add-annotation",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:482-dev-r5b-add-annotation",
+        "urn:fnsr:task:459-rat-r5-c3-v5"
+      ],
+      "inputs": {
+        "round": "5b",
+        "chain_label": "R5b-1: applier (brief_confirmation)",
+        "brief_confirmation": true,
+        "source_task": "urn:fnsr:task:482-dev-r5b-add-annotation",
+        "purpose": "Pass 2b commit-finalize per Spec 03 \u00a7'Brief-confirmation chain'. R5-A3's substantive ratification at 459-rat-r5-c3-v5 covers this Annotation-Assertion-section completion. No fresh ratification needed."
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\AddAnnotationDialog.tsx",
+            "mode": "create",
+            "bytes_written": 6920,
+            "bom_prepended": true
+          },
+          {
+            "id": "C2a",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 64
+          },
+          {
+            "id": "C2b",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 69
+          },
+          {
+            "id": "C2c",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 270
+          },
+          {
+            "id": "C2d",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 739
+          }
+        ],
+        "failed": [],
+        "summary": "5 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-05-25T10:24:11Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:484-test-r5b-add-annotation",
+      "agent": "test-runner",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:483-apply-r5b-add-annotation"
+      ],
+      "inputs": {
+        "round": "5b",
+        "chain_label": "R5b-1: test-runner",
+        "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
+        "parser": "npm",
+        "purpose": "Verify Add Annotation button addition did not regress the subject test suite."
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 12.714268445968628,
+        "first_n_failures": [],
+        "raw_stdout_tail": "orted by element id lexicographically (\u00c2\u00a75.3 rule 4)\n  \u00e2\u0153\u201c PASS: iao:isAbout sorted lexicographically (\u00c2\u00a75.3 rule 5)\n  \u00e2\u0153\u201c PASS: ISO 8601 timestamps normalized: no fractional seconds, Z suffix (\u00c2\u00a75.3 rule 8)\n  \u00e2\u0153\u201c PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (94ms)\n  PASSED: /cli-integration.test.js (2061ms)\n  PASSED: /delete-instance.test.js (132ms)\n  PASSED: /determinism.test.js (143ms)\n  PASSED: /emitters.test.js (351ms)\n  PASSED: /iri-generation.test.js (162ms)\n  PASSED: /iri-refactor.test.js (163ms)\n  PASSED: /legacy-migration.test.js (176ms)\n  PASSED: /manifest-entries.test.js (216ms)\n  PASSED: /no-network.test.js (164ms)\n  PASSED: /normalize-on-load.test.js (188ms)\n  PASSED: /semantic-projection.test.js (236ms)\n  PASSED: /snapshot.test.js (141ms)\n  PASSED: /starter-terms.test.js (144ms)\n  PASSED: /structural-validator.test.js (155ms)\n  PASSED: /tbox-bundle.test.js (353ms)\n  PASSED: /vmp-serializer.test.js (1477ms)\n\n  Files: 17/17 passed\n  Tests: 130/130 passed\n\n(node:33392) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:23748) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 12.71s)",
+        "parser_used": "npm"
+      },
+      "history": [
+        {
+          "ts": "2026-05-25T10:24:24Z",
           "event": "completed",
           "payload": {
             "agent": "test-runner"

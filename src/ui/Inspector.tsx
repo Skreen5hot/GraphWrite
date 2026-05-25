@@ -2,6 +2,7 @@
 import { Dialog } from "./Dialog.js";
 import { deleteInstance } from "../kernel/delete-instance.js";
 import { AddLiteralDialog } from "./AddLiteralDialog.js";
+import { AddAnnotationDialog } from "./AddAnnotationDialog.js";
 import { narrateTriple } from "../emit/triple-narration.js";
 import { buildInstanceLabelMap, iriTail, resolveInstanceDisplay, resolveTermLabel } from "./label-resolution.js";
 import { STARTER_TERMS } from "../validate/starter-terms.js";
@@ -291,6 +292,7 @@ export function Inspector({
   onProjectChange,
 }: InspectorProps) {
   const [addLiteralOpen, setAddLiteralOpen] = useState(false);
+  const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);
   const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);
   const [selectedAddClassIri, setSelectedAddClassIri] = useState<string>("");
 
@@ -565,6 +567,14 @@ export function Inspector({
               </div>
             );
           })}
+          <button
+            type="button"
+            data-testid="gw-btn-add-annotation"
+            onClick={() => { setAddAnnotationOpen(true); }}
+            style={{ marginTop: "0.5rem", width: "100%" }}
+          >
+            Add Annotation
+          </button>
           {/* ---- DataType Assertions (owl:DatatypeProperty axioms; participate in datatype reasoning) ---- */}
           <p
             style={{ fontWeight: 600, marginBottom: "0.5rem", marginTop: "0.75rem" }}
@@ -658,6 +668,25 @@ export function Inspector({
               setAddLiteralOpen(false);
             }}
             onClose={() => { setAddLiteralOpen(false); }}
+          />
+        )}
+        {addAnnotationOpen && (
+          <AddAnnotationDialog
+            project={project}
+            subjectIri={selectedInstanceId}
+            onConfirm={(newAssertion) => {
+              if (onProjectChange !== undefined && project !== null) {
+                const existing = Array.isArray(project["ecm:literalAssertions"])
+                  ? (project["ecm:literalAssertions"] as unknown[])
+                  : [];
+                onProjectChange({
+                  ...project,
+                  "ecm:literalAssertions": [...existing, newAssertion],
+                });
+              }
+              setAddAnnotationOpen(false);
+            }}
+            onClose={() => { setAddAnnotationOpen(false); }}
           />
         )}
         {deleteInstanceConfirmOpen && (
