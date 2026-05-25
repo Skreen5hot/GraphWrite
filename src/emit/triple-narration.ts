@@ -35,16 +35,29 @@ export interface NarrationInput {
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Format "label (className)" — omits parens entirely when className is empty
+ * (ft-r3-s2-05 resolution: classless instances no longer emit "{label} ()"). */
+function formatInstanceLabel(label: string, className: string): string {
+  if (className && className.length > 0) {
+    return `${label} (${className})`;
+  }
+  return label;
+}
+
 /**
  * Renders the FR-C008 triple-narration template from five resolved label strings.
  * Template: "{subjectLabel} ({className}) {predicateLabel} {objectLabel} ({objectClassName})"
+ *
+ * For classless instances (className or objectClassName empty), the parenthetical
+ * is omitted entirely rather than rendered as empty parens. Resolves
+ * ft-r3-s2-05 per Round 3 forward-track.
  *
  * @param input - Five resolved labels for the template slots.
  * @returns Narration string per FR-C008.
  */
 export function narrateTriple(input: NarrationInput): string {
   const { subjectLabel, className, predicateLabel, objectLabel, objectClassName } = input;
-  return `${subjectLabel} (${className}) ${predicateLabel} ${objectLabel} (${objectClassName})`;
+  return `${formatInstanceLabel(subjectLabel, className)} ${predicateLabel} ${formatInstanceLabel(objectLabel, objectClassName)}`;
 }
 
 /**

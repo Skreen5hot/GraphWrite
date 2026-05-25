@@ -226,6 +226,41 @@ try {
   pass("narrateTriple: 'Alice (Person) participates in Meeting1 (Meeting)' (FR-C008)");
 } catch (e) { fail("narrateTriple template (FR-C008)", e); }
 
+// ft-r3-s2-05 resolution: classless instances must NOT emit "{label} ()"
+try {
+  const noSubjectClass = narrateTriple({
+    subjectLabel: "Alice", className: "",
+    predicateLabel: "knows",
+    objectLabel: "Bob", objectClassName: "Person",
+  });
+  strictEqual(
+    noSubjectClass,
+    "Alice knows Bob (Person)",
+    "narrateTriple must omit empty class parens for classless subject (ft-r3-s2-05)",
+  );
+  const noObjectClass = narrateTriple({
+    subjectLabel: "Alice", className: "Person",
+    predicateLabel: "knows",
+    objectLabel: "Bob", objectClassName: "",
+  });
+  strictEqual(
+    noObjectClass,
+    "Alice (Person) knows Bob",
+    "narrateTriple must omit empty class parens for classless object (ft-r3-s2-05)",
+  );
+  const bothClassless = narrateTriple({
+    subjectLabel: "Alice", className: "",
+    predicateLabel: "knows",
+    objectLabel: "Bob", objectClassName: "",
+  });
+  strictEqual(
+    bothClassless,
+    "Alice knows Bob",
+    "narrateTriple must omit empty class parens when both subject and object are classless",
+  );
+  pass("narrateTriple: classless instances omit empty parens (ft-r3-s2-05)");
+} catch (e) { fail("narrateTriple classless case (ft-r3-s2-05)", e); }
+
 try {
   const narrations = narrateProject(MINIMAL_PROJECT);
   ok(Array.isArray(narrations), "narrateProject must return an array");

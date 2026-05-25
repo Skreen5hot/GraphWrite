@@ -41516,6 +41516,23 @@
           },
           "prev_hash": "69e0dcfbf641067e2ba6123dd930a6da87912c4bf736273eb7739927d93ca7a2",
           "chain_hash": "fed9f5efe5f1f1d2eb68eb3d9fa3fc57ef7ec3757d66b54853baab0ed12ddfc9"
+        },
+        {
+          "ts": "2026-05-25T20:47:33Z",
+          "event": "forward_track_state_transition",
+          "payload": {
+            "forward_track_id": "ft-r3-s2-05-narration-classless",
+            "from_state": "A",
+            "to_state": "C",
+            "trigger": "ft-r3-s2-05 resolution per Aaron 2026-05-25 'proceed with development' directive; ft auto-discovered via 'state_admin forward-track list' as consumer-facing dev work",
+            "reason": "Resolved via narrateTriple refactor: classless instances no longer emit empty parens. formatInstanceLabel helper omits the parenthetical entirely when className is empty string. Tests added for classless subject, classless object, both classless. npm test 131/131. Forward-track described 'resolves automatically when L (class picker at creation) lands' \u2014 L did land (Inspector class-assignment); however classless instances remained possible via uploads of older fixtures or class removal, so a code fix was still warranted. Committed: pending.",
+            "transitioning_cycle": null,
+            "timestamp": "2026-05-25T20:47:33Z",
+            "operator": "operator",
+            "resolution_path": "ratified-into-spec"
+          },
+          "prev_hash": "fed9f5efe5f1f1d2eb68eb3d9fa3fc57ef7ec3757d66b54853baab0ed12ddfc9",
+          "chain_hash": "827d3adac2041523c72d7775f2a7e98cd19bb414583da75c5374eec82df5c455"
         }
       ]
     },
