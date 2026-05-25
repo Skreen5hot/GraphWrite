@@ -1516,6 +1516,8 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "surfaces/_primitives/anti-pattern-enforcement.md",
     "surfaces/_primitives/surface-audience.md",
     "surfaces/_primitives/daemon-orchestrator-stall-notification.md",
+    "surfaces/_primitives/state-verification-gate.md",
+    "surfaces/_primitives/phase-lifecycle-orchestration.md",
     "surfaces/feedback-rounds/spec.md",
     "surfaces/feedback-rounds/surface-spec.md",
     "surfaces/retro/surface-spec.md",
