@@ -284,11 +284,168 @@ def svg_3_1_push_gap(state, fs_context, git_context) -> list[dict]:
     return findings
 
 
+def _plo_current_state_local(state: dict | None, phase_id: str) -> str:
+    """Local copy of PLO state derivation; avoids importing state_admin
+    (which would create a circular dep on the daemon)."""
+    if not state:
+        return "unknown"
+    last_ts: str | None = None
+    last_state = "unknown"
+    for t in state.get("tasks", []) or []:
+        for h in t.get("history", []) or []:
+            if h.get("event") != "phase_state_changed":
+                continue
+            payload = h.get("payload") or {}
+            if payload.get("phase_id") != phase_id:
+                continue
+            ts = h.get("ts", "")
+            if last_ts is None or ts >= last_ts:
+                last_ts = ts
+                last_state = payload.get("to_state", "unknown")
+    return last_state, last_ts
+
+
+def _plo_discover_phase_ids(state: dict | None) -> set[str]:
+    """Discover all phase_ids referenced in PLO + legacy events."""
+    ids: set[str] = set()
+    if not state:
+        return ids
+    for t in state.get("tasks", []) or []:
+        for h in t.get("history", []) or []:
+            evt = h.get("event")
+            payload = h.get("payload") or {}
+            if evt == "phase_state_changed":
+                if payload.get("phase_id"):
+                    ids.add(payload["phase_id"])
+            elif evt == "phase_boundary_declared":
+                for k in ("from_phase", "to_phase"):
+                    if payload.get(k):
+                        ids.add(payload[k])
+            elif evt == "phase_complete_declared":
+                pid = payload.get("phase") or payload.get("phase_id")
+                if pid:
+                    ids.add(pid)
+    return ids
+
+
+def svg_7_1_demo_released_without_deploy(
+    state, fs_context, git_context
+) -> list[dict]:
+    """SVG-7.1: phase claims state=demo-released but no commit since the
+    demo-released event timestamp. Per PLO blueprint."""
+    findings: list[dict] = []
+    if not state:
+        return findings
+    git_log_with_dates = git_context.get("git_log_with_dates", "")
+    for phase_id in _plo_discover_phase_ids(state):
+        cur_state, cur_ts = _plo_current_state_local(state, phase_id)
+        if cur_state != "demo-released":
+            continue
+        # Find the demo-released event's payload (build_ref / deploy_url)
+        latest_payload = None
+        for t in state.get("tasks", []) or []:
+            for h in t.get("history", []) or []:
+                if h.get("event") != "phase_state_changed":
+                    continue
+                payload = h.get("payload") or {}
+                if (
+                    payload.get("phase_id") == phase_id
+                    and payload.get("to_state") == "demo-released"
+                    and h.get("ts") == cur_ts
+                ):
+                    latest_payload = payload
+                    break
+            if latest_payload is not None:
+                break
+        # If no build_ref AND no commits since the demo-released ts, drift
+        no_build_ref = not (latest_payload or {}).get("build_ref")
+        commits_since = []
+        if cur_ts and git_log_with_dates:
+            # Each line: "<sha> <iso_date> <subject>"
+            for line in git_log_with_dates.splitlines():
+                parts = line.split(" ", 2)
+                if len(parts) < 2:
+                    continue
+                commit_ts = parts[1]
+                if commit_ts >= cur_ts:
+                    commits_since.append(line)
+        if no_build_ref and not commits_since:
+            findings.append({
+                "predicate_id": "svg-7.1-demo-released-without-deploy",
+                "severity": "warn",
+                "drift_kind": "demo_released_without_evidence",
+                "phase_id": phase_id,
+                "evidence": {
+                    "demo_released_at": cur_ts,
+                    "build_ref": None,
+                    "commits_since_demo_release": 0,
+                },
+                "reconciliation_options": [
+                    f"Emit phase demo-released again with --build-ref <sha>: state_admin phase demo-released {phase_id} --anchor-task <id> --build-ref <sha>",
+                    "If demo-released was emitted in error, transition back to implementing",
+                ],
+            })
+    return findings
+
+
+def svg_7_3_closed_without_canonical_doc(
+    state, fs_context, git_context
+) -> list[dict]:
+    """SVG-7.3: phase claims state=closed but canonical-doc Status field
+    doesn't reflect closure (still says 'In Progress' or 'Not Started')."""
+    findings: list[dict] = []
+    if not state:
+        return findings
+    for phase_id in _plo_discover_phase_ids(state):
+        cur_state, _ = _plo_current_state_local(state, phase_id)
+        if cur_state != "closed":
+            continue
+        # Walk canonical docs; look for the Phase N Status field
+        # Phase id format like "phase-1" maps to "Phase 1" header
+        m = re.match(r"phase-(\d+)$", phase_id)
+        if not m:
+            continue
+        phase_num = int(m.group(1))
+        canonical_says_closed = False
+        scanned_docs = []
+        for doc_path in fs_context["canonical_doc_paths"]:
+            scanned_docs.append(str(doc_path))
+            for p in _parse_phase_status(doc_path):
+                if p["phase_num"] != phase_num:
+                    continue
+                status_lower = p["status"].lower()
+                # "Complete" or "Closed" in the status field is acceptable
+                if "closed" in status_lower or "complete" in status_lower:
+                    canonical_says_closed = True
+                    break
+            if canonical_says_closed:
+                break
+        if not canonical_says_closed:
+            findings.append({
+                "predicate_id": "svg-7.3-closed-without-canonical-doc",
+                "severity": "warn",
+                "drift_kind": "closed_state_canonical_doc_drift",
+                "phase_id": phase_id,
+                "evidence": {
+                    "substrate_state": "closed",
+                    "canonical_docs_scanned": scanned_docs,
+                    "canonical_says_closed": False,
+                },
+                "reconciliation_options": [
+                    f"Update ROADMAP.md and/or IMPLEMENTATION_PLAN.md Phase {phase_num} Status field to 'Complete' or 'Closed'",
+                    "Emit a phase_complete_declared event via state_admin phase-complete-declaration if not already present",
+                ],
+            })
+    return findings
+
+
 PREDICATES = (
     svg_1_1_phase_not_started_with_commits,
     svg_1_2_phase_complete_with_open_oeds,
     svg_2_1_commit_gap,
     svg_3_1_push_gap,
+    svg_7_1_demo_released_without_deploy,
+    svg_7_3_closed_without_canonical_doc,
 )
 
 
@@ -305,11 +462,16 @@ def probe(root_path: str | os.PathLike) -> dict:
     ahead_behind_stdout, _, _ = _git_run(
         ["rev-list", "--left-right", "--count", "HEAD...origin/main"], root
     )
+    # For SVG-7.1 timestamp comparison: log with ISO commit dates
+    git_log_with_dates_stdout, _, _ = _git_run(
+        ["log", "--pretty=format:%h %cI %s", "-100"], root
+    )
 
     git_context = {
         "git_log": git_log_stdout,
         "git_status": git_status_stdout,
         "ahead_behind": ahead_behind_stdout.strip(),
+        "git_log_with_dates": git_log_with_dates_stdout,
     }
 
     # Canonical doc enumeration (reuses FNSR_CANONICAL_DOCS per blueprint)

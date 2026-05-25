@@ -59273,6 +59273,33 @@
           },
           "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
           "chain_hash": "95971e320c765fb587c4481e542e1f46f2770f711baaf3e2c631e8e06f69f17b"
+        },
+        {
+          "ts": "2026-05-25T19:02:56Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-test",
+            "from_state": "unknown",
+            "to_state": "closed",
+            "transition_kind": "close",
+            "declared_by": "operator"
+          },
+          "prev_hash": "95971e320c765fb587c4481e542e1f46f2770f711baaf3e2c631e8e06f69f17b",
+          "chain_hash": "76a39cff6d2fad06f9d07148233f212bd24c2ab1487b641c5f7fbce259f61703"
+        },
+        {
+          "ts": "2026-05-25T19:02:57Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-1",
+            "from_state": "unknown",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "backfill: Phase 1 work landed at 75fa3ea (Core JSON-LD Engine substantively complete); 106 tests pass"
+          },
+          "prev_hash": "76a39cff6d2fad06f9d07148233f212bd24c2ab1487b641c5f7fbce259f61703",
+          "chain_hash": "0ae254ffe525c8457fcc831ee88e7d80deb3af775b9100eba1d0d24f30109831"
         }
       ]
     }

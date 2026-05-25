@@ -1581,6 +1581,289 @@ def _read_bytes_or_none(path: Path) -> Optional[bytes]:
         return None
 
 
+# ---------- PLO: Phase Lifecycle Orchestration (v3.1.0-bridge) ----------
+# Per surfaces/_primitives/phase-lifecycle-orchestration.md. Implements the
+# 7-state machine + operator commands; defers auto-chain queuing to v3.2.
+
+PLO_STATES = (
+    "planned",
+    "implementing",
+    "demo-released",
+    "po-satisfied",
+    "retro-complete",
+    "drift-reconciled",
+    "closed",
+)
+
+# Allowed transitions (from -> set of allowed to). Permissive in
+# v3.1.0-bridge: unknown initial state allows any transition. Validation
+# warns on invalid transitions; only `close` hard-refuses (AP-PLO-2).
+PLO_ALLOWED_TRANSITIONS = {
+    "unknown": set(PLO_STATES),  # backfill / first declaration
+    "planned": {"implementing"},
+    "implementing": {"demo-released", "implementing"},
+    "demo-released": {"implementing", "po-satisfied"},
+    "po-satisfied": {"retro-complete"},
+    "retro-complete": {"drift-reconciled"},
+    "drift-reconciled": {"closed"},
+    "closed": set(),  # terminal; the next phase starts via a separate phase id
+}
+
+
+def _plo_current_state(state: dict[str, Any], phase_id: str) -> str:
+    """Walk the audit chain across all tasks; return the most recent
+    `to_state` from `phase_state_changed` events for the given phase_id.
+    Returns 'unknown' if no PLO events found for the phase."""
+    last_ts: Optional[str] = None
+    last_state = "unknown"
+    for t in state.get("tasks", []) or []:
+        for h in t.get("history", []) or []:
+            if h.get("event") != "phase_state_changed":
+                continue
+            payload = h.get("payload") or {}
+            if payload.get("phase_id") != phase_id:
+                continue
+            ts = h.get("ts", "")
+            if last_ts is None or ts >= last_ts:
+                last_ts = ts
+                last_state = payload.get("to_state", "unknown")
+    return last_state
+
+
+def _plo_collect_history(
+    state: dict[str, Any], phase_id: str
+) -> list[dict[str, Any]]:
+    """Return all PLO events for phase_id, sorted by ts (oldest first).
+    Includes phase_state_changed (PLO) and phase_boundary_declared
+    (legacy backward-compat per blueprint v3.1.0-bridge validation
+    strategy)."""
+    entries: list[dict[str, Any]] = []
+    for t in state.get("tasks", []) or []:
+        for h in t.get("history", []) or []:
+            evt = h.get("event")
+            payload = h.get("payload") or {}
+            if evt == "phase_state_changed" and payload.get("phase_id") == phase_id:
+                entries.append({**h, "_task_id": t.get("@id")})
+            elif evt == "phase_boundary_declared" and (
+                payload.get("from_phase") == phase_id
+                or payload.get("to_phase") == phase_id
+            ):
+                entries.append({**h, "_task_id": t.get("@id"), "_legacy": True})
+            elif evt == "phase_complete_declared" and (
+                payload.get("phase") == phase_id
+                or payload.get("phase_id") == phase_id
+            ):
+                entries.append({**h, "_task_id": t.get("@id"), "_legacy": True})
+    entries.sort(key=lambda e: e.get("ts", ""))
+    return entries
+
+
+def _plo_emit_transition(
+    state_path: Path,
+    state: dict[str, Any],
+    phase_id: str,
+    to_state: str,
+    anchor_task_id: str,
+    transition_kind: str,
+    extra_payload: Optional[dict[str, Any]] = None,
+) -> int:
+    """Common helper: validate + emit phase_state_changed event."""
+    task = _find_task(state, anchor_task_id)
+    if task is None:
+        print(f"anchor task not found: {anchor_task_id}", file=sys.stderr)
+        return 1
+    if to_state not in PLO_STATES:
+        print(f"invalid to_state: {to_state}; must be one of {PLO_STATES}",
+              file=sys.stderr)
+        return 1
+    from_state = _plo_current_state(state, phase_id)
+    # AP-PLO-2: hard refusal for `close` from any non-drift-reconciled state.
+    # This check runs BEFORE the permissive allowed-set check so backfill
+    # from `unknown` cannot route around the close-gate.
+    if to_state == "closed" and from_state != "drift-reconciled":
+        print(
+            f"REFUSED: phase {phase_id} state == {from_state}; "
+            f"`close` requires state == drift-reconciled (AP-PLO-2). "
+            f"Emit phase_state_changed via the intermediate transitions first.",
+            file=sys.stderr,
+        )
+        return 2
+    allowed = PLO_ALLOWED_TRANSITIONS.get(from_state, set())
+    if to_state not in allowed:
+        # Soft validation: warn but allow (v3.1.0-bridge permissive mode)
+        print(
+            f"WARNING: transition {from_state} -> {to_state} not in standard "
+            f"set {sorted(allowed) or 'terminal'}; emitting anyway (v3.1.0-bridge "
+            f"permissive). AP-PLO-3: audit event records the transition regardless.",
+            file=sys.stderr,
+        )
+    payload: dict[str, Any] = {
+        "phase_id": phase_id,
+        "from_state": from_state,
+        "to_state": to_state,
+        "transition_kind": transition_kind,
+        "declared_by": "operator",
+    }
+    if extra_payload:
+        payload.update(extra_payload)
+    _append_audit(task, "phase_state_changed", payload)
+    _save_state(state_path, state)
+    print(f"phase: {phase_id}  {from_state} -> {to_state}  "
+          f"(anchored on {anchor_task_id}; kind={transition_kind})")
+    return 0
+
+
+def cmd_phase_implementing(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.reason:
+        extra["reason"] = args.reason
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "implementing",
+        args.anchor_task, "implementing", extra,
+    )
+
+
+def cmd_phase_demo_released(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.build_ref:
+        extra["build_ref"] = args.build_ref
+    if args.deploy_url:
+        extra["deploy_url"] = args.deploy_url
+    if args.notes:
+        extra["notes"] = args.notes
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "demo-released",
+        args.anchor_task, "demo-released", extra,
+    )
+
+
+def cmd_phase_po_satisfied(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.notes:
+        extra["notes"] = args.notes
+    if args.feedback_round_id:
+        extra["feedback_round_id"] = args.feedback_round_id
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "po-satisfied",
+        args.anchor_task, "po-satisfied", extra,
+    )
+
+
+def cmd_phase_retro_complete(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.retro_id:
+        extra["retro_id"] = args.retro_id
+    if args.notes:
+        extra["notes"] = args.notes
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "retro-complete",
+        args.anchor_task, "retro-complete", extra,
+    )
+
+
+def cmd_phase_drift_reconciled(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.accepted_deferred:
+        extra["accepted_deferred"] = [
+            s.strip() for s in args.accepted_deferred.split(",") if s.strip()
+        ]
+    if args.svg_probe_ref:
+        extra["svg_probe_ref"] = args.svg_probe_ref
+    if args.notes:
+        extra["notes"] = args.notes
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "drift-reconciled",
+        args.anchor_task, "drift-reconciled", extra,
+    )
+
+
+def cmd_phase_close(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    extra = {}
+    if args.notes:
+        extra["notes"] = args.notes
+    return _plo_emit_transition(
+        state_path, state, args.phase_id, "closed",
+        args.anchor_task, "close", extra,
+    )
+
+
+def cmd_phase_status(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    if args.phase_id:
+        phase_ids = [args.phase_id]
+    else:
+        # Discover all phase_ids referenced in PLO + legacy events
+        phase_ids_set: set[str] = set()
+        for t in state.get("tasks", []) or []:
+            for h in t.get("history", []) or []:
+                payload = h.get("payload") or {}
+                evt = h.get("event")
+                if evt == "phase_state_changed":
+                    pid = payload.get("phase_id")
+                    if pid:
+                        phase_ids_set.add(pid)
+                elif evt == "phase_boundary_declared":
+                    for k in ("from_phase", "to_phase"):
+                        pid = payload.get(k)
+                        if pid:
+                            phase_ids_set.add(pid)
+                elif evt == "phase_complete_declared":
+                    pid = payload.get("phase") or payload.get("phase_id")
+                    if pid:
+                        phase_ids_set.add(pid)
+        phase_ids = sorted(phase_ids_set)
+    if not phase_ids:
+        print("no phase ids found in audit chain")
+        return 0
+    for pid in phase_ids:
+        state_val = _plo_current_state(state, pid)
+        history = _plo_collect_history(state, pid)
+        plo_events = sum(1 for h in history if h.get("event") == "phase_state_changed")
+        legacy_events = sum(1 for h in history if h.get("_legacy"))
+        print(f"  {pid:20s}  state={state_val:18s}  "
+              f"plo_events={plo_events}  legacy_events={legacy_events}")
+    return 0
+
+
+def cmd_phase_history(args: argparse.Namespace) -> int:
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    history = _plo_collect_history(state, args.phase_id)
+    if not history:
+        print(f"no history found for {args.phase_id}")
+        return 0
+    print(f"history for {args.phase_id}  ({len(history)} event(s)):")
+    for h in history:
+        ts = h.get("ts", "")
+        evt = h.get("event", "")
+        payload = h.get("payload") or {}
+        task_id = h.get("_task_id", "")
+        legacy_tag = " [legacy]" if h.get("_legacy") else ""
+        if evt == "phase_state_changed":
+            print(f"  {ts}  {evt:30s}  "
+                  f"{payload.get('from_state','?')} -> {payload.get('to_state','?')}  "
+                  f"(task={task_id}){legacy_tag}")
+        else:
+            payload_str = json.dumps({k: v for k, v in payload.items()
+                                       if k != "rationale"})[:120]
+            print(f"  {ts}  {evt:30s}  {payload_str}  "
+                  f"(task={task_id}){legacy_tag}")
+    return 0
+
+
 def cmd_template_sync(args: argparse.Namespace) -> int:
     """Sync substrate-shared files from source repo to target repo(s).
 
@@ -2107,6 +2390,96 @@ def _build_parser() -> argparse.ArgumentParser:
     p_promote.add_argument("--retros-dir", default=None)
     p_promote.add_argument("--operator", default="operator")
     p_promote.set_defaults(func=cmd_promote_candidate)
+
+    # --- Phase Lifecycle Orchestration (PLO) v3.1.0-bridge ---
+    # Per surfaces/_primitives/phase-lifecycle-orchestration.md. Composes
+    # with existing phase-boundary + phase-complete-declaration commands.
+    p_phase_plo = sub.add_parser(
+        "phase",
+        help="Phase Lifecycle Orchestration (PLO) v3.1.0-bridge: track "
+             "phase state in audit chain (implementing/demo-released/"
+             "po-satisfied/retro-complete/drift-reconciled/closed). "
+             "Composes with phase-boundary + phase-complete-declaration.",
+    )
+    plo_sub = p_phase_plo.add_subparsers(dest="plo_cmd", required=True)
+
+    def _add_plo_transition_parser(name: str, helpline: str):
+        p = plo_sub.add_parser(name, help=helpline)
+        p.add_argument("phase_id", help="phase identifier (e.g., phase-1)")
+        p.add_argument("--anchor-task", required=True,
+                       help="task @id to anchor the phase_state_changed event")
+        return p
+
+    p_plo_imp = _add_plo_transition_parser(
+        "implementing",
+        "transition phase to state=implementing (initial dev or post-feedback iteration)",
+    )
+    p_plo_imp.add_argument("--reason", default=None,
+                            help="optional rationale (e.g., 'backfill', 'post-PO-feedback iteration')")
+    p_plo_imp.set_defaults(func=cmd_phase_implementing)
+
+    p_plo_dr = _add_plo_transition_parser(
+        "demo-released",
+        "transition phase to state=demo-released (artifact deployed; PO iteration window open)",
+    )
+    p_plo_dr.add_argument("--build-ref", default=None,
+                           help="commit sha / build identifier of the deployed artifact")
+    p_plo_dr.add_argument("--deploy-url", default=None,
+                           help="URL where the deployed artifact is reachable (e.g., Pages URL)")
+    p_plo_dr.add_argument("--notes", default=None)
+    p_plo_dr.set_defaults(func=cmd_phase_demo_released)
+
+    p_plo_pos = _add_plo_transition_parser(
+        "po-satisfied",
+        "transition phase to state=po-satisfied (PO signals completion of feedback iteration)",
+    )
+    p_plo_pos.add_argument("--notes", default=None)
+    p_plo_pos.add_argument("--feedback-round-id", default=None,
+                            help="optional reference to the satisfying feedback round (e.g., 'round-5')")
+    p_plo_pos.set_defaults(func=cmd_phase_po_satisfied)
+
+    p_plo_rc = _add_plo_transition_parser(
+        "retro-complete",
+        "transition phase to state=retro-complete (retro deliberation finished)",
+    )
+    p_plo_rc.add_argument("--retro-id", default=None,
+                           help="optional reference to the retro instance (e.g., 'retro-phase-2-exit')")
+    p_plo_rc.add_argument("--notes", default=None)
+    p_plo_rc.set_defaults(func=cmd_phase_retro_complete)
+
+    p_plo_drc = _add_plo_transition_parser(
+        "drift-reconciled",
+        "transition phase to state=drift-reconciled (SVG drift cleared or accepted)",
+    )
+    p_plo_drc.add_argument("--accepted-deferred", default=None,
+                            help="comma-separated list of explicitly-deferred items "
+                                 "(e.g., 'OED-303,OED-313')")
+    p_plo_drc.add_argument("--svg-probe-ref", default=None,
+                            help="reference to the SVG probe report acknowledging reconciliation")
+    p_plo_drc.add_argument("--notes", default=None)
+    p_plo_drc.set_defaults(func=cmd_phase_drift_reconciled)
+
+    p_plo_close = _add_plo_transition_parser(
+        "close",
+        "transition phase to state=closed (REFUSES unless state==drift-reconciled per AP-PLO-2)",
+    )
+    p_plo_close.add_argument("--notes", default=None)
+    p_plo_close.set_defaults(func=cmd_phase_close)
+
+    p_plo_status = plo_sub.add_parser(
+        "status",
+        help="show current PLO state for a phase (or all phases if no id given)",
+    )
+    p_plo_status.add_argument("phase_id", nargs="?", default=None,
+                                help="optional; phase identifier to filter")
+    p_plo_status.set_defaults(func=cmd_phase_status)
+
+    p_plo_history = plo_sub.add_parser(
+        "history",
+        help="show full audit history for a phase (PLO + legacy boundary/complete events)",
+    )
+    p_plo_history.add_argument("phase_id", help="phase identifier (e.g., phase-1)")
+    p_plo_history.set_defaults(func=cmd_phase_history)
 
     p_sync = sub.add_parser(
         "template-sync",

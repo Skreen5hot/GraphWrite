@@ -1518,5 +1518,256 @@ class TestTemplateSyncCommand(unittest.TestCase):
         self.assertIn(".claude/agents/test-runner.md", default)
 
 
+class TestPloPhaseLifecycle(unittest.TestCase):
+    """PLO v3.1.0-bridge per surfaces/_primitives/phase-lifecycle-orchestration.md."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-plo-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:001", "agent": "developer",
+             "status": "done", "attempts": 1,
+             "outputs": None, "depends_on": [],
+             "history": [{
+                 "ts": "2026-05-25T00:00:00Z",
+                 "event": "completed", "payload": {},
+                 "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+             }]}
+        ])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _run(self, argv):
+        return state_admin.main(argv)
+
+    def test_phase_implementing_emission(self):
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "phase", "implementing", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001",
+            "--reason", "test"
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        events = state["tasks"][0]["history"]
+        plo_event = events[-1]
+        self.assertEqual(plo_event["event"], "phase_state_changed")
+        self.assertEqual(plo_event["payload"]["phase_id"], "phase-1")
+        self.assertEqual(plo_event["payload"]["from_state"], "unknown")
+        self.assertEqual(plo_event["payload"]["to_state"], "implementing")
+
+    def test_ap_plo_2_close_refused_from_unknown(self):
+        """Close from `unknown` MUST refuse — even though `unknown` is the
+        permissive backfill state, `close` is the one hard-gated transition."""
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "phase", "close", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001",
+        ])
+        self.assertEqual(rc, 2)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        # No phase_state_changed event should have been emitted
+        for h in state["tasks"][0]["history"]:
+            self.assertNotEqual(h.get("event"), "phase_state_changed")
+
+    def test_ap_plo_2_close_refused_from_implementing(self):
+        # First emit implementing
+        self._run([
+            "--state-path", str(self.state_path),
+            "phase", "implementing", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001"
+        ])
+        # Now try close — should refuse
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "phase", "close", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001",
+        ])
+        self.assertEqual(rc, 2)
+
+    def test_close_allowed_from_drift_reconciled(self):
+        """The happy path: implementing -> demo-released -> po-satisfied ->
+        retro-complete -> drift-reconciled -> closed."""
+        argv_base = ["--state-path", str(self.state_path)]
+        for verb in ("implementing", "demo-released", "po-satisfied",
+                     "retro-complete", "drift-reconciled", "close"):
+            rc = self._run(argv_base + [
+                "phase", verb, "phase-1",
+                "--anchor-task", "urn:fnsr:task:001",
+            ])
+            self.assertEqual(rc, 0, f"transition {verb} failed")
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        plo_events = [
+            h for h in state["tasks"][0]["history"]
+            if h.get("event") == "phase_state_changed"
+        ]
+        self.assertEqual(len(plo_events), 6)
+        self.assertEqual(plo_events[-1]["payload"]["to_state"], "closed")
+
+    def test_demo_released_records_build_ref(self):
+        self._run(["--state-path", str(self.state_path),
+                   "phase", "implementing", "phase-1",
+                   "--anchor-task", "urn:fnsr:task:001"])
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "phase", "demo-released", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001",
+            "--build-ref", "abc1234",
+            "--deploy-url", "https://example.com/app"
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        latest = state["tasks"][0]["history"][-1]
+        self.assertEqual(latest["payload"]["build_ref"], "abc1234")
+        self.assertEqual(latest["payload"]["deploy_url"], "https://example.com/app")
+
+    def test_drift_reconciled_records_accepted_deferred(self):
+        for verb in ("implementing", "demo-released", "po-satisfied",
+                     "retro-complete"):
+            self._run(["--state-path", str(self.state_path),
+                       "phase", verb, "phase-1",
+                       "--anchor-task", "urn:fnsr:task:001"])
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "phase", "drift-reconciled", "phase-1",
+            "--anchor-task", "urn:fnsr:task:001",
+            "--accepted-deferred", "OED-303,OED-313",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        latest = state["tasks"][0]["history"][-1]
+        self.assertEqual(
+            latest["payload"]["accepted_deferred"],
+            ["OED-303", "OED-313"],
+        )
+
+    def test_plo_current_state_derives_from_audit(self):
+        # Emit a sequence; verify _plo_current_state walks correctly
+        for verb in ("implementing", "demo-released"):
+            self._run(["--state-path", str(self.state_path),
+                       "phase", verb, "phase-1",
+                       "--anchor-task", "urn:fnsr:task:001"])
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            state_admin._plo_current_state(state, "phase-1"),
+            "demo-released",
+        )
+        # Unmentioned phase returns unknown
+        self.assertEqual(
+            state_admin._plo_current_state(state, "phase-99"),
+            "unknown",
+        )
+
+    def test_status_lists_known_phases(self):
+        # Backward compat: phase_boundary_declared event should make the
+        # phase appear in status output even without PLO events
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:001", "agent": "developer",
+             "status": "done", "attempts": 1,
+             "outputs": None, "depends_on": [],
+             "history": [{
+                 "ts": "2026-05-25T00:00:00Z",
+                 "event": "phase_boundary_declared",
+                 "payload": {"from_phase": "phase-1", "to_phase": "phase-2"},
+                 "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+             }]}
+        ])
+        rc = self._run(["--state-path", str(self.state_path),
+                         "phase", "status"])
+        self.assertEqual(rc, 0)
+
+    def test_history_includes_legacy_events(self):
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:001", "agent": "developer",
+             "status": "done", "attempts": 1,
+             "outputs": None, "depends_on": [],
+             "history": [{
+                 "ts": "2026-05-25T00:00:00Z",
+                 "event": "phase_boundary_declared",
+                 "payload": {"from_phase": "phase-1", "to_phase": "phase-2"},
+                 "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+             }]}
+        ])
+        rc = self._run(["--state-path", str(self.state_path),
+                         "phase", "history", "phase-2"])
+        self.assertEqual(rc, 0)
+
+
+class TestSvg7Predicates(unittest.TestCase):
+    """SVG-7 predicates per state-verification-gate.md (PLO integration)."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-svg7-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_svg_7_3_fires_when_closed_state_lacks_canonical_match(self):
+        """Phase claims closed in PLO; no Phase N Status field marks it
+        complete in any canonical doc → drift."""
+        import fnsr_state_verification as svg
+        state = {
+            "tasks": [{
+                "@id": "urn:fnsr:task:001",
+                "history": [
+                    {"ts": "2026-05-25T00:00:00Z",
+                     "event": "phase_state_changed",
+                     "payload": {
+                         "phase_id": "phase-1",
+                         "from_state": "drift-reconciled",
+                         "to_state": "closed",
+                     }}
+                ]
+            }]
+        }
+        # No canonical docs scanned (empty list); predicate should still
+        # decide based on canonical_says_closed=False
+        fs_context = {
+            "root": self.tmpdir,
+            "canonical_doc_paths": [],
+        }
+        findings = svg.svg_7_3_closed_without_canonical_doc(
+            state, fs_context, {}
+        )
+        # phase-1 closed + no canonical-doc support => 1 finding
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["phase_id"], "phase-1")
+        self.assertEqual(findings[0]["severity"], "warn")
+
+    def test_svg_7_3_does_not_fire_when_canonical_doc_says_complete(self):
+        import fnsr_state_verification as svg
+        # Set up a canonical doc with Phase 1 Substantively Complete
+        canonical = self.tmpdir / "ROADMAP.md"
+        canonical.write_text(
+            "## Phase 1: Test\n\n**Status:** Substantively Complete\n\n",
+            encoding="utf-8",
+        )
+        state = {
+            "tasks": [{
+                "@id": "urn:fnsr:task:001",
+                "history": [
+                    {"ts": "2026-05-25T00:00:00Z",
+                     "event": "phase_state_changed",
+                     "payload": {
+                         "phase_id": "phase-1",
+                         "from_state": "drift-reconciled",
+                         "to_state": "closed",
+                     }}
+                ]
+            }]
+        }
+        fs_context = {
+            "root": self.tmpdir,
+            "canonical_doc_paths": [canonical],
+        }
+        findings = svg.svg_7_3_closed_without_canonical_doc(
+            state, fs_context, {}
+        )
+        # "Complete" in status -> canonical_says_closed True -> no drift
+        self.assertEqual(len(findings), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
