@@ -291,6 +291,24 @@ def probe_once(root: Path) -> dict:
 
     daemon_alive, daemon_pid = _is_daemon_alive(pid_file)
 
+    # Compose with State Verification Gate (SVG) per
+    # surfaces/_primitives/state-verification-gate.md (v3.1.0-bridge).
+    # SVG is its own probe module; we call its probe() and surface the
+    # severity counts in the watchdog recommendation field.
+    svg_summary = None
+    try:
+        import fnsr_state_verification
+        svg_report = fnsr_state_verification.probe(root)
+        svg_summary = {
+            "has_blocking_drift": svg_report.get("has_blocking_drift", False),
+            "severity_counts": svg_report.get("severity_counts", {}),
+            "predicate_ids_firing": sorted({
+                f.get("predicate_id", "") for f in svg_report.get("findings", [])
+            }),
+        }
+    except Exception as e:
+        svg_summary = {"error": f"svg probe failed: {e}"}
+
     state = _load_state(state_path)
     if state is None:
         report = {
@@ -301,6 +319,7 @@ def probe_once(root: Path) -> dict:
             "stable_for_seconds": round(stable_for_seconds, 1),
             "daemon_alive": daemon_alive,
             "daemon_pid": daemon_pid,
+            "svg_summary": svg_summary,
             "recommendation": "INSPECT state.jsonld; possible concurrent-write corruption",
         }
     else:
@@ -314,6 +333,7 @@ def probe_once(root: Path) -> dict:
             "stable_long_enough_for_stall": stable_for_seconds >= STABLE_THRESHOLD_SECONDS,
             "daemon_alive": daemon_alive,
             "daemon_pid": daemon_pid,
+            "svg_summary": svg_summary,
             **stall,
         }
         # Final recommendation classification
@@ -347,6 +367,24 @@ def probe_once(root: Path) -> dict:
             )
         else:
             report["recommendation"] = "INSPECT: unrecognized stall kind"
+
+        # Annotate recommendation with SVG drift summary (Spec SVG v3.1.0-bridge).
+        # SVG findings are additive — even when the daemon is OK_RUNNING the
+        # operator may have canonical-doc drift / commit-gap / push-gap.
+        if isinstance(svg_summary, dict) and not svg_summary.get("error"):
+            sc = svg_summary.get("severity_counts", {})
+            blocks = sc.get("block", 0)
+            warns = sc.get("warn", 0)
+            if blocks > 0:
+                report["recommendation"] = (
+                    f"SVG_BLOCK: {blocks} blocking drift finding(s) + "
+                    + report["recommendation"]
+                )
+            elif warns > 0:
+                report["recommendation"] = (
+                    report["recommendation"]
+                    + f" | SVG_WARN: {warns} drift finding(s) — see fnsr.svg_status.json"
+                )
 
     # Write the report
     try:
@@ -400,6 +438,14 @@ def main() -> int:
             print(f"dispatch_impossible_FRESH={fresh} (ACTION required)")
         if stale > 0:
             print(f"dispatch_impossible_STALE={stale} (informational; prior-phase residue)")
+        svg = report.get("svg_summary") or {}
+        if not svg.get("error"):
+            sc = svg.get("severity_counts", {})
+            blocks = sc.get("block", 0)
+            warns = sc.get("warn", 0)
+            if blocks or warns:
+                print(f"svg_drift: block={blocks} warn={warns} "
+                      f"(predicates firing: {', '.join(svg.get('predicate_ids_firing', []))[:120]})")
     return 0
 
 

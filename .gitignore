@@ -12,6 +12,7 @@ state.jsonld.lock
 fnsr.pid
 fnsr_test.pid
 fnsr.stall_status.json
+fnsr.svg_status.json
 raw_output.txt
 
 # Per-user Claude Code preferences (allowlist; not portable)
