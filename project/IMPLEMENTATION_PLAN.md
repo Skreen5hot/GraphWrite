@@ -297,7 +297,7 @@ al round-trip bytewise for all conformance fixtures.
 
 **Depends on:** Phase 1 complete.
 
-**Status:** In Progress (informal) — Phase 1 dependency overridden per ROADMAP Phase 2 Status; OEDs 301/303/306/313 deferred to v3.2 per H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4). Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b complete (commits 880d53c through 7cd0c22). Formal Phase 2 completion deferred until Phase 1 exit-gate OEDs resolve OR the override pattern is canonicalized.
+**Status:** Complete (2026-05-26) — Phase 1 dependency formally overridden via H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4); OEDs 301/303/306/313 accepted-deferred at PLO drift-reconciliation. Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b-1 complete (commits 880d53c through ec14963). PLO state machine fully traversed at Phase 2 close: implementing → demo-released → po-satisfied → retro-complete → drift-reconciled → closed. Phase-2-exit-retro substantively complete; findings synthesized at orchestrator turn 2026-05-26.
 
 **OED gates:** No blocking OEDs for core Phase 2 scope. FR-U028 acknowledgement-persistence interaction with OED-303 is deferred to Phase 3.
 

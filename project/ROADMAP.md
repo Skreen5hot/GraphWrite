@@ -71,7 +71,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Goal:** Make the kernel interactive in the browser with the minimum modeling and editing flows.
 
-**Status:** In Progress (informal) — Phase 1 dependency overridden; OEDs 301/303/306/313 deferred to v3.2 per H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4). Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b complete (commits 880d53c through 7cd0c22); UI live at https://skreen5hot.github.io/GraphWrite/. Formal Phase 2 completion deferred until Phase 1 exit-gate OEDs resolve OR the override pattern is canonicalized. Substrate phase-boundary audit event: see state.jsonld for the `phase_boundary_declared` entry anchored on the SVG v3.1.0-bridge ship commit.
+**Status:** Complete — Phase 1 dependency formally overridden via H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4); OEDs 301/303/306/313 accepted-deferred at drift-reconciliation. Browser UI shell shipped (commit 4910d78); stakeholder iterations Rounds 3–5b-1 complete (commits 880d53c through ec14963); UI live at https://skreen5hot.github.io/GraphWrite/. PLO state machine traversed at Phase 2 close (2026-05-26): implementing → demo-released → po-satisfied → retro-complete → drift-reconciled → closed. Retro phase-2-exit-retro deliberated cross-perspective findings (qa/delivery-manager/risk-analyst); substantive content banked. First substrate-tracked phase close in audit history. Aaron 2026-05-25/26 product-owner declaration accepted: "I say it is good enough. Lets move to the next phase."
 
 **Scope:**
 - React UI shell with the §26 layout: header, term sidebar, instance canvas, inspector / explanation panel, outputs panel.
@@ -104,7 +104,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Goal:** Let users bring Turtle ontologies into a project and manage the resulting term population without losing the imported / project-created distinction.
 
-**Status:** Not Started
+**Status:** In Progress (entered 2026-05-26) — Phase 2 formally closed; PLO state phase-3 == implementing. ROADMAP dependency OED-303 overridden per H2 preventive-deferral pattern (PLAYBOOK §7.5 Property 4), consistent with the Phase 2 override precedent. First concrete Phase 3 item: ft-R5-A1b (ontology-import-driven prefix population), surfaced as forward-track at Round 5 close. Substrate context: chain validator (Pre-Dispatch Chain Validator per fnsr_chain_validator.py) is mandatory for new Phase 3 chain dispatches per Aaron 2026-05-25 directive — `state_admin append-tasks --verify-first` is the Phase 3 default flow.
 
 **Scope:**
 - Turtle import via N3.js with explicit-term extraction: `owl:Class`, `owl:ObjectProperty`, `owl:DatatypeProperty`, `rdfs:Class` normalized to `owl:Class` (§14.1, FR-C011).

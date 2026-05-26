@@ -59853,6 +59853,107 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "0351f3f9a41d04e1656bb0eda27349ef0af6e83146f67e9edbaf5c4857ec6b13"
+        },
+        {
+          "ts": "2026-05-26T07:41:32Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-485-retro-phase2-qa-1",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "Retro length-budget calibration: qa/delivery-manager/risk-analyst length budgets (proposed_issues[*].title=120; summary=1500) were too tight for Phase 2 exit-retro substantive findings. All 3 agents produced real cross-perspective convergent findings (sample: source_not_in_upstream graph-correctness miss; state_admin write-race; SA1/SA3 caught only by SME not by automated tests) \u2014 but the outputs were CPS-vetoed for title length overruns. Substantive content preserved in rejected_outputs and synthesized by orchestrator. Refinement candidate: raise title limit to 180 (current 120); raise rationale limit to 1200 (current 800). The budgets exist for anti-pattern enforcement reasons; loosening should be deliberate. Aaron 2026-05-26: 'do all three proceed' \u2014 banking this for Phase 3 substrate-discipline review.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-26T07:41:32Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "0351f3f9a41d04e1656bb0eda27349ef0af6e83146f67e9edbaf5c4857ec6b13",
+          "chain_hash": "e1f031cb0f6f9cbfa4c85d8650a1cc2d113d80f5b10d20574e948e23c68e818f"
+        },
+        {
+          "ts": "2026-05-26T07:41:56Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-2",
+            "from_state": "po-satisfied",
+            "to_state": "retro-complete",
+            "transition_kind": "retro-complete",
+            "declared_by": "operator",
+            "retro_id": "phase-2-exit-retro",
+            "notes": "Cross-perspective findings from qa(485)/delivery-manager(486)/risk-analyst(487) converged on: source_not_in_upstream graph-correctness miss (now PRED-1 in validator); state_admin write-race (banked; v3.2); recon-front cascade pattern. Substantive content captured in rejected_outputs per bank-485-retro-phase2-qa-1 length-budget banking. Synthesis at orchestrator turn 2026-05-26."
+          },
+          "prev_hash": "e1f031cb0f6f9cbfa4c85d8650a1cc2d113d80f5b10d20574e948e23c68e818f",
+          "chain_hash": "a7625a94530ba6428c2177bfa7ab2362bd0efdc922291c0b3b9c29ea2bdfdc34"
+        },
+        {
+          "ts": "2026-05-26T07:42:18Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-2",
+            "from_state": "retro-complete",
+            "to_state": "drift-reconciled",
+            "transition_kind": "drift-reconciled",
+            "declared_by": "operator",
+            "accepted_deferred": [
+              "OED-301",
+              "OED-303",
+              "OED-306",
+              "OED-313"
+            ],
+            "svg_probe_ref": "fnsr.svg_status.json@2026-05-26-retro-complete-pause",
+            "notes": "SVG probe at retro-complete: 3 warn findings; ALL relate to Phase 1 (OEDs 301/303/306/313 open; commit-mislabel false-positive on Phase 3). Phase 2 itself has ZERO own-phase drift after the B1-\u03b2 reconciliation landed (commit 25d932e). Phase 1 OEDs explicitly accepted-deferred per the H2 preventive-deferral pattern (PLAYBOOK \u00a77.5 Property 4)."
+          },
+          "prev_hash": "a7625a94530ba6428c2177bfa7ab2362bd0efdc922291c0b3b9c29ea2bdfdc34",
+          "chain_hash": "2f88c5bcf1c0759328fc206014b9514da37b89b78856eadc569ca1ea4b0e6a25"
+        },
+        {
+          "ts": "2026-05-26T07:42:38Z",
+          "event": "phase_complete_declared",
+          "payload": {
+            "phase": "phase-2",
+            "acceptance_criteria_met": [
+              "AC-PHASE2-BROWSER-UI",
+              "AC-PHASE2-STAKEHOLDER-ITERATION-CLOSED",
+              "AC-PHASE2-DEPLOYED"
+            ],
+            "rationale": "Phase 2 (Browser UI Foundation) substantively complete. Browser UI shipped at commit 4910d78; stakeholder iterations Rounds 3, 4, 5, 5b-1 across multi-week elapsed time; latest deploy commit ec14963 (validator). 131/131 npm tests passing; 518/518 substrate tests passing. Phase 1 dependency OEDs 301/303/306/313 explicitly accepted-deferred per H2 preventive-deferral pattern (PLAYBOOK \u00a77.5 Property 4) \u2014 overriding strict ROADMAP dependency for Phase 2 declaration. Retro phase-2-exit-retro completed; substantive findings in rejected_outputs synthesized + banked at bank-485-retro-phase2-qa-1. Aaron 2026-05-25/26 product-owner declaration: 'I say it is good enough. Lets move to the next phase.' + 'do all three proceed'.",
+            "declared_by": "operator",
+            "declaration_kind": "operator_authoritative"
+          },
+          "prev_hash": "2f88c5bcf1c0759328fc206014b9514da37b89b78856eadc569ca1ea4b0e6a25",
+          "chain_hash": "935e9b8681d06e1635717f9db3c51abfdda7a81ed5c0030a209961dec66cb9df"
+        },
+        {
+          "ts": "2026-05-26T07:42:50Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-2",
+            "from_state": "drift-reconciled",
+            "to_state": "closed",
+            "transition_kind": "close",
+            "declared_by": "operator",
+            "notes": "Phase 2 formally CLOSED. PLO state machine traversed: implementing -> demo-released -> po-satisfied -> retro-complete -> drift-reconciled -> closed. First substrate-tracked phase close in audit history."
+          },
+          "prev_hash": "935e9b8681d06e1635717f9db3c51abfdda7a81ed5c0030a209961dec66cb9df",
+          "chain_hash": "1c62a4fcd7a251234d2f14cd394702c37759e604024fea7f6b58175328d64e9f"
+        },
+        {
+          "ts": "2026-05-26T07:43:35Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "unknown",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "Phase 3 (Ontology Import and Term Management) entry. Phase 2 formally closed 2026-05-26 via PLO state machine. Phase 3 ROADMAP dependency (OED-303 closed + Phase 2 complete) honored for Phase 2 portion; OED-303 dependency overridden per H2 preventive-deferral consistent with Phase 2 entry pattern. Goal: Let users bring Turtle ontologies into a project and manage the resulting term population without losing the imported/project-created distinction (FR-U014 through FR-U024 per ROADMAP \u00a7Phase 3). R5-A1b forward-track (ft-R5-A1b: ontology-import-driven prefix population) is the first concrete Phase 3 item."
+          },
+          "prev_hash": "1c62a4fcd7a251234d2f14cd394702c37759e604024fea7f6b58175328d64e9f",
+          "chain_hash": "367d378acd8749edf51fab733ec14f7a040f0908dc319dbefb94cca2cfb91e9e"
         }
       ]
     },
