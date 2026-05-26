@@ -231,7 +231,12 @@ class TestRecoveryDispatcher(unittest.TestCase):
             os.environ["FNSR_STATE"] = self.old_env
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def test_escalate_true_does_not_dispatch(self):
+    def test_escalate_true_emits_awaiting_operator_decision_shape(self):
+        """v3.2.1: escalate=true now emits awaiting_operator_decision shape
+        per CLAUDE.md §7.6 — operator-decision surface fires correctly.
+        Pre-v3.2.1 this produced a blocked dispatcher with no operator
+        visibility (95 silently-blocked Fixers in v3.2.0 operational
+        evidence)."""
         task = {
             "@id": "urn:t:dispatcher",
             "agent": "recovery-dispatcher",
@@ -244,11 +249,41 @@ class TestRecoveryDispatcher(unittest.TestCase):
             "escalate": True,
             "recovery_chain": [],
             "diagnosis": "operator-territory; canonical-doc edit needed",
+            "options": ["Option A", "Option B"],
+            "recommendation": "Recommend A because...",
         }}
         result = d._recovery_dispatcher(task, upstream)
         self.assertTrue(result.ok)
-        self.assertEqual(result.outputs["dispatched"], 0)
-        self.assertTrue(result.outputs["escalated"])
+        # v3.2.1 shape: awaiting_operator_decision per §7.6
+        self.assertEqual(result.outputs["status"], "awaiting_operator_decision")
+        self.assertEqual(result.outputs["options"], ["Option A", "Option B"])
+        self.assertEqual(result.outputs["recommendation"],
+                          "Recommend A because...")
+        self.assertTrue(result.outputs["fixer_escalated"])
+
+    def test_escalate_true_fallback_options_when_fixer_omits(self):
+        """Defense in depth: if a Fixer escalates without populating
+        options + recommendation, the dispatcher synthesizes a fallback
+        shape so the awaiting_operator_decision surface still fires
+        (rather than CPS-vetoing the dispatcher for shape malformation)."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {"source_task": "urn:t:fixer"},
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "operator-territory",
+            # options + recommendation OMITTED
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        self.assertEqual(result.outputs["status"], "awaiting_operator_decision")
+        # Fallback options synthesized
+        self.assertIsInstance(result.outputs["options"], list)
+        self.assertGreater(len(result.outputs["options"]), 0)
+        self.assertIsInstance(result.outputs["recommendation"], str)
+        self.assertGreater(len(result.outputs["recommendation"]), 0)
 
     def test_empty_recovery_chain_no_op(self):
         task = {
@@ -345,6 +380,94 @@ class TestSystemAgentsRegistration(unittest.TestCase):
             d.SYSTEM_AGENTS["recovery-dispatcher"],
             d._recovery_dispatcher,
         )
+
+
+class TestAbandonStaleFixers(unittest.TestCase):
+    """v3.2.1 bulk-abandon helper for the deprecated judgment-refusal
+    Fixer outputs.error envelope."""
+
+    def setUp(self):
+        import state_admin
+        self.state_admin = state_admin
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-abandon-stale-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _seed(self, tasks):
+        self.state_path.write_text(json.dumps({
+            "@context": "https://fnsr.example/context.jsonld",
+            "@id": "urn:fnsr:run:test",
+            "tasks": tasks,
+        }, indent=2), encoding="utf-8")
+
+    def test_abandons_blocked_fixer_with_deprecated_refusal_code(self):
+        self._seed([
+            {"@id": "urn:t:fixer-bad", "agent": "fixer", "status": "blocked",
+             "outputs": {"error": "stall_not_recoverable", "details": "x"},
+             "history": [{"event": "cps_veto", "payload": {}, "ts": "2026-05-26T00:00:00Z",
+                          "prev_hash": "0"*64, "chain_hash": "a"*64}],
+             "depends_on": []},
+        ])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "abandon-stale-fixers",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"], "abandoned")
+
+    def test_does_not_abandon_fixer_with_valid_recovery_chain(self):
+        # A done Fixer with valid outputs should NOT be touched
+        self._seed([
+            {"@id": "urn:t:fixer-good", "agent": "fixer", "status": "done",
+             "outputs": {"escalate": False, "recovery_chain": [{"@id": "x"}]},
+             "history": [], "depends_on": []},
+        ])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "abandon-stale-fixers",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"], "done")  # untouched
+
+    def test_abandons_paired_dispatcher_too(self):
+        self._seed([
+            {"@id": "urn:t:fixer-bad", "agent": "fixer", "status": "blocked",
+             "outputs": {"error": "stall_not_recoverable", "details": "x"},
+             "history": [{"event": "cps_veto", "payload": {}, "ts": "2026-05-26T00:00:00Z",
+                          "prev_hash": "0"*64, "chain_hash": "a"*64}],
+             "depends_on": []},
+            {"@id": "urn:t:dispatcher-paired", "agent": "recovery-dispatcher",
+             "status": "ready",
+             "depends_on": ["urn:t:fixer-bad"],
+             "history": []},
+        ])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "abandon-stale-fixers",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        statuses = {t["@id"]: t["status"] for t in state["tasks"]}
+        self.assertEqual(statuses["urn:t:fixer-bad"], "abandoned")
+        self.assertEqual(statuses["urn:t:dispatcher-paired"], "abandoned")
+
+    def test_dry_run_does_not_mutate(self):
+        self._seed([
+            {"@id": "urn:t:fixer-bad", "agent": "fixer", "status": "blocked",
+             "outputs": {"error": "stall_not_recoverable", "details": "x"},
+             "history": [], "depends_on": []},
+        ])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "abandon-stale-fixers", "--dry-run",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"], "blocked")  # untouched
 
 
 if __name__ == "__main__":

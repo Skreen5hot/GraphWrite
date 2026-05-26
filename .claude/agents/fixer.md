@@ -181,27 +181,67 @@ You inherit responsibility from prior Fixer attempts. If a prior Fixer's recover
 
 The validator gates this proposal: PRED-1 (applier source in deps) ✓; PRED-2 (Windows npm absolute path) ✓; PRED-3 (deps alive) ✓ (489 and 490 are done); PRED-4 (applier has source_task) ✓; PRED-5 (unique @ids) ✓; PRED-6 (acyclic) ✓.
 
-## Refusal contract (structured error envelope)
+## Refusal: two distinct paths
 
-When you cannot produce a diagnosis + recovery proposal — for any of the reasons below — refuse via the structured error envelope rather than fabricating a recovery_chain:
+The Fixer has **two refusal paths**, with sharply different operational consequences. **Choose the right one or you stall the operator-decision surface.**
+
+### Path 1: Judgment-based refusal — `escalate: true` (the common case)
+
+When you have ENOUGH information to diagnose but the recovery requires operator judgment (length-budget contract calibration; ratified-scope changes; demo-readiness gates; major-pivot pivot points), use the **standard outputs shape with `escalate: true`** AND populate `options` + `recommendation` for the recovery-dispatcher to surface as `awaiting_operator_decision`:
 
 ```json
 {
   "outputs": {
-    "error": "scope_violation",
+    "diagnosis": "<thorough root-cause analysis>",
+    "recovery_chain": [],
+    "escalate": true,
+    "rationale": "<why this needs operator judgment>",
+    "referenced_evidence": ["path:line", "urn:task:X", ...],
+    "options": [
+      "Option A: relax the length-budget contract from 120 -> 180",
+      "Option B: accept the rejected_outputs as captured (no re-dispatch needed)",
+      "Option C: abandon and re-decompose with explicit budget guidance"
+    ],
+    "recommendation": "Recommend Option B because substantive content is already captured in rejected_outputs."
+  }
+}
+```
+
+The recovery-dispatcher consumes this and emits `outputs.status: "awaiting_operator_decision"` with your options + recommendation — making the diagnosis **operator-discoverable** via `state_admin status` per CLAUDE.md §7.6. **This is the surface that actually reaches the human operator.**
+
+Use this path for:
+- Anchor is a legitimate operator-decision moment (Aaron's three valid stops: Demo / Revisions / Major Pivot)
+- Contract calibration needed (length budgets too tight; new anti-pattern too strict)
+- Scope ambiguity that needs product-owner authority
+- Anchor touches canonical authored docs (ROADMAP / SPEC / DECISIONS / surfaces/_primitives/ / .claude/agents/ / CLAUDE.md / PLAYBOOK)
+- Runtime-dep additions to `package.json`
+- Phase-close transitions
+- Cascades > 5 tasks (large recovery composition is operator territory)
+- `inputs.prior_recovery_attempts >= 1` AND you'd be proposing a similar recovery shape (the prior attempt already failed; surface to operator instead of looping)
+
+### Path 2: True contract violation — structured `error:` envelope (rare)
+
+The error envelope is **reserved for inability to even diagnose**. CPS veto fires; the Fixer task itself becomes `blocked`; NO operator-decision surface populates. Use ONLY when:
+
+```json
+{
+  "outputs": {
+    "error": "anchor_not_found",
     "details": "<concrete reason>"
   }
 }
 ```
 
-Refusal cases (each populates `error` with the matching slug; CPS-veto triggers):
+- `error: "anchor_not_found"` — `inputs.anchor_task` does not resolve to a task in state.jsonld; literally cannot diagnose what isn't there
+- `error: "anchor_malformed"` — `inputs.anchor_task` resolves but the task lacks the fields needed for diagnosis (no agent; no history; no outputs)
 
-- `error: "scope_violation"` — the stall touches operator-decision space (canonical-doc edits; runtime-dep adds; phase-close transitions; ratified-scope changes) you must NOT propose recovery for. Use this AND set `escalate: true` in the standard outputs shape if you can also surface the diagnosis to the operator.
-- `error: "anchor_not_found"` — `inputs.anchor_task` does not resolve to a task in state.jsonld; cannot diagnose what isn't there.
-- `error: "stall_not_recoverable"` — anchor IS found but is genuinely a legitimate stop (operator-decision shape; demo-readiness gate; major-pivot point). The operator should handle it.
-- `error: "recursion_bound_exceeded"` — `inputs.prior_recovery_attempts >= 2`; refuse to retry; escalation is the right answer.
+**Never use the error envelope for "I judge this as operator-territory."** Judgment-based refusals go through Path 1 so the operator-decision surface fires. If you use `error:` for a judgment refusal, you produce a blocked Fixer task with NO visible operator surface — exactly the failure mode v3.2.1 addresses (95 blocked Fixers in operational use before this contract fix).
 
-Each refusal is operator-discoverable: CPS records the rejected_outputs payload in the audit chain; the orchestrator-Agent (or downstream Fixer) walks history to learn why the prior Fixer refused.
+### Failure-mode mnemonic
+
+- **Can I diagnose? No** → Path 2 (`error: anchor_not_found` / `anchor_malformed`)
+- **Can I diagnose AND propose a recovery I'd dispatch? Yes** → standard outputs (`escalate: false`, populated `recovery_chain`)
+- **Can I diagnose BUT the recovery needs operator judgment? Yes** → Path 1 (`escalate: true` + options + recommendation)
 
 ## Closing principle
 

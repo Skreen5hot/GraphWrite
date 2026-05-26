@@ -3267,16 +3267,39 @@ def _recovery_dispatcher(task: dict[str, Any],
     recovery_chain = src.get("recovery_chain") or []
     diagnosis = (src.get("diagnosis") or "")[:500]
 
-    # Honor fixer's explicit escalation request
+    # Honor fixer's explicit escalation request — emit
+    # awaiting_operator_decision shape per CLAUDE.md §7.6 so the daemon
+    # commits with status=awaiting_operator_decision and surfaces in
+    # state_admin status (instead of producing a silently-blocked
+    # dispatcher task that hides the operator-decision surface).
     if escalate:
+        options = src.get("options")
+        recommendation = src.get("recommendation")
+        # Fallback: synthesize a minimal options+recommendation if Fixer
+        # didn't provide them. This prevents shape validation failure
+        # if a Fixer dispatches escalate=true without populating them.
+        if not options or not isinstance(options, list) or len(options) == 0:
+            options = [
+                "Operator-fix the underlying contract/scope issue per diagnosis",
+                "Abandon the stalled anchor (state_admin abandon <anchor>)",
+                "Accept the stall and proceed; the work will be revisited later",
+            ]
+        if not recommendation or not isinstance(recommendation, str) or not recommendation.strip():
+            recommendation = (
+                "See diagnosis for root-cause analysis. The Fixer judged "
+                "this as operator-territory; recommended action depends on "
+                "context the Fixer cannot determine. Operator picks an option."
+            )
         return WorkerResult(True, {
-            "dispatched": 0,
-            "escalated": True,
-            "validator_report": None,
-            "summary": ("fixer requested escalation: "
-                         + diagnosis[:200]),
+            "status": "awaiting_operator_decision",
+            "options": options,
+            "recommendation": recommendation,
             "anchor_task": anchor_task_id,
-            "source_task": source_task_id,
+            "source_fixer_task": source_task_id,
+            "diagnosis": diagnosis,
+            "rationale": (src.get("rationale") or "")[:500],
+            "referenced_evidence": src.get("referenced_evidence") or [],
+            "fixer_escalated": True,
         }, "", "")
 
     # Empty recovery chain with escalate=false: no-op recovery

@@ -228,6 +228,90 @@ def cmd_append_tasks(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_abandon_stale_fixers(args: argparse.Namespace) -> int:
+    """Bulk-abandon blocked fixer tasks whose anchor has exhausted the
+    recursion bound. v3.2.1 cleanup helper for the contract bug in
+    v3.2.0 where judgment-based Fixer refusals emitted via `error:`
+    envelope produced silently-blocked Fixer tasks instead of
+    awaiting_operator_decision surfaces.
+
+    Targets: tasks with agent=fixer AND status=blocked AND outputs.error
+    matches one of the deprecated judgment-refusal codes
+    (stall_not_recoverable, scope_violation, recursion_bound_exceeded).
+    Also abandons the paired recovery-dispatcher tasks that depend on
+    those blocked fixers (they would never dispatch).
+
+    Per CLAUDE.md §6: operator-instructed cleanup. The audit chain
+    records abandon events; no rewrite of prior chain hashes.
+
+    --dry-run: list what would be abandoned without mutating state.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    deprecated_codes = (
+        "stall_not_recoverable",
+        "scope_violation",
+        "recursion_bound_exceeded",
+    )
+    fixer_targets = []
+    blocked_fixer_ids: set[str] = set()
+    for t in state.get("tasks", []) or []:
+        if t.get("agent") != "fixer":
+            continue
+        if t.get("status") != "blocked":
+            continue
+        outputs = t.get("outputs") or {}
+        if not isinstance(outputs, dict):
+            continue
+        if outputs.get("error") in deprecated_codes:
+            fixer_targets.append(t["@id"])
+            blocked_fixer_ids.add(t["@id"])
+
+    # Paired dispatchers: recovery-dispatcher tasks depending on
+    # the abandoned fixers
+    dispatcher_targets = []
+    for t in state.get("tasks", []) or []:
+        if t.get("agent") != "recovery-dispatcher":
+            continue
+        if t.get("status") not in ("ready", "blocked"):
+            continue
+        deps = t.get("depends_on", []) or []
+        if any(d in blocked_fixer_ids for d in deps):
+            dispatcher_targets.append(t["@id"])
+
+    all_targets = fixer_targets + dispatcher_targets
+
+    if args.dry_run:
+        print(f"would abandon {len(fixer_targets)} blocked fixer task(s) "
+              f"and {len(dispatcher_targets)} paired dispatcher task(s) "
+              f"(total {len(all_targets)})")
+        for tid in all_targets[:30]:
+            print(f"  {tid}")
+        if len(all_targets) > 30:
+            print(f"  ... and {len(all_targets) - 30} more")
+        return 0
+
+    abandoned_count = 0
+    for tid in all_targets:
+        task = _find_task(state, tid)
+        if task is None:
+            continue
+        if task.get("status") == "abandoned":
+            continue
+        task["status"] = "abandoned"
+        _append_audit(task, "task_abandoned", {
+            "reason": ("v3.2.1 contract-fix cleanup: deprecated judgment-"
+                       "refusal envelope; Fixer should have used "
+                       "escalate=true path. Bulk-abandoned by "
+                       "abandon-stale-fixers."),
+            "operator": args.operator,
+        })
+        abandoned_count += 1
+    _save_state(state_path, state)
+    print(f"abandoned {abandoned_count} stale Fixer + paired dispatcher task(s)")
+    return 0
+
+
 def cmd_verify_chain(args: argparse.Namespace) -> int:
     """Run the pre-dispatch chain validator on a chain JSON file.
     Returns exit code 0 on PASS, 1 on FAIL.
@@ -2074,6 +2158,24 @@ def _build_parser() -> argparse.ArgumentParser:
               "refuse to append on FAIL verdict. Per Aaron 2026-05-25 "
               "pre-dispatch chain validator (v3.1.0-bridge)."),
     )
+
+    p_abandon_fixers = sub.add_parser(
+        "abandon-stale-fixers",
+        help=("v3.2.1 cleanup helper. Bulk-abandon blocked Fixer tasks whose "
+              "outputs.error is one of the deprecated judgment-refusal codes "
+              "(stall_not_recoverable, scope_violation, "
+              "recursion_bound_exceeded). Also abandons paired "
+              "recovery-dispatcher tasks. Use --dry-run to preview."),
+    )
+    p_abandon_fixers.add_argument(
+        "--dry-run", action="store_true",
+        help="list targets without mutating state",
+    )
+    p_abandon_fixers.add_argument(
+        "--operator", default="operator",
+        help="recorded in audit event as the operator who triggered cleanup",
+    )
+    p_abandon_fixers.set_defaults(func=cmd_abandon_stale_fixers)
 
     p_vchain = sub.add_parser(
         "verify-chain",
