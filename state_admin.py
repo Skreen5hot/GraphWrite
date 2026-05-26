@@ -165,7 +165,12 @@ def cmd_abandon(args: argparse.Namespace) -> int:
 def cmd_append_tasks(args: argparse.Namespace) -> int:
     """Append new tasks from a JSON file to state.jsonld. The JSON file
     must contain either a list of task objects or an object with a "tasks"
-    key. IDs that already exist in state.jsonld are skipped (no overwrite)."""
+    key. IDs that already exist in state.jsonld are skipped (no overwrite).
+
+    If --verify-first is set, run the pre-dispatch chain validator
+    (fnsr_chain_validator) before appending. On verdict=FAIL, refuse to
+    append and print the findings. Default off for backward compatibility.
+    """
     state_path = Path(args.state_path)
     state = _load_state(state_path)
     src = Path(args.tasks_file)
@@ -179,6 +184,33 @@ def cmd_append_tasks(args: argparse.Namespace) -> int:
         print("tasks file must contain a list or an object with `tasks` key",
               file=sys.stderr)
         return 1
+
+    # --verify-first: run pre-dispatch validator before appending
+    if getattr(args, "verify_first", False):
+        try:
+            import fnsr_chain_validator
+        except ImportError as e:
+            print(f"--verify-first requested but fnsr_chain_validator "
+                  f"unavailable: {e}", file=sys.stderr)
+            return 1
+        report = fnsr_chain_validator.validate_chain(new_tasks, state)
+        if report.get("verdict") == "FAIL":
+            sc = report.get("severity_counts", {})
+            print(f"verify-chain FAIL ({sc.get('error', 0)} error(s), "
+                  f"{sc.get('warn', 0)} warn(s)); refusing to append.",
+                  file=sys.stderr)
+            for f in report.get("findings", []):
+                if f.get("severity") not in ("error", "warn"):
+                    continue
+                pid = f.get("predicate_id", "?")
+                sev = f.get("severity", "?")
+                tid = f.get("task_id", "?")
+                fix = f.get("fix_suggestion", "")
+                print(f"  [{sev:5s}] {pid} @ {tid}", file=sys.stderr)
+                if fix:
+                    print(f"          fix: {fix[:160]}", file=sys.stderr)
+            return 2
+
     existing = {t["@id"] for t in state.get("tasks", [])}
     added = 0
     skipped = 0
@@ -194,6 +226,49 @@ def cmd_append_tasks(args: argparse.Namespace) -> int:
     _save_state(state_path, state)
     print(f"appended {added} task(s); skipped {skipped} duplicate(s)")
     return 0
+
+
+def cmd_verify_chain(args: argparse.Namespace) -> int:
+    """Run the pre-dispatch chain validator on a chain JSON file.
+    Returns exit code 0 on PASS, 1 on FAIL.
+
+    Per surfaces/_primitives/state-verification-gate.md companion + Aaron
+    2026-05-25 root-cause analysis: catches the operator-composition
+    defects (applier-source-not-in-deps; Windows bare-npm; deps-to-blocked
+    tasks; missing required inputs; @id collisions; circular deps) that
+    have produced cascade rebuilds throughout this session.
+    """
+    try:
+        import fnsr_chain_validator
+    except ImportError as e:
+        print(f"fnsr_chain_validator unavailable: {e}", file=sys.stderr)
+        return 1
+    chain_path = Path(args.chain_path)
+    if not chain_path.exists():
+        print(f"chain file not found: {chain_path}", file=sys.stderr)
+        return 1
+    state_path = Path(args.state_path) if args.state_path else None
+    report = fnsr_chain_validator.validate_chain_file(chain_path, state_path)
+    verdict = report.get("verdict", "?")
+    sc = report.get("severity_counts", {})
+    print(f"verify-chain {chain_path}: {verdict} "
+          f"(errors={sc.get('error', 0)} warns={sc.get('warn', 0)} "
+          f"info={sc.get('info', 0)})")
+    for f in report.get("findings", []):
+        pid = f.get("predicate_id", "?")
+        sev = f.get("severity", "?")
+        tid = f.get("task_id", "?")
+        ev = f.get("evidence", {})
+        ev_short = ", ".join(
+            f"{k}={v}" for k, v in list(ev.items())[:3]
+        )[:120]
+        print(f"  [{sev:5s}] {pid} @ {tid}")
+        if ev_short:
+            print(f"          evidence: {ev_short}")
+        fix = f.get("fix_suggestion", "")
+        if fix:
+            print(f"          fix: {fix[:160]}")
+    return 1 if verdict == "FAIL" else 0
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -1475,6 +1550,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "fnsr_daemon.py",
     "fnsr_stall_watch.py",
     "fnsr_state_verification.py",
+    "fnsr_chain_validator.py",
     "state_admin.py",
     "PLAYBOOK.md",
     ".gitignore",
@@ -1552,6 +1628,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "tests/test_v3_1_substrate.py",
     "tests/test_routing.py",
     "tests/test_state_admin.py",
+    "tests/test_chain_validator.py",
     "tests/test_test_runner.py",
     "tests/test_upstream.py",
     "tests/test_verification_ritual.py",
@@ -1988,6 +2065,22 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_append = sub.add_parser("append-tasks", help="append tasks from JSON file")
     p_append.add_argument("tasks_file")
+    p_append.add_argument(
+        "--verify-first", action="store_true",
+        help=("run fnsr_chain_validator on the chain before appending; "
+              "refuse to append on FAIL verdict. Per Aaron 2026-05-25 "
+              "pre-dispatch chain validator (v3.1.0-bridge)."),
+    )
+
+    p_vchain = sub.add_parser(
+        "verify-chain",
+        help=("Pre-dispatch chain validator (v3.1.0-bridge). Runs 6 "
+              "predicates against a chain JSON file: applier-source-in-deps, "
+              "Windows-npm-bare, deps-alive, required-inputs, "
+              "no-id-collisions, no-circular-deps. Exit 0 PASS / 1 FAIL."),
+    )
+    p_vchain.add_argument("chain_path", help="path to the chain JSON file")
+    p_vchain.set_defaults(func=cmd_verify_chain)
     p_append.set_defaults(func=cmd_append_tasks)
 
     p_verify = sub.add_parser("verify", help="verify audit-chain integrity")

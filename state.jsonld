@@ -59334,6 +59334,1239 @@
           },
           "prev_hash": "76a39cff6d2fad06f9d07148233f212bd24c2ab1487b641c5f7fbce259f61703",
           "chain_hash": "0ae254ffe525c8457fcc831ee88e7d80deb3af775b9100eba1d0d24f30109831"
+        },
+        {
+          "ts": "2026-05-25T20:51:02Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-2",
+            "from_state": "unknown",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "backfill: Phase 2 implementation chains 4910d78 (Browser UI shell) through 7cd0c22 (R5b-1 Add Annotation button)"
+          },
+          "prev_hash": "0ae254ffe525c8457fcc831ee88e7d80deb3af775b9100eba1d0d24f30109831",
+          "chain_hash": "64340d6b3532b9a377aee08f19085a02580b42ec66ad2261adaf41478a90a61e"
+        },
+        {
+          "ts": "2026-05-25T20:51:03Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-2",
+            "from_state": "implementing",
+            "to_state": "po-satisfied",
+            "transition_kind": "po-satisfied",
+            "declared_by": "operator",
+            "notes": "Aaron 2026-05-25 declared 'good enough' \u2014 no Round 5b feedback batch requested. Phase 2 stakeholder iteration closed across Rounds 3, 4, 5, 5b-1.",
+            "feedback_round_id": "round-5b"
+          },
+          "prev_hash": "64340d6b3532b9a377aee08f19085a02580b42ec66ad2261adaf41478a90a61e",
+          "chain_hash": "c12756d34c6f8d65867f10e19d1f0c13909e34ab64892863d949ceded4f4a8f2"
+        },
+        {
+          "ts": "2026-05-25T20:53:09Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-484-test-r5b-add-annotation-1",
+            "category": "pattern-observation",
+            "state": 1,
+            "content": "state_admin.py write path does NOT acquire state.jsonld.lock; daemon polling concurrent with operator-CLI emissions can race. Surfaced 2026-05-25 during phase-2 PLO sequence: emitted implementing -> demo-released -> po-satisfied via && chain; the demo-released phase_state_changed event was LOST despite stdout reporting it as emitted. Chain hash verified PASS (no corruption) but the audit content is incomplete. The daemon was PID 28048 polling between command invocations; presumed cause is daemon-read-coalescing or os.replace-rename timing on Windows. v3.2 substrate-discipline fix candidate: state_admin._save_state should acquire the same lock the daemon uses (msvcrt on Windows; fcntl on POSIX) before write. Also adds an SVG-8 predicate candidate: detect 'phase_state_changed transitions that skip the standard middle state' (e.g., implementing -> po-satisfied without demo-released) as race-symptom evidence.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-05-25T20:53:09Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "c12756d34c6f8d65867f10e19d1f0c13909e34ab64892863d949ceded4f4a8f2",
+          "chain_hash": "e181ac9a9924f7f4012c38a4f04508f0e8a1c0c7e1d857341bbd16311ee00423"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:485-retro-phase2-qa",
+      "agent": "qa",
+      "status": "blocked",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "surface": "retro",
+        "retro_id": "phase-2-exit-retro",
+        "phase_origin": "phase-2",
+        "purpose": "QA perspective for Phase 2 (Browser UI Foundation) exit retro. Surface verification gaps, regression risks, defect distribution, process quality observations from the Phase 2 arc.",
+        "phase_scope": "Phase 2: Browser UI Foundation. Started commit 4910d78 (Browser UI shell + 12 user-flow tasks; Pages deploy prep). Stakeholder iterations Rounds 3, 4, 5, 5b-1. Latest deploy: commit 7cd0c22 + b53f1ec narration fix. Test suites: npm 131/131 passing; Python substrate 494/494 passing. Pages URL: https://skreen5hot.github.io/GraphWrite/.",
+        "context_files_to_review": [
+          "demo/FEEDBACK-ROUND-3.md",
+          "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md",
+          "demo/FEEDBACK-ROUND-4.md",
+          "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+          "demo/FEEDBACK-ROUND-5.md",
+          "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md",
+          "demo/WALKTHROUGH-ROUND-5.md",
+          "OPERATOR-MEDIATION-LOG.md"
+        ],
+        "key_substrate_observations_to_consider": [
+          "bank-374-sme-r5-decomposition-1: commit-gap discipline failure (chains-landed != deployed); resolved in-session",
+          "bank-425-apply-r5-c1-c6-only-1: recon-front cascade deadlock pattern; bit 4 cascades in Round 5",
+          "bank-374-sme-r5-decomposition-2: listener pull-vs-push gap; v3.2 candidate",
+          "bank-439-test-r5-c1-v4-1: test-runner Windows subprocess.run('npm') failure",
+          "bank-484-test-r5b-add-annotation-1: state_admin write-race vs daemon polling"
+        ],
+        "deliberation_focus": "QA-specific findings: were tests adequate? did we catch regressions? what defects shipped that should have been caught? what verification was skipped or under-budgeted? Phase 2 saw the daemon's first stakeholder-feedback workflow; flag any verification-discipline observations worth canonical attention."
+      },
+      "attempts": 1,
+      "outputs": {
+        "proposed_issues": [
+          {
+            "id": "QA-1",
+            "title": "Two active blocking defects (SA1 OWL Full violation; SA3 silent annotation-property data-loss) shipped through all pre-deployment automated checks",
+            "severity": "blocking",
+            "kind": "inference",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:152\u00e2\u20ac\u201c156 (R4-STARTER-4 SME verdict SA1: 'active output defect; every new project's Turtle export currently emits rdfs:label rdf:type owl:DatatypeProperty'; blocking severity)",
+              "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:192\u00e2\u20ac\u201c196 (R4-TYPESYS-1 SME verdict SA3: 'owl:AnnotationProperty terms silently dropped from all semantic exports'; blocking severity)",
+              "tests/starter-terms.test.ts:36\u00e2\u20ac\u201c41 (VALID_TYPES set now includes owl:AnnotationProperty \u00e2\u20ac\u201d post-R4-2 addition; R4-TYPESYS-1 completeness map line 202 called for this addition, confirming it was absent pre-ship)",
+              "tests/semantic-projection.test.ts:458\u00e2\u20ac\u201c491 (SA3 bonus regression test added post-fix per R4-TYPESYS-1 completeness map \u00e2\u20ac\u201d confirms test did not exist before the fix chain)"
+            ],
+            "rationale": "SA1 (rdfs:label/comment/seeAlso mistyped as owl:DatatypeProperty) and SA3 (owl:AnnotationProperty silently filtered out by SEMANTIC_TYPE_ALLOWLIST before Turtle export) were both classified blocking-severity by the semantic-sme in Round 4. Both were introduced by Round 3 Chain \u00ce\u00b3. The completeness maps for R4-STARTER-4 and R4-TYPESYS-1 call for test additions as part of the fix chain; this confirms the corrective tests did not exist when the defects shipped. The pre-ship suite therefore had zero coverage of OWL 2 DL well-formedness for starter-term type assignments and zero coverage of projection-pipeline type-allowlist completeness.",
+            "related_acceptance_criteria": [
+              "R4-STARTER-4 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)",
+              "R4-TYPESYS-1 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+            ]
+          },
+          {
+            "id": "QA-2",
+            "title": "Validation-panel stale-state defect (R3-S1-04, P1 ship-blocking) shipped without the validate-on-mutation regression test called for in its completeness map",
+            "severity": "major",
+            "kind": "gap",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:117\u00e2\u20ac\u201c132 (R3-S1-04 completeness map: 'Spec tests: tests/*.test.ts \u00e2\u20ac\u201d validate-on-mutation regression test needed'; initial priority P1 ship-blocking)",
+              "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:118 (bug: 'onSave handler calls setProject(updated) but omits setValidationReport(validate(updated))')",
+              "tests/ (glob: 17 unit test files enumerated; no test file named for validate-on-mutation; structural-validator.test.ts and snapshot.test.ts do not exercise the onSave + setValidationReport integration path)"
+            ],
+            "rationale": "R3-S1-04 was classified P1 ship-blocking: after adding a realist anchor via Project Settings, the MISSING_REALIST_ANCHOR error persisted because the onSave handler omitted a setValidationReport call. The completeness map explicitly required a validate-on-mutation regression test. No such test appears in the 17-file unit test enumeration or 14-file Playwright spec enumeration. The defect was caught by Aaron in stakeholder review in Round 3, not by the automated suite. The fix was applied but the regression test remains absent at Phase 2 close.",
+            "related_acceptance_criteria": [
+              "FR-U028 (project/SPEC.md \u00c2\u00a717.2 MISSING_REALIST_ANCHOR)",
+              "R3-S1-04 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)"
+            ]
+          },
+          {
+            "id": "QA-3",
+            "title": "Wrong IAO IRI in VMP_CONTEXT (R3-S5-01) propagated from Phase 1 through all Phase 2 automated tests undetected; snapshot golden file encoded the wrong IRI producing a self-consistent false pass",
+            "severity": "major",
+            "kind": "inference",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:287\u00e2\u20ac\u201c303 (R3-S5-01: 'incorrect binding was present from Phase 1 but not surfaced until Aaron's coworker reviewed the Turtle export'; four files affected across kernel, emit, tbox, and SPEC)",
+              "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:296 ('Spec tests: tests/snapshot.test.ts \u00e2\u20ac\u201d golden file (examples/expected-output.jsonld) update required if IRI changes')",
+              "tests/snapshot.test.ts (golden-file test: expected-output.jsonld was generated from the same codebase; the test validated the wrong iao: IRI on every run, as both code and golden file encoded the same incorrect value)"
+            ],
+            "rationale": "The iao: prefix was bound to http://purl.obolibrary.org/obo/iao# instead of the canonical OBO IRI http://purl.obolibrary.org/obo/IAO_0000136. The snapshot test validates against a golden file that was generated from the same defective codebase; both encode the wrong IRI consistently, so the test passed on every run while the defect persisted. The R3-S5-01 completeness map itself calls for a golden-file update, confirming the existing test would not have detected the error without a prior canonical-source check. Semantic-correctness checks against external canonical registries are not present in the suite.",
+            "related_acceptance_criteria": [
+              "R3-S5-01 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)",
+              "NFR-014 (project/SPEC.md \u00c2\u00a75.2 Normative Context)"
+            ]
+          },
+          {
+            "id": "QA-4",
+            "title": "Upload-path missing starter-term initialization (R5-A2) is an open defect at Phase 2 close with no automated test coverage and SME verdict pending",
+            "severity": "major",
+            "kind": "gap",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:113\u00e2\u20ac\u201c123 (R5-A2: 'upload-path missing starter-term initialization'; sme_verdict: PENDING; severity high \u00e2\u20ac\u201d 'every uploaded project file silently violates the type-system invariant')",
+              "demo/FEEDBACK-ROUND-5.md:28\u00e2\u20ac\u201c31 (Aaron: 'The default system Annotation Properties should ALWAYS be present on upload or new')",
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:319 (R5-Chain-2 listed as adjudication-independent and dispatchable immediately \u00e2\u20ac\u201d implying fix had not yet landed at decomposition time)"
+            ],
+            "rationale": "The 3 starter annotation properties are injected on New project but not when an existing JSON-LD file is uploaded. The result is that uploaded projects render without the Annotation Properties sidebar section populated, silently violating the type-system invariant introduced by R4-STARTER-4. R5-A2 was identified in Round 5 and the SME verdict was PENDING at decomposition time. No test in the 17-file unit test enumeration exercises the upload-then-check-starter-terms path. The defect was caught by Aaron loading library-catalog.jsonld, not by any automated test.",
+            "related_acceptance_criteria": [
+              "R5-A2 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)",
+              "R4-STARTER-4 post-fix owl:AnnotationProperty invariant"
+            ]
+          },
+          {
+            "id": "QA-5",
+            "title": "Stale @context in demo/library-catalog.jsonld (SME-R5-01) is an open hidden defect affecting downstream consumers; no fixture-@context-validation test exists",
+            "severity": "major",
+            "kind": "gap",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:236\u00e2\u20ac\u201c249 (SME-R5-01: 'library-catalog fixture's embedded @context is a pre-ADR-007 context; iao:isAbout expands to wrong IRI in any non-GraphWrite JSON-LD tool'; hidden defect)",
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:247 (SME verdict: 'SEPARATE fix from B1/B4 \u00e2\u20ac\u201d those fix the TBox; this fixes the fixture document context'; adjudication-independent per line 326)",
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:17 (SME-R5-01 classified major severity in revision log)"
+            ],
+            "rationale": "The fixture @context was not updated when ADR-007 fixed the iao: prefix in VMP_CONTEXT. Because GraphWrite unconditionally replaces @context on load via serializeVmp, the defect is invisible within the app. But downstream consumers processing the publicly distributed demo file with any other JSON-LD tool get iao:isAbout expanding to the pre-ADR-007 wrong IRI. No test validates that fixture @context entries match VMP_CONTEXT. The defect was surfaced by the SME agent during Round 5 decomposition review, not by any automated check or by Aaron's own walkthrough \u00e2\u20ac\u201d indicating fixture @context freshness is entirely outside the regression scope.",
+            "related_acceptance_criteria": [
+              "ADR-007 (project/DECISIONS.md)",
+              "SME-R5-01 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)"
+            ]
+          },
+          {
+            "id": "QA-6",
+            "title": "Pass 2a gating enforcement gap allowed architect denial to not block applier dispatch in 3 instances during Round 4 before daemon fix in commit 6e41cf5",
+            "severity": "major",
+            "kind": "observation",
+            "evidence": [
+              "OPERATOR-MEDIATION-LOG.md:212\u00e2\u20ac\u201c217 (Event 11: 'Task 267 \u00e2\u2020\u2019 status=done. Task 268 (applier) had depends_on: [267, 266]. When both deps reached status=done, daemon's next_ready_task dispatched 268. The applier ran despite architect's denial \u00e2\u20ac\u201d the daemon checks status not outputs.ruling')",
+              "OPERATOR-MEDIATION-LOG.md:227 (Event 11 closure: 'Three observed instances during Round 4 ... all reproduce as test failures pre-fix. TestPassRatificationGating (8 cases). Full substrate test suite: 483/483 OK.')"
+            ],
+            "rationale": "For 3 instances during Round 4, the architect returned ruling=denied but the applier task's depends_on deps both reached status=done, so the daemon dispatched the applier and changes landed. FNSR Spec 03 specifies that Pass 2a gates Pass 2b. The daemon enforced task-completion ordering but not ruling semantics. The fix (daemon-side _architect_ratification_block predicate, commit 6e41cf5) is now regression-tested by TestPassRatificationGating. This is a QA observation about a verification discipline gap that was active for the duration of Rounds 3\u00e2\u20ac\u201c4 and produced at least 3 instances where the ratification gate was bypassed.",
+            "related_acceptance_criteria": [
+              "FNSR Spec 03 Pass 2a (CLAUDE.md \u00c2\u00a77.8)",
+              "Event 11 (OPERATOR-MEDIATION-LOG.md)"
+            ]
+          },
+          {
+            "id": "QA-7",
+            "title": "Test-runner infrastructure manifested 4 distinct failure modes at task 2.1 verification alone, each requiring operator-action recovery; Playwright is structurally outside the automated test loop",
+            "severity": "major",
+            "kind": "observation",
+            "evidence": [
+              "OPERATOR-MEDIATION-LOG.md:87\u00e2\u20ac\u201c99 (Event 4: Playwright suite not invoked by npm test; AC1 unverified by chain machinery; developer added tests but did not wire test script)",
+              "OPERATOR-MEDIATION-LOG.md:101\u00e2\u20ac\u201c116 (Event 5: vite preview fails with dist/ui not existing; build precondition unmanaged by test-runner dispatch)",
+              "OPERATOR-MEDIATION-LOG.md:119\u00e2\u20ac\u201c137 (Event 6: test-runner subprocess blocked by harness approval gate on Windows; CPS vetoed on structured error; chain stalled)",
+              "OPERATOR-MEDIATION-LOG.md:141\u00e2\u20ac\u201c161 (Event 7: fixture BOM+CRLF; AC3 failed after 4/5 prior Playwright tests passed; gap-15 logged)"
+            ],
+            "rationale": "Events 4\u00e2\u20ac\u201c7 all surfaced at the same chain's verification step in rapid succession. Event 4 reveals that developer-produced Playwright test files are not automatically included in npm test, creating a structural gap between chain-machinery verification and AC coverage. Event 5 reveals that vite preview as webServer requires a pre-built dist that the test-runner command does not manage. Event 6 (also banked as bank-439) confirms Windows subprocess.run('npm') failure is a recurring risk. Event 7 reveals fixture encoding is not validated before Playwright runs. Each required operator-action recovery with no chain-machinery path, meaning every sprint with new Playwright tests carries this verification gap.",
+            "related_acceptance_criteria": [
+              "task 2.1 ACs (Phase 2 scope)",
+              "bank-439-test-r5-c1-v4-1"
+            ]
+          },
+          {
+            "id": "QA-8",
+            "title": "Spec 08 v0.2 routed semantic-sme review by file extension not content domain; TypeScript ontology-vocabulary files bypassed SME, allowing SA1 and SA3 to reach deployment",
+            "severity": "major",
+            "kind": "observation",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-4.md:109\u00e2\u20ac\u201c112 (root cause: 'Spec 08 v0.2's dispatch routing didn't invoke it because the file was a .ts source file rather than a .jsonld/.ttl ontology file. The fix: classify by content-domain, not by file extension')",
+              "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:402\u00e2\u20ac\u201c408 (Spec 08 Amendment Summary: 'Round 3 Chain \u00ce\u00b3 shipped 16 STARTER_TERMS entries without semantic-sme review. The developer made structural classification errors ... errors were not caught because Spec 08 v0.2 triggers semantic-sme review by file extension')"
+            ],
+            "rationale": "Round 3 Chain \u00ce\u00b3 landed ontology-vocabulary content in src/validate/starter-terms.ts. Because Spec 08 v0.2 dispatched semantic-sme review on file extension (.jsonld/.ttl/.owl), the TypeScript source file was not routed for SME review. The developer assigned owl:DatatypeProperty to rdfs:label/comment/seeAlso and included OWL/RDFS meta-vocabulary \u00e2\u20ac\u201d both classes of errors the SME would have caught. The two blocking defects (SA1, SA3) are a direct consequence. Spec 08 v0.3 corrects this by routing on content domain. This is a verification-scope-drift observation about the process gate that was absent.",
+            "related_acceptance_criteria": [
+              "Spec 08 AP-7 (surfaces/feedback-rounds/surface-spec.md)",
+              "R4-META-1 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+            ]
+          },
+          {
+            "id": "QA-9",
+            "title": "22 of 26 validation error codes (85%) are not test-covered at Phase 2 close",
+            "severity": "advisory",
+            "kind": "observation",
+            "evidence": [
+              "demo/WALKTHROUGH-ROUND-5.md:95 ('Validator coverage: 4 of 26 codes; remaining 22 stay at ft-097-test-validator-2')"
+            ],
+            "rationale": "Only 4 of the 26 declared validation codes have automated test coverage. The remaining 22 are forward-tracked but untested. Phase 2 expanded the validation surface (new property types including owl:AnnotationProperty, new upload path, new property-creation dialog with validation). Given R3-S1-04 (validation-panel stale state) and R5-A2 (upload-path invariant) both represent validation-path defects that were not caught by automated tests, the 85% gap in validator code coverage represents a materially elevated regression risk as Phase 3 adds further UI states and export paths.",
+            "related_acceptance_criteria": [
+              "ft-097-test-validator-2 (forward-track)",
+              "project/SPEC.md \u00c2\u00a717 (Validation)"
+            ]
+          },
+          {
+            "id": "QA-10",
+            "title": "Round 1 Item J provision-half was not extracted as an atomic item, causing the pre-populate-standard-vocab requirement to be lost and re-surfaced verbatim in Round 3",
+            "severity": "minor",
+            "kind": "observation",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:281 (R3-S4-02 cross-reference: 'Round 1 Item J \u00e2\u20ac\u201d provision half ... was never extracted as a separate atomic item and was not implemented. Aaron re-stated the requirement independently in Round 3, confirming the loss')",
+              "demo/FEEDBACK-ROUND-3.md:64\u00e2\u20ac\u201c75 (protocol notes: 'Item J-style losses should not recur because each atomic claim is tracked through every phase' \u00e2\u20ac\u201d confirming this was an identified process failure motivating Spec 08)"
+            ],
+            "rationale": "Round 1's pre-Spec-08 feedback workflow bundled two requirements under Item J: collision detection and pre-populate standard vocabulary. Only collision detection was implemented. The provision half was not extracted as a trackable atomic item and fell through without being scoped, tested, or tracked. Aaron re-stated it independently in Round 3 without referencing Round 1, confirming the loss was complete. This is a verification-scope-drift observation: a scoped requirement evaded every automated check because it was never expressed as a testable item. Spec 08 was introduced precisely to prevent this class of loss.",
+            "related_acceptance_criteria": [
+              "R3-S4-02 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)",
+              "FR-U005/FR-U026 (project/SPEC.md)"
+            ]
+          },
+          {
+            "id": "QA-11",
+            "title": "Round 5 decomposition v1 cited wrong target file for R5-B2 and R5-B4 (canonicalize.ts instead of tbox/index.ts); would have directed developer to wrong file without SME revision catch",
+            "severity": "minor",
+            "kind": "observation",
+            "evidence": [
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:251\u00e2\u20ac\u201c255 (SME-R5-02: 'Decomposition v1 would have sent developer to the wrong file'; correct target is src/tbox/index.ts \u00e2\u20ac\u201d both PROJECT_TBOX_TURTLE template string AND getProjectTBoxNodes() array)",
+              "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:163\u00e2\u20ac\u201c166 (R5-B2 scope CORRECTED: target rewritten from src/kernel/canonicalize.ts to src/tbox/index.ts)"
+            ],
+            "rationale": "The decomposition artifact itself contained a scope-field error that would have directed an implementation chain to the wrong source file. The SME agent caught this during v2 revision before any implementation task was dispatched. No automated check validates scope-field accuracy in decomposition artifacts; the catch was opportunistic (SME happened to inspect both files) rather than structural. If this error had propagated to the developer task, the fix would have been applied to the wrong file, leaving the actual defect unresolved. This is a QA observation about verification coverage of the decomposition step itself.",
+            "related_acceptance_criteria": [
+              "R5-B2 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)",
+              "R5-B4 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)"
+            ]
+          },
+          {
+            "id": "QA-12",
+            "title": "semantic-projection.test.ts BASE_PROJECT fixture uses plain-string rdfs:label after R4-3 migrated all labels to {text, lang} object shape; fixture may not be exercising the post-migration code path",
+            "severity": "minor",
+            "kind": "gap",
+            "evidence": [
+              "tests/semantic-projection.test.ts:79 (BASE_PROJECT fixture: '\"rdfs:label\": \"Customer\"' as plain string \u00e2\u20ac\u201d not {text, lang} object)",
+              "tests/semantic-projection.test.ts:96\u00e2\u20ac\u201c97 (instance fixtures: '\"rdfs:label\": \"Alice\"' and '\"rdfs:label\": \"Bob\"' as plain strings)",
+              "tests/starter-terms.test.ts:77\u00e2\u20ac\u201c88 (AC5: rdfs:label MUST be { text: non-empty string, lang: string } \u00e2\u20ac\u201d post-R4-3 contract)",
+              "demo/WALKTHROUGH-ROUND-5.md:35\u00e2\u20ac\u201c40 (R4-3 description: 'the label field is now an object: rdfs:label: { text, lang }'; backward-compat coercion applied on load)"
+            ],
+            "rationale": "R4-3 migrated rdfs:label from plain string to {text, lang} object shape across all term and instance objects. starter-terms.test.ts enforces the new shape at AC5. However, semantic-projection.test.ts BASE_PROJECT and instance fixtures still carry plain-string labels. The full test suite passes at 131/131, suggesting either the projection layer accepts both shapes via backward-compat coercion or the fixture's label values do not exercise any shape-sensitive code path. Whether the test suite is exercising the canonical post-R4-3 code path \u00e2\u20ac\u201d or only the legacy path \u00e2\u20ac\u201d cannot be determined from observation alone.",
+            "related_acceptance_criteria": [
+              "ADR-008 (project/DECISIONS.md)",
+              "R4-MINISPEC-4 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+            ]
+          }
+        ],
+        "evidence_paths": [
+          "demo/FEEDBACK-ROUND-3.md",
+          "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md",
+          "demo/FEEDBACK-ROUND-4.md",
+          "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+          "demo/FEEDBACK-ROUND-5.md",
+          "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md",
+          "demo/WALKTHROUGH-ROUND-5.md",
+          "OPERATOR-MEDIATION-LOG.md",
+          "tests/starter-terms.test.ts",
+          "tests/semantic-projection.test.ts"
+        ],
+        "open_questions": [
+          "R5-A2 (upload-path starter-term initialization) had sme_verdict PENDING at Phase 2 close and R5-Chain-2 was listed as immediately dispatchable \u00e2\u20ac\u201d did the fix chain land before phase exit, or does this defect carry forward as an open item to Phase 3?",
+          "SME-R5-01 (stale @context in demo/library-catalog.jsonld) was identified as Q-R5-X-independent and immediately dispatchable per decomposition line 326 \u00e2\u20ac\u201d did R5-Chain-7 land before Phase 2 exit, or is this also open at Phase 3 entry?",
+          "semantic-projection.test.ts BASE_PROJECT fixture uses plain-string rdfs:label after R4-3 shape migration: does the projection layer apply backward-compat coercion that silently accepts both shapes, and if so, is that coercion branch covered by a dedicated test?",
+          "bank-484-test-r5b-add-annotation-1 (state_admin write-race vs daemon polling) \u00e2\u20ac\u201d is this a latent test-infrastructure risk that could produce spurious failures in CI environments, or was the race confirmed as session-only and bounded to the specific run context?",
+          "Event 13 proposed a daemon-to-orchestrator stall-notification primitive (bank-425-apply-r5-c1-c6-only-1: recon-front cascade deadlock) as a v3.2/v3.3 substrate candidate \u00e2\u20ac\u201d has a forward-track been created for this primitive, or does it remain only as a banking?"
+        ],
+        "summary": "Phase 2 exit QA surfaces two primary risk clusters. First, defect distribution: the largest concentration of defects was in the ontology-content layer (starter-terms type assignments, SEMANTIC_TYPE_ALLOWLIST coverage, fixture @context freshness) and the export/upload pipeline. All four sprint-blocking defects (SA1, SA3, R3-S5-01, R5-A2) were caught by stakeholder or SME review, not by automated tests. The snapshot golden-file pattern (QA-3) is a structural false-pass risk: validating code against code-generated output creates self-consistent tests that cannot detect semantic incorrectness against external canonical sources. Two of these defects (R5-A2 and SME-R5-01) were open at Phase 2 close. Second, verification-infrastructure: test-runner friction manifested as 4 distinct operator-action recovery events at a single task's verification step (Events 4\u00e2\u20ac\u201c7), Playwright is structurally decoupled from npm test, and the Pass 2a gating enforcement gap (QA-6) allowed 3 architect denials to proceed to applier before the daemon fix. Spec 08 v0.3's content-domain-based SME routing (QA-8) is the highest-leverage process correction of the sprint \u00e2\u20ac\u201d it directly addresses the root cause of the two blocking defects. Looking forward, validator coverage at 4 of 26 codes (QA-9) is the highest-leverage test investment for Phase 3 given the expanded validation surface. Two minor observations (QA-11 decomposition scope-field error; QA-12 fixture shape discrepancy) warrant operator clarification but have bounded risk."
+      },
+      "history": [
+        {
+          "ts": "2026-05-25T21:02:36Z",
+          "event": "cps_veto",
+          "payload": {
+            "reason": "freeform_brainstorm_drift: length-budget overruns: [{'path': 'proposed_issues[0].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 146}, {'path': 'proposed_issues[1].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 156}, {'path': 'proposed_issues[2].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 193}]",
+            "rejected_outputs": {
+              "proposed_issues": [
+                {
+                  "id": "QA-1",
+                  "title": "Two active blocking defects (SA1 OWL Full violation; SA3 silent annotation-property data-loss) shipped through all pre-deployment automated checks",
+                  "severity": "blocking",
+                  "kind": "inference",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:152\u00e2\u20ac\u201c156 (R4-STARTER-4 SME verdict SA1: 'active output defect; every new project's Turtle export currently emits rdfs:label rdf:type owl:DatatypeProperty'; blocking severity)",
+                    "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:192\u00e2\u20ac\u201c196 (R4-TYPESYS-1 SME verdict SA3: 'owl:AnnotationProperty terms silently dropped from all semantic exports'; blocking severity)",
+                    "tests/starter-terms.test.ts:36\u00e2\u20ac\u201c41 (VALID_TYPES set now includes owl:AnnotationProperty \u00e2\u20ac\u201d post-R4-2 addition; R4-TYPESYS-1 completeness map line 202 called for this addition, confirming it was absent pre-ship)",
+                    "tests/semantic-projection.test.ts:458\u00e2\u20ac\u201c491 (SA3 bonus regression test added post-fix per R4-TYPESYS-1 completeness map \u00e2\u20ac\u201d confirms test did not exist before the fix chain)"
+                  ],
+                  "rationale": "SA1 (rdfs:label/comment/seeAlso mistyped as owl:DatatypeProperty) and SA3 (owl:AnnotationProperty silently filtered out by SEMANTIC_TYPE_ALLOWLIST before Turtle export) were both classified blocking-severity by the semantic-sme in Round 4. Both were introduced by Round 3 Chain \u00ce\u00b3. The completeness maps for R4-STARTER-4 and R4-TYPESYS-1 call for test additions as part of the fix chain; this confirms the corrective tests did not exist when the defects shipped. The pre-ship suite therefore had zero coverage of OWL 2 DL well-formedness for starter-term type assignments and zero coverage of projection-pipeline type-allowlist completeness.",
+                  "related_acceptance_criteria": [
+                    "R4-STARTER-4 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)",
+                    "R4-TYPESYS-1 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+                  ]
+                },
+                {
+                  "id": "QA-2",
+                  "title": "Validation-panel stale-state defect (R3-S1-04, P1 ship-blocking) shipped without the validate-on-mutation regression test called for in its completeness map",
+                  "severity": "major",
+                  "kind": "gap",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:117\u00e2\u20ac\u201c132 (R3-S1-04 completeness map: 'Spec tests: tests/*.test.ts \u00e2\u20ac\u201d validate-on-mutation regression test needed'; initial priority P1 ship-blocking)",
+                    "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:118 (bug: 'onSave handler calls setProject(updated) but omits setValidationReport(validate(updated))')",
+                    "tests/ (glob: 17 unit test files enumerated; no test file named for validate-on-mutation; structural-validator.test.ts and snapshot.test.ts do not exercise the onSave + setValidationReport integration path)"
+                  ],
+                  "rationale": "R3-S1-04 was classified P1 ship-blocking: after adding a realist anchor via Project Settings, the MISSING_REALIST_ANCHOR error persisted because the onSave handler omitted a setValidationReport call. The completeness map explicitly required a validate-on-mutation regression test. No such test appears in the 17-file unit test enumeration or 14-file Playwright spec enumeration. The defect was caught by Aaron in stakeholder review in Round 3, not by the automated suite. The fix was applied but the regression test remains absent at Phase 2 close.",
+                  "related_acceptance_criteria": [
+                    "FR-U028 (project/SPEC.md \u00c2\u00a717.2 MISSING_REALIST_ANCHOR)",
+                    "R3-S1-04 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)"
+                  ]
+                },
+                {
+                  "id": "QA-3",
+                  "title": "Wrong IAO IRI in VMP_CONTEXT (R3-S5-01) propagated from Phase 1 through all Phase 2 automated tests undetected; snapshot golden file encoded the wrong IRI producing a self-consistent false pass",
+                  "severity": "major",
+                  "kind": "inference",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:287\u00e2\u20ac\u201c303 (R3-S5-01: 'incorrect binding was present from Phase 1 but not surfaced until Aaron's coworker reviewed the Turtle export'; four files affected across kernel, emit, tbox, and SPEC)",
+                    "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:296 ('Spec tests: tests/snapshot.test.ts \u00e2\u20ac\u201d golden file (examples/expected-output.jsonld) update required if IRI changes')",
+                    "tests/snapshot.test.ts (golden-file test: expected-output.jsonld was generated from the same codebase; the test validated the wrong iao: IRI on every run, as both code and golden file encoded the same incorrect value)"
+                  ],
+                  "rationale": "The iao: prefix was bound to http://purl.obolibrary.org/obo/iao# instead of the canonical OBO IRI http://purl.obolibrary.org/obo/IAO_0000136. The snapshot test validates against a golden file that was generated from the same defective codebase; both encode the wrong IRI consistently, so the test passed on every run while the defect persisted. The R3-S5-01 completeness map itself calls for a golden-file update, confirming the existing test would not have detected the error without a prior canonical-source check. Semantic-correctness checks against external canonical registries are not present in the suite.",
+                  "related_acceptance_criteria": [
+                    "R3-S5-01 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)",
+                    "NFR-014 (project/SPEC.md \u00c2\u00a75.2 Normative Context)"
+                  ]
+                },
+                {
+                  "id": "QA-4",
+                  "title": "Upload-path missing starter-term initialization (R5-A2) is an open defect at Phase 2 close with no automated test coverage and SME verdict pending",
+                  "severity": "major",
+                  "kind": "gap",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:113\u00e2\u20ac\u201c123 (R5-A2: 'upload-path missing starter-term initialization'; sme_verdict: PENDING; severity high \u00e2\u20ac\u201d 'every uploaded project file silently violates the type-system invariant')",
+                    "demo/FEEDBACK-ROUND-5.md:28\u00e2\u20ac\u201c31 (Aaron: 'The default system Annotation Properties should ALWAYS be present on upload or new')",
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:319 (R5-Chain-2 listed as adjudication-independent and dispatchable immediately \u00e2\u20ac\u201d implying fix had not yet landed at decomposition time)"
+                  ],
+                  "rationale": "The 3 starter annotation properties are injected on New project but not when an existing JSON-LD file is uploaded. The result is that uploaded projects render without the Annotation Properties sidebar section populated, silently violating the type-system invariant introduced by R4-STARTER-4. R5-A2 was identified in Round 5 and the SME verdict was PENDING at decomposition time. No test in the 17-file unit test enumeration exercises the upload-then-check-starter-terms path. The defect was caught by Aaron loading library-catalog.jsonld, not by any automated test.",
+                  "related_acceptance_criteria": [
+                    "R5-A2 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)",
+                    "R4-STARTER-4 post-fix owl:AnnotationProperty invariant"
+                  ]
+                },
+                {
+                  "id": "QA-5",
+                  "title": "Stale @context in demo/library-catalog.jsonld (SME-R5-01) is an open hidden defect affecting downstream consumers; no fixture-@context-validation test exists",
+                  "severity": "major",
+                  "kind": "gap",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:236\u00e2\u20ac\u201c249 (SME-R5-01: 'library-catalog fixture's embedded @context is a pre-ADR-007 context; iao:isAbout expands to wrong IRI in any non-GraphWrite JSON-LD tool'; hidden defect)",
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:247 (SME verdict: 'SEPARATE fix from B1/B4 \u00e2\u20ac\u201d those fix the TBox; this fixes the fixture document context'; adjudication-independent per line 326)",
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:17 (SME-R5-01 classified major severity in revision log)"
+                  ],
+                  "rationale": "The fixture @context was not updated when ADR-007 fixed the iao: prefix in VMP_CONTEXT. Because GraphWrite unconditionally replaces @context on load via serializeVmp, the defect is invisible within the app. But downstream consumers processing the publicly distributed demo file with any other JSON-LD tool get iao:isAbout expanding to the pre-ADR-007 wrong IRI. No test validates that fixture @context entries match VMP_CONTEXT. The defect was surfaced by the SME agent during Round 5 decomposition review, not by any automated check or by Aaron's own walkthrough \u00e2\u20ac\u201d indicating fixture @context freshness is entirely outside the regression scope.",
+                  "related_acceptance_criteria": [
+                    "ADR-007 (project/DECISIONS.md)",
+                    "SME-R5-01 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)"
+                  ]
+                },
+                {
+                  "id": "QA-6",
+                  "title": "Pass 2a gating enforcement gap allowed architect denial to not block applier dispatch in 3 instances during Round 4 before daemon fix in commit 6e41cf5",
+                  "severity": "major",
+                  "kind": "observation",
+                  "evidence": [
+                    "OPERATOR-MEDIATION-LOG.md:212\u00e2\u20ac\u201c217 (Event 11: 'Task 267 \u00e2\u2020\u2019 status=done. Task 268 (applier) had depends_on: [267, 266]. When both deps reached status=done, daemon's next_ready_task dispatched 268. The applier ran despite architect's denial \u00e2\u20ac\u201d the daemon checks status not outputs.ruling')",
+                    "OPERATOR-MEDIATION-LOG.md:227 (Event 11 closure: 'Three observed instances during Round 4 ... all reproduce as test failures pre-fix. TestPassRatificationGating (8 cases). Full substrate test suite: 483/483 OK.')"
+                  ],
+                  "rationale": "For 3 instances during Round 4, the architect returned ruling=denied but the applier task's depends_on deps both reached status=done, so the daemon dispatched the applier and changes landed. FNSR Spec 03 specifies that Pass 2a gates Pass 2b. The daemon enforced task-completion ordering but not ruling semantics. The fix (daemon-side _architect_ratification_block predicate, commit 6e41cf5) is now regression-tested by TestPassRatificationGating. This is a QA observation about a verification discipline gap that was active for the duration of Rounds 3\u00e2\u20ac\u201c4 and produced at least 3 instances where the ratification gate was bypassed.",
+                  "related_acceptance_criteria": [
+                    "FNSR Spec 03 Pass 2a (CLAUDE.md \u00c2\u00a77.8)",
+                    "Event 11 (OPERATOR-MEDIATION-LOG.md)"
+                  ]
+                },
+                {
+                  "id": "QA-7",
+                  "title": "Test-runner infrastructure manifested 4 distinct failure modes at task 2.1 verification alone, each requiring operator-action recovery; Playwright is structurally outside the automated test loop",
+                  "severity": "major",
+                  "kind": "observation",
+                  "evidence": [
+                    "OPERATOR-MEDIATION-LOG.md:87\u00e2\u20ac\u201c99 (Event 4: Playwright suite not invoked by npm test; AC1 unverified by chain machinery; developer added tests but did not wire test script)",
+                    "OPERATOR-MEDIATION-LOG.md:101\u00e2\u20ac\u201c116 (Event 5: vite preview fails with dist/ui not existing; build precondition unmanaged by test-runner dispatch)",
+                    "OPERATOR-MEDIATION-LOG.md:119\u00e2\u20ac\u201c137 (Event 6: test-runner subprocess blocked by harness approval gate on Windows; CPS vetoed on structured error; chain stalled)",
+                    "OPERATOR-MEDIATION-LOG.md:141\u00e2\u20ac\u201c161 (Event 7: fixture BOM+CRLF; AC3 failed after 4/5 prior Playwright tests passed; gap-15 logged)"
+                  ],
+                  "rationale": "Events 4\u00e2\u20ac\u201c7 all surfaced at the same chain's verification step in rapid succession. Event 4 reveals that developer-produced Playwright test files are not automatically included in npm test, creating a structural gap between chain-machinery verification and AC coverage. Event 5 reveals that vite preview as webServer requires a pre-built dist that the test-runner command does not manage. Event 6 (also banked as bank-439) confirms Windows subprocess.run('npm') failure is a recurring risk. Event 7 reveals fixture encoding is not validated before Playwright runs. Each required operator-action recovery with no chain-machinery path, meaning every sprint with new Playwright tests carries this verification gap.",
+                  "related_acceptance_criteria": [
+                    "task 2.1 ACs (Phase 2 scope)",
+                    "bank-439-test-r5-c1-v4-1"
+                  ]
+                },
+                {
+                  "id": "QA-8",
+                  "title": "Spec 08 v0.2 routed semantic-sme review by file extension not content domain; TypeScript ontology-vocabulary files bypassed SME, allowing SA1 and SA3 to reach deployment",
+                  "severity": "major",
+                  "kind": "observation",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-4.md:109\u00e2\u20ac\u201c112 (root cause: 'Spec 08 v0.2's dispatch routing didn't invoke it because the file was a .ts source file rather than a .jsonld/.ttl ontology file. The fix: classify by content-domain, not by file extension')",
+                    "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md:402\u00e2\u20ac\u201c408 (Spec 08 Amendment Summary: 'Round 3 Chain \u00ce\u00b3 shipped 16 STARTER_TERMS entries without semantic-sme review. The developer made structural classification errors ... errors were not caught because Spec 08 v0.2 triggers semantic-sme review by file extension')"
+                  ],
+                  "rationale": "Round 3 Chain \u00ce\u00b3 landed ontology-vocabulary content in src/validate/starter-terms.ts. Because Spec 08 v0.2 dispatched semantic-sme review on file extension (.jsonld/.ttl/.owl), the TypeScript source file was not routed for SME review. The developer assigned owl:DatatypeProperty to rdfs:label/comment/seeAlso and included OWL/RDFS meta-vocabulary \u00e2\u20ac\u201d both classes of errors the SME would have caught. The two blocking defects (SA1, SA3) are a direct consequence. Spec 08 v0.3 corrects this by routing on content domain. This is a verification-scope-drift observation about the process gate that was absent.",
+                  "related_acceptance_criteria": [
+                    "Spec 08 AP-7 (surfaces/feedback-rounds/surface-spec.md)",
+                    "R4-META-1 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+                  ]
+                },
+                {
+                  "id": "QA-9",
+                  "title": "22 of 26 validation error codes (85%) are not test-covered at Phase 2 close",
+                  "severity": "advisory",
+                  "kind": "observation",
+                  "evidence": [
+                    "demo/WALKTHROUGH-ROUND-5.md:95 ('Validator coverage: 4 of 26 codes; remaining 22 stay at ft-097-test-validator-2')"
+                  ],
+                  "rationale": "Only 4 of the 26 declared validation codes have automated test coverage. The remaining 22 are forward-tracked but untested. Phase 2 expanded the validation surface (new property types including owl:AnnotationProperty, new upload path, new property-creation dialog with validation). Given R3-S1-04 (validation-panel stale state) and R5-A2 (upload-path invariant) both represent validation-path defects that were not caught by automated tests, the 85% gap in validator code coverage represents a materially elevated regression risk as Phase 3 adds further UI states and export paths.",
+                  "related_acceptance_criteria": [
+                    "ft-097-test-validator-2 (forward-track)",
+                    "project/SPEC.md \u00c2\u00a717 (Validation)"
+                  ]
+                },
+                {
+                  "id": "QA-10",
+                  "title": "Round 1 Item J provision-half was not extracted as an atomic item, causing the pre-populate-standard-vocab requirement to be lost and re-surfaced verbatim in Round 3",
+                  "severity": "minor",
+                  "kind": "observation",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md:281 (R3-S4-02 cross-reference: 'Round 1 Item J \u00e2\u20ac\u201d provision half ... was never extracted as a separate atomic item and was not implemented. Aaron re-stated the requirement independently in Round 3, confirming the loss')",
+                    "demo/FEEDBACK-ROUND-3.md:64\u00e2\u20ac\u201c75 (protocol notes: 'Item J-style losses should not recur because each atomic claim is tracked through every phase' \u00e2\u20ac\u201d confirming this was an identified process failure motivating Spec 08)"
+                  ],
+                  "rationale": "Round 1's pre-Spec-08 feedback workflow bundled two requirements under Item J: collision detection and pre-populate standard vocabulary. Only collision detection was implemented. The provision half was not extracted as a trackable atomic item and fell through without being scoped, tested, or tracked. Aaron re-stated it independently in Round 3 without referencing Round 1, confirming the loss was complete. This is a verification-scope-drift observation: a scoped requirement evaded every automated check because it was never expressed as a testable item. Spec 08 was introduced precisely to prevent this class of loss.",
+                  "related_acceptance_criteria": [
+                    "R3-S4-02 (demo/FEEDBACK-ROUND-3-DECOMPOSITION.md)",
+                    "FR-U005/FR-U026 (project/SPEC.md)"
+                  ]
+                },
+                {
+                  "id": "QA-11",
+                  "title": "Round 5 decomposition v1 cited wrong target file for R5-B2 and R5-B4 (canonicalize.ts instead of tbox/index.ts); would have directed developer to wrong file without SME revision catch",
+                  "severity": "minor",
+                  "kind": "observation",
+                  "evidence": [
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:251\u00e2\u20ac\u201c255 (SME-R5-02: 'Decomposition v1 would have sent developer to the wrong file'; correct target is src/tbox/index.ts \u00e2\u20ac\u201d both PROJECT_TBOX_TURTLE template string AND getProjectTBoxNodes() array)",
+                    "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md:163\u00e2\u20ac\u201c166 (R5-B2 scope CORRECTED: target rewritten from src/kernel/canonicalize.ts to src/tbox/index.ts)"
+                  ],
+                  "rationale": "The decomposition artifact itself contained a scope-field error that would have directed an implementation chain to the wrong source file. The SME agent caught this during v2 revision before any implementation task was dispatched. No automated check validates scope-field accuracy in decomposition artifacts; the catch was opportunistic (SME happened to inspect both files) rather than structural. If this error had propagated to the developer task, the fix would have been applied to the wrong file, leaving the actual defect unresolved. This is a QA observation about verification coverage of the decomposition step itself.",
+                  "related_acceptance_criteria": [
+                    "R5-B2 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)",
+                    "R5-B4 (demo/FEEDBACK-ROUND-5-DECOMPOSITION.md)"
+                  ]
+                },
+                {
+                  "id": "QA-12",
+                  "title": "semantic-projection.test.ts BASE_PROJECT fixture uses plain-string rdfs:label after R4-3 migrated all labels to {text, lang} object shape; fixture may not be exercising the post-migration code path",
+                  "severity": "minor",
+                  "kind": "gap",
+                  "evidence": [
+                    "tests/semantic-projection.test.ts:79 (BASE_PROJECT fixture: '\"rdfs:label\": \"Customer\"' as plain string \u00e2\u20ac\u201d not {text, lang} object)",
+                    "tests/semantic-projection.test.ts:96\u00e2\u20ac\u201c97 (instance fixtures: '\"rdfs:label\": \"Alice\"' and '\"rdfs:label\": \"Bob\"' as plain strings)",
+                    "tests/starter-terms.test.ts:77\u00e2\u20ac\u201c88 (AC5: rdfs:label MUST be { text: non-empty string, lang: string } \u00e2\u20ac\u201d post-R4-3 contract)",
+                    "demo/WALKTHROUGH-ROUND-5.md:35\u00e2\u20ac\u201c40 (R4-3 description: 'the label field is now an object: rdfs:label: { text, lang }'; backward-compat coercion applied on load)"
+                  ],
+                  "rationale": "R4-3 migrated rdfs:label from plain string to {text, lang} object shape across all term and instance objects. starter-terms.test.ts enforces the new shape at AC5. However, semantic-projection.test.ts BASE_PROJECT and instance fixtures still carry plain-string labels. The full test suite passes at 131/131, suggesting either the projection layer accepts both shapes via backward-compat coercion or the fixture's label values do not exercise any shape-sensitive code path. Whether the test suite is exercising the canonical post-R4-3 code path \u00e2\u20ac\u201d or only the legacy path \u00e2\u20ac\u201d cannot be determined from observation alone.",
+                  "related_acceptance_criteria": [
+                    "ADR-008 (project/DECISIONS.md)",
+                    "R4-MINISPEC-4 (demo/FEEDBACK-ROUND-4-DECOMPOSITION.md)"
+                  ]
+                }
+              ],
+              "evidence_paths": [
+                "demo/FEEDBACK-ROUND-3.md",
+                "demo/FEEDBACK-ROUND-3-DECOMPOSITION.md",
+                "demo/FEEDBACK-ROUND-4.md",
+                "demo/FEEDBACK-ROUND-4-DECOMPOSITION.md",
+                "demo/FEEDBACK-ROUND-5.md",
+                "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md",
+                "demo/WALKTHROUGH-ROUND-5.md",
+                "OPERATOR-MEDIATION-LOG.md",
+                "tests/starter-terms.test.ts",
+                "tests/semantic-projection.test.ts"
+              ],
+              "open_questions": [
+                "R5-A2 (upload-path starter-term initialization) had sme_verdict PENDING at Phase 2 close and R5-Chain-2 was listed as immediately dispatchable \u00e2\u20ac\u201d did the fix chain land before phase exit, or does this defect carry forward as an open item to Phase 3?",
+                "SME-R5-01 (stale @context in demo/library-catalog.jsonld) was identified as Q-R5-X-independent and immediately dispatchable per decomposition line 326 \u00e2\u20ac\u201d did R5-Chain-7 land before Phase 2 exit, or is this also open at Phase 3 entry?",
+                "semantic-projection.test.ts BASE_PROJECT fixture uses plain-string rdfs:label after R4-3 shape migration: does the projection layer apply backward-compat coercion that silently accepts both shapes, and if so, is that coercion branch covered by a dedicated test?",
+                "bank-484-test-r5b-add-annotation-1 (state_admin write-race vs daemon polling) \u00e2\u20ac\u201d is this a latent test-infrastructure risk that could produce spurious failures in CI environments, or was the race confirmed as session-only and bounded to the specific run context?",
+                "Event 13 proposed a daemon-to-orchestrator stall-notification primitive (bank-425-apply-r5-c1-c6-only-1: recon-front cascade deadlock) as a v3.2/v3.3 substrate candidate \u00e2\u20ac\u201d has a forward-track been created for this primitive, or does it remain only as a banking?"
+              ],
+              "summary": "Phase 2 exit QA surfaces two primary risk clusters. First, defect distribution: the largest concentration of defects was in the ontology-content layer (starter-terms type assignments, SEMANTIC_TYPE_ALLOWLIST coverage, fixture @context freshness) and the export/upload pipeline. All four sprint-blocking defects (SA1, SA3, R3-S5-01, R5-A2) were caught by stakeholder or SME review, not by automated tests. The snapshot golden-file pattern (QA-3) is a structural false-pass risk: validating code against code-generated output creates self-consistent tests that cannot detect semantic incorrectness against external canonical sources. Two of these defects (R5-A2 and SME-R5-01) were open at Phase 2 close. Second, verification-infrastructure: test-runner friction manifested as 4 distinct operator-action recovery events at a single task's verification step (Events 4\u00e2\u20ac\u201c7), Playwright is structurally decoupled from npm test, and the Pass 2a gating enforcement gap (QA-6) allowed 3 architect denials to proceed to applier before the daemon fix. Spec 08 v0.3's content-domain-based SME routing (QA-8) is the highest-leverage process correction of the sprint \u00e2\u20ac\u201d it directly addresses the root cause of the two blocking defects. Looking forward, validator coverage at 4 of 26 codes (QA-9) is the highest-leverage test investment for Phase 3 given the expanded validation surface. Two minor observations (QA-11 decomposition scope-field error; QA-12 fixture shape discrepancy) warrant operator clarification but have bounded risk."
+            }
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "0351f3f9a41d04e1656bb0eda27349ef0af6e83146f67e9edbaf5c4857ec6b13"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:486-retro-phase2-delivery",
+      "agent": "delivery-manager",
+      "status": "blocked",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "surface": "retro",
+        "retro_id": "phase-2-exit-retro",
+        "phase_origin": "phase-2",
+        "purpose": "Delivery-management perspective for Phase 2 exit retro. Surface sprint predictability, throughput patterns, blocker clusters, coordination overhead, dependency thrash observations.",
+        "phase_scope": "Phase 2: Browser UI Foundation. 5 stakeholder feedback rounds (3, 4, 5, 5b-1). 4 cascade rebuilds in Round 5 alone (v2 applier-deps, v3 C6-retry, v4 npm-cmd, v5 recon-front). Multi-week elapsed time.",
+        "context_files_to_review": [
+          "demo/FEEDBACK-ROUND-5.md",
+          "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md",
+          "OPERATOR-MEDIATION-LOG.md",
+          "surfaces/_primitives/daemon-orchestrator-stall-notification.md",
+          "surfaces/_primitives/state-verification-gate.md",
+          "surfaces/_primitives/phase-lifecycle-orchestration.md"
+        ],
+        "deliberation_focus": "Delivery patterns: how predictable was Phase 2 throughput? What blocker clusters caused cascade churn? What coordination overhead was visible? How did the recon-front-cascade pattern (4 abandon-replace cycles in Round 5) impact velocity? What dependency-graph patterns repeated?"
+      },
+      "attempts": 2,
+      "history": [
+        {
+          "ts": "2026-05-25T21:12:23Z",
+          "event": "attempt_failed",
+          "payload": {
+            "stderr": "",
+            "raw_stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":null,\"duration_ms\":582811,\"duration_api_ms\":237975,\"num_turns\":39,\"result\":\"API Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"bb950fad-7c96-4ad5-b215-3c8264130856\",\"total_cost_usd\":1.0382911,\"usage\":{\"input_tokens\":26,\"cache_creation_input_tokens\":100128,\"cache_read_input_tokens\":1653477,\"output_tokens\":11046,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":100128,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[{\"input_tokens\":1,\"output_tokens\":4910,\"cache_read_input_tokens\":99386,\"cache_creation_input_tokens\":2924,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":2924},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":895,\"outputTokens\":21,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001,\"contextWindow\":200000,\"maxOutputTokens\":32000},\"claude-sonnet-4-6\":{\"inputTokens\":26,\"outputTokens\":11046,\"cacheReadInputTokens\":1653477,\"cacheCreationInputTokens\":100128,\"webSearchRequests\":0,\"costUSD\":1.0372911,\"contextWindow\":200000,\"maxOutputTokens\":32000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"b7ea88a5-70f1-4db9-9a3c-a262d49d5ecc\"}\n"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "bcf61878a2983e6d959c9750075fc018316201198a7fce7d0d6830c926f9c52f"
+        },
+        {
+          "ts": "2026-05-25T21:20:15Z",
+          "event": "cps_veto",
+          "payload": {
+            "reason": "freeform_brainstorm_drift: length-budget overruns: [{'path': 'proposed_issues[2].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 150}, {'path': 'proposed_issues[3].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 130}, {'path': 'proposed_issues[4].title', 'pattern': 'proposed_issues[*]/title', 'limit': 120, 'actual': 147}]",
+            "rejected_outputs": {
+              "proposed_issues": [
+                {
+                  "id": "DM-1",
+                  "title": "Round 5 recon-front cascade: 4 sequential rebuilds consumed ~71 replacement task slots for 7 implementation chains",
+                  "severity": "blocking",
+                  "kind": "dependency",
+                  "evidence": [
+                    "state.jsonld tasks 410-423 (v2, 14 tasks): chain_label 'R5-Chain c1: applier (v2; corrected depends_on)'; purpose field: 'Replaces an earlier applier task that lacked the dev task in depends_on (substrate veto: source_not_in_upstream)'",
+                    "state.jsonld task 410 history: cps_veto at 2026-05-24T01:10:49Z on apply_partial_failure (6 applied, C6 failed overlaps_other_change); operator_reset cascade at 01:14:58Z replacing to tasks 425+",
+                    "state.jsonld tasks 426-438 (v3, 13 tasks): task 426 history shows two cps_veto events on subprocess_failed WinError 2 at 01:18:49Z and 09:45:27Z; operator_reset to v4 at 09:49:37Z (8h 31m elapsed)",
+                    "state.jsonld tasks 440-451 (v4, 12 tasks): all operator_reset at 09:58:22Z with reason 'v5 cascade: chain front recon dep on abandoned v1 test deadlocked chains 2-7'; replaced_by references tasks 455-480",
+                    "state.jsonld tasks 452-481 (v5, 30 tasks): fresh recon-dev-rat-apply-test chains for c2-c7; task 452 depends_on [urn:fnsr:task:439-test-r5-c1-v4], properly threading from only the surviving v4 test",
+                    "state.jsonld banking event bank-425-apply-r5-c1-c6-only-1 (2026-05-25T10:19:33Z): 'Recon-front cascade deadlock pattern: ... This bit Round 5 four times (v2/v3/v4/v5 cascades) \u00e2\u20ac\u201d each cascade fix only repaired the side I was looking at, leaving the other side broken'",
+                    "state.jsonld banking event bank-439-test-r5-c1-v4-1 (2026-05-25T10:19:35Z): 'test-runner Windows subprocess.run(npm) failure ... Caused chain 1 v3 test 426 to block with WinError 2; cascaded to chains 2-7 being unable to run'"
+                  ],
+                  "rationale": "The Round 5 seven-chain implementation (c1\u00e2\u20ac\u201cc7) required four successive cascade rebuilds before any chain cleared the test-runner. Trigger 1: v1 applier tasks all lacked the developer task in depends_on, firing a source_not_in_upstream substrate veto across all 7 chains simultaneously \u00e2\u20ac\u201d producing the v2 wave (14 tasks). Trigger 2: within v2, task 410 applied 6 of 7 changes but C6 produced overlaps_other_change, blocking all downstream v2 tasks \u00e2\u20ac\u201d producing recovery task 424 and the v3 wave (13 tasks). Trigger 3: the v3 test-runner (task 426) could not resolve bare 'npm' on Windows subprocess.run (WinError 2), blocking all 6 downstream v3 chains \u00e2\u20ac\u201d producing the v4 wave (13 tasks, task 439 the only survivor). Trigger 4: the v4 chain's recon tasks for c2-c7 still depended on abandoned v1 test-task IDs, making them dispatch-impossible \u00e2\u20ac\u201d producing the v5 wave (30 tasks with fresh recon). Total replacement task slots: ~71 against 7 original implementation chains. Each trigger was distinct and orthogonal; no single upstream fix would have prevented all four.",
+                  "metrics": {
+                    "cascade_generations": 4,
+                    "cascade_replacement_task_slots": 71,
+                    "original_chains_count": 7,
+                    "v4_wave_only_survivor": 1,
+                    "elapsed_v3_block_hours": 8.5
+                  }
+                },
+                {
+                  "id": "DM-2",
+                  "title": "124 operator_reset events in the Phase 2 audit chain represent sustained manual dispatch orchestration overhead",
+                  "severity": "major",
+                  "kind": "coordination",
+                  "evidence": [
+                    "state.jsonld: 124 occurrences of event: operator_reset across all task history blocks",
+                    "state.jsonld task 410-423 histories: 14 operator_reset events fired within 4 minutes (01:14:58Z\u00e2\u20ac\u201c01:15:xx Z) to cascade-abandon the v2 chain wave",
+                    "state.jsonld task 440-451 histories: 12 operator_reset events fired within 40 seconds (09:58:22Z\u00e2\u20ac\u201c09:58:28Z) for v4\u00e2\u2020\u2019v5 cascade-abandon",
+                    "OPERATOR-MEDIATION-LOG.md Event 10: 'Aaron observed: ready tasks but nothing in progress again. Why does this keep happening?' \u00e2\u20ac\u201d operator-visible stall at each cascade inflection",
+                    "OPERATOR-MEDIATION-LOG.md Event 13: 'every stall costs Aaron-visible delay because the orchestrator-Agent is waiting on chain progress notifications that never fire'",
+                    "state.jsonld: 28 cps_veto events; each veto \u00e2\u2020\u2019 blocked \u00e2\u2020\u2019 operator_reset is a minimum two-event overhead cycle per recovery"
+                  ],
+                  "rationale": "Each operator_reset event represents a manual dispatch intervention: the operator inspected the blocked state, determined the recovery shape, issued the reset command, and (for cascade abandonment) repeated across all downstream tasks. With 124 total resets and multi-second groupings visible for cascade events, the Round 5 cascade alone consumed roughly 39+ resets in two burst clusters. This is coordination overhead that consumed operator attention at each cascade inflection point and is orthogonal to content delivery. The OPERATOR-MEDIATION-LOG documents the pattern explicitly: the orchestrator-Agent has no push notification when a chain stalls, requiring manual polling or human-escalated discovery. Per Events 10 and 13, this was the primary source of operator-visible delivery friction across Phase 2.",
+                  "metrics": {
+                    "total_operator_reset_events": 124,
+                    "total_cps_veto_events": 28,
+                    "banking_events_logged": 49
+                  }
+                },
+                {
+                  "id": "DM-3",
+                  "title": "source_not_in_upstream veto fired simultaneously on all 7 Round 5 chains at first dispatch \u00e2\u20ac\u201d a graph-correctness miss not caught at task-append time",
+                  "severity": "major",
+                  "kind": "dependency",
+                  "evidence": [
+                    "state.jsonld tasks 410-423 chain_label fields: 'applier (v2; corrected depends_on)'; purpose field on task 410: 'Replaces an earlier applier task that lacked the dev task in depends_on (substrate veto: source_not_in_upstream)'",
+                    "state.jsonld: the v1 applier tasks for c1-c7 (tasks before 410) were blocked by this veto before any application occurred",
+                    "OPERATOR-MEDIATION-LOG.md Event 13: 'Developer token-overflow silent truncation' + 'no daemon\u00e2\u2020\u2019orchestrator push notification' \u00e2\u20ac\u201d two of the three sub-events that made chain stalls hard to detect in round 4; same detection gap applies to the graph-correctness miss",
+                    "state-verification-gate.md SVG-6 'Substrate Health' category: describes stall_dispatch_impossible detection that would catch depends-on chain errors before they consume dispatch cycles",
+                    "daemon-orchestrator-stall-notification.md Category A 'Dispatch-impossible by depends-on': 'A task in status: ready whose depends_on includes any task in {blocked, failed, abandoned}. The picker filters these out ... so they accumulate silently'"
+                  ],
+                  "rationale": "All seven Round 5 c1-c7 applier tasks were constructed without the developer task in their depends_on, meaning the applier could not access developer outputs via UPSTREAM resolution. The substrate correctly vetoed all seven at dispatch time. However, the miss was not caught at task-append time (when the queue was composed), meaning seven tasks consumed ready-slot positions and one dispatch cycle before the structural error was visible. A graph-correctness validation at append time would have surfaced the missing dep before any tasks were dispatched, eliminating the v2 wave entirely. This is the dependency-graph pattern that the state-verification-gate SVG-6 category is designed to detect.",
+                  "metrics": {
+                    "chains_simultaneously_veto_fired": 7,
+                    "cascade_tasks_generated_by_this_trigger": 14
+                  }
+                },
+                {
+                  "id": "DM-4",
+                  "title": "35 apply_partial_failure events across the phase \u00e2\u20ac\u201d each immediately cascades downstream test-runner tasks to dispatch-impossible",
+                  "severity": "major",
+                  "kind": "blocker",
+                  "evidence": [
+                    "state.jsonld: 35 occurrences of apply_partial_failure across task output and history blocks",
+                    "state.jsonld task 410 outputs: error: apply_partial_failure; applied: 6 changes; failed: [{id: C6, reason: overlaps_other_change, path: src/ui/PropertyCreationDialog.tsx}]",
+                    "state.jsonld task 410 history: cps_veto fires on apply_partial_failure; task immediately \u00e2\u2020\u2019 blocked; downstream test-runner (411) becomes dispatch-impossible",
+                    "OPERATOR-MEDIATION-LOG.md Event 13a: 'Chain \u00ce\u00b1 (new-project UX): architect ratified, applier reported apply_partial_failure (15/16 applied, C5 failed), task \u00e2\u2020\u2019 blocked. ... Both Chain \u00ce\u00b1 and Chain \u00ce\u00b4 now have stuck test-runner tasks (321, 326) sitting ready with depends_on pointing at blocked applier tasks \u00e2\u20ac\u201d they can never dispatch'",
+                    "state.jsonld: 121 tasks currently in status: blocked; the majority trace ancestry to partial-apply cascades per operator_reset replaced_by chains"
+                  ],
+                  "rationale": "The CPS veto on apply_partial_failure is architecturally correct: a partial apply leaves the filesystem in a mixed state that cannot be verified. However, the delivery consequence is that every partial failure immediately blocks its downstream test-runner, which then blocks the next chain's applier (in sequential chain compositions). The 35 occurrences across Phase 2 represent 35 points where a content-level collision between the applier's before-snippet matching and the current disk state caused an immediate full-chain stall. Event 13a documents the most visible instance: two chains stalled simultaneously with stuck test-runner tasks that could never dispatch. The 121 currently-blocked tasks in state.jsonld are primarily the accumulated cascade children of these partial-failure events.",
+                  "metrics": {
+                    "apply_partial_failure_count": 35,
+                    "tasks_currently_blocked": 121,
+                    "tasks_completed": 362
+                  }
+                },
+                {
+                  "id": "DM-5",
+                  "title": "Windows subprocess npm resolution failure (WinError 2) stalled the v3 Round 5 test chain for ~8.5 hours, requiring a v4 cascade across all 7 chains",
+                  "severity": "major",
+                  "kind": "blocker",
+                  "evidence": [
+                    "state.jsonld task 426 history: cps_veto at 2026-05-24T01:18:49Z on subprocess_failed 'could not start subprocess: [WinError 2] The system cannot find the file specified'; second cps_veto at 09:45:27Z after operator_reset with FNSR_TEST_RUNNER_CMD env var attempt; operator_reset to v4 at 09:49:37Z",
+                    "state.jsonld task 439 inputs.cmd: '\"C:/Program Files/nodejs/npm.cmd\" test' \u00e2\u20ac\u201d absolute Windows path required for subprocess.run without shell=True",
+                    "state.jsonld task 439 history: completed at 2026-05-24T09:51:26Z \u00e2\u20ac\u201d 2 minutes after operator_reset; the resolution itself was fast once the npm.cmd path was known",
+                    "state.jsonld banking event bank-439-test-r5-c1-v4-1: 'daemon _test_runner uses shell=False and subprocess.run resolves npm to nothing on Windows because npm is actually npm.cmd ... Caused chain 1 v3 test 426 to block with WinError 2; cascaded to chains 2-7 being unable to run'",
+                    "OPERATOR-MEDIATION-LOG.md Events 4-6: verification-step cluster \u00e2\u20ac\u201d subprocess_failed is Event 6's 'test-runner can't invoke subprocess at all'; same family as Phase 2 task 2.1's Event 6"
+                  ],
+                  "rationale": "The Windows npm.cmd resolution gap (bare 'npm' not resolvable via subprocess.run shell=False on Windows) blocked the v3 test-runner from 2026-05-24T01:18Z until 09:49Z \u00e2\u20ac\u201d an 8.5-hour elapsed stall. The stall caused two operator_reset attempts (one with FNSR_TEST_RUNNER_CMD env var, which also failed) before the correct fix (absolute npm.cmd path in inputs.cmd) was applied. This is a recurring environment-tooling gap: OPERATOR-MEDIATION-LOG Events 4-6 document the same family appearing at Phase 2 task 2.1. The banking event confirms the v3 stall directly cascaded to chains 2-7 having no path to proceed, forcing the v4 wave. The fix was structurally trivial (2-minute resolution) but its discovery consumed 8.5 hours of elapsed calendar time.",
+                  "metrics": {
+                    "block_elapsed_hours": 8.5,
+                    "operator_reset_attempts_before_fix": 2,
+                    "chains_blocked_by_this_trigger": 7
+                  }
+                },
+                {
+                  "id": "DM-6",
+                  "title": "No phase-state machine: ROADMAP declares Phase 2 'Not Started' after 5 feedback rounds, 362 done tasks, and multi-week elapsed delivery",
+                  "severity": "major",
+                  "kind": "predictability",
+                  "evidence": [
+                    "state-verification-gate.md SVG-1.1: 'ROADMAP says Phase 2 Not Started while git log shows multiple Phase 2 commits shipped + Phase 2 UI deployed and stakeholder-iterated (Rounds 3, 4, 5, 5b). Severity: warn'",
+                    "state-verification-gate.md: 'Validation strategy: SVG-1.1 should fire: ROADMAP Phase 2 Not Started + commit 4910d78 exists'",
+                    "phase-lifecycle-orchestration.md canonical_reference: 'Aaron 2026-05-25 directive \u00e2\u20ac\u201d The process is actually the most important thing. Draft the Phase Lifecycle Orchestration with the automation we discussed.' \u00e2\u20ac\u201d confirming lifecycle automation is proposed, not yet operational",
+                    "state.jsonld: 3 occurrences of phase_origin: phase-2 vs 362 done tasks and 5 feedback rounds executed",
+                    "OPERATOR-MEDIATION-LOG.md Event 1: 'The framework's purpose is autonomy-trajectory assessment' \u00e2\u20ac\u201d Phase 2 operating mode was operator-mediated continuous-delivery; no phase-start declaration event was emitted",
+                    "phase-lifecycle-orchestration.md: seven-phase state machine (planned \u00e2\u2020\u2019 implementing \u00e2\u2020\u2019 demo-released \u00e2\u2020\u2019 po-satisfied \u00e2\u2020\u2019 retro-complete \u00e2\u2020\u2019 drift-reconciled \u00e2\u2020\u2019 closed) does not yet exist in substrate; all transitions are inference-only from audit chain timestamps"
+                  ],
+                  "rationale": "Phase 2 has no declared lifecycle state events in the audit chain. The phase-lifecycle-orchestration.md primitive is a blueprint dated 2026-05-25, meaning Phase 2 operated entirely without a formal phase-state machine. As a result: there is no auditable record of when Phase 2 entered 'implementing', when demos were released (Round 3, 4, 5, 5b-1), or when the PO signaled feedback-round completion. The ROADMAP's 'Phase 2 Not Started' claim is a canonical-doc drift finding (SVG-1.1 severity: warn per state-verification-gate.md) that would fail on the first SVG probe. Sprint predictability analysis for Phase 2 is entirely inference-based from task @id ranges and timestamp archaeology \u00e2\u20ac\u201d planned-vs-actual deliverables cannot be read from first-class substrate events.",
+                  "metrics": {
+                    "phase_state_events_in_audit_chain": 3,
+                    "feedback_rounds_executed": 5,
+                    "tasks_done_in_phase_2_estimated": 220,
+                    "operator_reset_events_total": 124
+                  }
+                },
+                {
+                  "id": "DM-7",
+                  "title": "14 task_too_broad developer self-flags caused immediate CPS cascade stalls; each required abandon-and-replace of all downstream tasks",
+                  "severity": "minor",
+                  "kind": "coordination",
+                  "evidence": [
+                    "state.jsonld: 14 occurrences of task_too_broad across task output blocks",
+                    "OPERATOR-MEDIATION-LOG.md Event 9: 'Developer self-flagged with outputs.error: task_too_broad + structured suggested_split payload ... CPS vetoed on the error field; task \u00e2\u2020\u2019 blocked; downstream 222-224 stalled (depends_on graph stuck on blocked predecessor)'",
+                    "OPERATOR-MEDIATION-LOG.md Event 10a: 'Task 245 dev-smoke-suite blocked with same outputs.error: task_too_broad shape as task 221 (Event 9). CPS vetoed; downstream 246-248 stalled in status: ready with unsatisfied depends_on'",
+                    "OPERATOR-MEDIATION-LOG.md Event 10b: 'Aaron observed: ready tasks but nothing in progress again' \u00e2\u20ac\u201d second operator-visible stall from same pattern",
+                    "OPERATOR-MEDIATION-LOG.md Event 12: Developer used awaiting_operator_decision (correct shape per \u00c2\u00a77.6) but CPS still vetoed on missing required_outputs \u00e2\u20ac\u201d substrate implementation did not honor the bypass; added to the cascade cluster",
+                    "OPERATOR-MEDIATION-LOG.md Event 12 closure: 'fixed in fnsr_daemon.py cps_check() \u00e2\u20ac\u201d awaiting_operator_decision shape now bypasses required_outputs check per CLAUDE.md \u00c2\u00a77.6' (2026-05-23)"
+                  ],
+                  "rationale": "Developer self-flags for scope-too-broad were consistently handled via the error: task_too_broad shape rather than the awaiting_operator_decision shape specified in CLAUDE.md \u00c2\u00a77.6. Each error-shape flag caused CPS to veto \u00e2\u2020\u2019 task blocked \u00e2\u2020\u2019 all downstream tasks lost dispatch eligibility. The pattern recurred at least twice in Events 9 and 10, each requiring abandon-and-replace of 3 downstream tasks (minimum 6 operator_reset events per occurrence). Events 9 and 10 together account for at least 12 operator_reset events from this pattern alone. The concurrent Event 12 bug (awaiting_operator_decision did not bypass required_outputs check) further complicated recovery shapes mid-phase. Both substrate bugs were fixed on 2026-05-23, reducing but not eliminating the coordination overhead for future rounds.",
+                  "metrics": {
+                    "task_too_broad_flags": 14,
+                    "operator_resets_estimated_from_this_pattern": 12
+                  }
+                },
+                {
+                  "id": "DM-8",
+                  "title": "Decomposition v1 scope-file errors (SME-R5-02) confirm that pre-dispatch planning artifacts introduce rework risk; 2 of 10 ontology chains would have targeted the wrong implementation file",
+                  "severity": "advisory",
+                  "kind": "predictability",
+                  "evidence": [
+                    "FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02: 'Decomposition v1 had scope-file errors; revised in this v2. Without this v2 correction, the developer dispatched on B2/B4 would have looked in the wrong file'",
+                    "FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02 verbatim: 'The decomposition's scope field incorrectly identifies src/kernel/canonicalize.ts as the target; the correct file is src/tbox/index.ts (BOTH PROJECT_TBOX_TURTLE template string AND getProjectTBoxNodes() array)'",
+                    "FEEDBACK-ROUND-5-DECOMPOSITION.md: SME-R5-01 (HIDDEN DEFECT) surfaced by SME review \u00e2\u20ac\u201d not caught by Aaron or coworker during Round 5 walkthrough; adds 1 chain to scope",
+                    "FEEDBACK-ROUND-5-DECOMPOSITION.md summary: protocol chain is 'this decomposition \u00e2\u2020\u2019 semantic-sme review (task 374; DONE) \u00e2\u2020\u2019 Phase 05a operator adjudication \u00e2\u2020\u2019 implementation chains' \u00e2\u20ac\u201d minimum 3 pre-dispatch stages before chain 1 queues",
+                    "FEEDBACK-ROUND-5-DECOMPOSITION.md: 4 of 10 now-scope ontology chains (R5-B1, B3, B5, B6) gated on Q-R5-X adjudication; dispatch cannot begin until foundational scope question is resolved",
+                    "state.jsonld: 13 occurrences of agent: semantic-sme \u00e2\u20ac\u201d Spec 08 v0.3 first formal round application; SME now mandatory upstream of developer for ontology-content items (AP-7)"
+                  ],
+                  "rationale": "Decomposition v1 sent B2 and B4 to src/kernel/canonicalize.ts \u00e2\u20ac\u201d the wrong implementation file. Without the SME review cycle (task 374), developer chains B2 and B4 would have applied changes to canonicalize.ts against correct before-snippets that don't exist there, producing guaranteed apply_partial_failure cascades. The SME review prevented two recovery cascades at the cost of a pre-dispatch planning cycle. The trade is favorable (1 SME task vs 2 avoided cascades \u00c3\u2014 ~10 replacement tasks each), but the scope-error occurrence rate (2 of 12 chains affected by planning-artifact errors) suggests decomposition accuracy is a predictability variable. Additionally, Q-R5-X foundational adjudication gates 4 chains, meaning 40% of now-scope chains cannot dispatch until a single operator decision is made \u00e2\u20ac\u201d a single-point-of-blocking not visible in the task dependency graph.",
+                  "metrics": {
+                    "chains_with_wrong_scope_in_v1": 2,
+                    "chains_gated_on_adjudication": 4,
+                    "pre_dispatch_stages": 3,
+                    "hidden_defects_surfaced_by_sme": 1
+                  }
+                }
+              ],
+              "evidence_paths": [
+                "state.jsonld (tasks 410-481: Round 5 cascade chain records; all operator_reset + cps_veto history events)",
+                "state.jsonld banking event bank-425-apply-r5-c1-c6-only-1 (2026-05-25T10:19:33Z): recon-front cascade deadlock pattern summary",
+                "state.jsonld banking event bank-439-test-r5-c1-v4-1 (2026-05-25T10:19:35Z): Windows npm.cmd cascade root cause",
+                "OPERATOR-MEDIATION-LOG.md Events 1-13 (2026-05-20 \u00e2\u20ac\u201c 2026-05-22): 10-event Phase 2 operator-mediation log with full taxonomy",
+                "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02 and SME-R5-01 (post-SME revision v2)",
+                "surfaces/_primitives/daemon-orchestrator-stall-notification.md (Category A\u00e2\u20ac\u201cD stall taxonomy; v3.1.0-bridge status)",
+                "surfaces/_primitives/state-verification-gate.md (SVG-1.1 predicate: Phase 2 Not Started canonical-doc drift; SVG-2.1 commit-gap drift)",
+                "surfaces/_primitives/phase-lifecycle-orchestration.md (seven-phase state machine blueprint; v3.1.0-bridge scope)",
+                "state.jsonld aggregate counts: 362 done, 121 blocked, 5 ready, 1 in_progress, 4 awaiting_operator_decision; 124 operator_reset events; 28 cps_veto events; 35 apply_partial_failure occurrences; 14 task_too_broad flags; 7 ruling: denied; 1 ruling: deferred; 49 banking events"
+              ],
+              "open_questions": [
+                "What is the Phase 2 actual elapsed calendar time (implementing-start to po-satisfied)? The audit chain has timestamps but no phase-state-changed events; reconstruction requires first and last Phase 2 task timestamps from state.jsonld which were not extracted.",
+                "What fraction of the 121 currently-blocked tasks represent cascade-abandoned slots (delivery waste) vs active blockers awaiting resolution? The two categories have different recovery paths but are indistinguishable at status: blocked.",
+                "How many of the 124 operator_reset events fall within Phase 2 specifically vs Phase 1 pre-work? The Phase 1/2 boundary is task-ID-range-inferrable but not first-class-event-auditable given no phase-state machine.",
+                "The Round 5 v4 cascade: tasks 440-451 were abandoned before dispatching due to 'recon-front deadlock'. Were those applier deps actually deadlocked (pointing at abandoned task @ids), or were they structurally valid but abandoned preemptively? Task 440's depends_on [382-rat, 381-dev, 439-test-v4] appear valid. The exact deadlock evidence was the v5 cascade banking note, not a direct inspection of tasks 440-451 depends_on chain-completeness.",
+                "The Q-R5-X adjudication (operator choice between Option \u00ce\u00b1/\u00ce\u00b2/\u00ce\u00b3) has not yet been recorded in state.jsonld. Until resolved, 4 of 10 now-scope Round 5 chains cannot dispatch. Is there an awaiting_operator_decision task holding this, or is it informal operator-session memory?",
+                "Of the 7 architect ruling: denied events, how many triggered the Event 11 pass-2a-gating bug (applier ran despite denial) vs occurred after the 2026-05-23 daemon fix? The distinction matters for measuring how many actual code changes landed against architect intent."
+              ],
+              "summary": "Phase 2 (Browser UI Foundation) executed 5 stakeholder feedback rounds over multi-week elapsed time, producing 362 done tasks and 121 currently-blocked tasks in the audit chain. The defining delivery pattern is the Round 5 recon-front cascade: four sequential cascade rebuilds (v2 applier-deps veto, v3 C6-retry + WinError 2 block, v4 npm-cmd fix, v5 recon-front deadlock) consumed approximately 71 replacement task slots for 7 implementation chains. Each cascade trigger was distinct and orthogonal \u00e2\u20ac\u201d graph-correctness miss, partial-apply overlap, Windows subprocess resolution failure, recon-dep deadlock \u00e2\u20ac\u201d meaning no single upstream fix would have prevented all four. The 124 operator_reset events in the full audit chain are the clearest coordination overhead metric: each represents a manual dispatch intervention, with roughly 39+ concentrated in two burst clusters within Round 5 alone. Blocker distribution clusters at two structural points: applier-side (35 apply_partial_failure events, each immediately veto-cascading downstream) and test-runner-side (WinError 2, verification-step coverage gaps, Events 4-8 in OPERATOR-MEDIATION-LOG). The phase has no declared lifecycle state machine: ROADMAP reads 'Phase 2 Not Started' despite multi-week delivery, confirmed as SVG-1.1 drift evidence in state-verification-gate.md. Sprint predictability is therefore inference-only from task timestamp archaeology rather than first-class audit events. Pre-dispatch coordination overhead for Round 5 is also non-trivial: Spec 08 v0.3 mandatory SME upstream review (task 374) added a planning cycle that caught two scope-file errors (SME-R5-02) and one hidden defect (SME-R5-01) before any implementation queued, but the same cycle gates dispatch; additionally, the foundational Q-R5-X adjudication blocks 4 of 10 now-scope chains until a single operator decision is recorded."
+            }
+          },
+          "prev_hash": "bcf61878a2983e6d959c9750075fc018316201198a7fce7d0d6830c926f9c52f",
+          "chain_hash": "4bd1ad63ff7be763e07f72fc6d65f6e96dad439c4904f12924318e7259636a8a"
+        }
+      ],
+      "outputs": {
+        "proposed_issues": [
+          {
+            "id": "DM-1",
+            "title": "Round 5 recon-front cascade: 4 sequential rebuilds consumed ~71 replacement task slots for 7 implementation chains",
+            "severity": "blocking",
+            "kind": "dependency",
+            "evidence": [
+              "state.jsonld tasks 410-423 (v2, 14 tasks): chain_label 'R5-Chain c1: applier (v2; corrected depends_on)'; purpose field: 'Replaces an earlier applier task that lacked the dev task in depends_on (substrate veto: source_not_in_upstream)'",
+              "state.jsonld task 410 history: cps_veto at 2026-05-24T01:10:49Z on apply_partial_failure (6 applied, C6 failed overlaps_other_change); operator_reset cascade at 01:14:58Z replacing to tasks 425+",
+              "state.jsonld tasks 426-438 (v3, 13 tasks): task 426 history shows two cps_veto events on subprocess_failed WinError 2 at 01:18:49Z and 09:45:27Z; operator_reset to v4 at 09:49:37Z (8h 31m elapsed)",
+              "state.jsonld tasks 440-451 (v4, 12 tasks): all operator_reset at 09:58:22Z with reason 'v5 cascade: chain front recon dep on abandoned v1 test deadlocked chains 2-7'; replaced_by references tasks 455-480",
+              "state.jsonld tasks 452-481 (v5, 30 tasks): fresh recon-dev-rat-apply-test chains for c2-c7; task 452 depends_on [urn:fnsr:task:439-test-r5-c1-v4], properly threading from only the surviving v4 test",
+              "state.jsonld banking event bank-425-apply-r5-c1-c6-only-1 (2026-05-25T10:19:33Z): 'Recon-front cascade deadlock pattern: ... This bit Round 5 four times (v2/v3/v4/v5 cascades) \u00e2\u20ac\u201d each cascade fix only repaired the side I was looking at, leaving the other side broken'",
+              "state.jsonld banking event bank-439-test-r5-c1-v4-1 (2026-05-25T10:19:35Z): 'test-runner Windows subprocess.run(npm) failure ... Caused chain 1 v3 test 426 to block with WinError 2; cascaded to chains 2-7 being unable to run'"
+            ],
+            "rationale": "The Round 5 seven-chain implementation (c1\u00e2\u20ac\u201cc7) required four successive cascade rebuilds before any chain cleared the test-runner. Trigger 1: v1 applier tasks all lacked the developer task in depends_on, firing a source_not_in_upstream substrate veto across all 7 chains simultaneously \u00e2\u20ac\u201d producing the v2 wave (14 tasks). Trigger 2: within v2, task 410 applied 6 of 7 changes but C6 produced overlaps_other_change, blocking all downstream v2 tasks \u00e2\u20ac\u201d producing recovery task 424 and the v3 wave (13 tasks). Trigger 3: the v3 test-runner (task 426) could not resolve bare 'npm' on Windows subprocess.run (WinError 2), blocking all 6 downstream v3 chains \u00e2\u20ac\u201d producing the v4 wave (13 tasks, task 439 the only survivor). Trigger 4: the v4 chain's recon tasks for c2-c7 still depended on abandoned v1 test-task IDs, making them dispatch-impossible \u00e2\u20ac\u201d producing the v5 wave (30 tasks with fresh recon). Total replacement task slots: ~71 against 7 original implementation chains. Each trigger was distinct and orthogonal; no single upstream fix would have prevented all four.",
+            "metrics": {
+              "cascade_generations": 4,
+              "cascade_replacement_task_slots": 71,
+              "original_chains_count": 7,
+              "v4_wave_only_survivor": 1,
+              "elapsed_v3_block_hours": 8.5
+            }
+          },
+          {
+            "id": "DM-2",
+            "title": "124 operator_reset events in the Phase 2 audit chain represent sustained manual dispatch orchestration overhead",
+            "severity": "major",
+            "kind": "coordination",
+            "evidence": [
+              "state.jsonld: 124 occurrences of event: operator_reset across all task history blocks",
+              "state.jsonld task 410-423 histories: 14 operator_reset events fired within 4 minutes (01:14:58Z\u00e2\u20ac\u201c01:15:xx Z) to cascade-abandon the v2 chain wave",
+              "state.jsonld task 440-451 histories: 12 operator_reset events fired within 40 seconds (09:58:22Z\u00e2\u20ac\u201c09:58:28Z) for v4\u00e2\u2020\u2019v5 cascade-abandon",
+              "OPERATOR-MEDIATION-LOG.md Event 10: 'Aaron observed: ready tasks but nothing in progress again. Why does this keep happening?' \u00e2\u20ac\u201d operator-visible stall at each cascade inflection",
+              "OPERATOR-MEDIATION-LOG.md Event 13: 'every stall costs Aaron-visible delay because the orchestrator-Agent is waiting on chain progress notifications that never fire'",
+              "state.jsonld: 28 cps_veto events; each veto \u00e2\u2020\u2019 blocked \u00e2\u2020\u2019 operator_reset is a minimum two-event overhead cycle per recovery"
+            ],
+            "rationale": "Each operator_reset event represents a manual dispatch intervention: the operator inspected the blocked state, determined the recovery shape, issued the reset command, and (for cascade abandonment) repeated across all downstream tasks. With 124 total resets and multi-second groupings visible for cascade events, the Round 5 cascade alone consumed roughly 39+ resets in two burst clusters. This is coordination overhead that consumed operator attention at each cascade inflection point and is orthogonal to content delivery. The OPERATOR-MEDIATION-LOG documents the pattern explicitly: the orchestrator-Agent has no push notification when a chain stalls, requiring manual polling or human-escalated discovery. Per Events 10 and 13, this was the primary source of operator-visible delivery friction across Phase 2.",
+            "metrics": {
+              "total_operator_reset_events": 124,
+              "total_cps_veto_events": 28,
+              "banking_events_logged": 49
+            }
+          },
+          {
+            "id": "DM-3",
+            "title": "source_not_in_upstream veto fired simultaneously on all 7 Round 5 chains at first dispatch \u00e2\u20ac\u201d a graph-correctness miss not caught at task-append time",
+            "severity": "major",
+            "kind": "dependency",
+            "evidence": [
+              "state.jsonld tasks 410-423 chain_label fields: 'applier (v2; corrected depends_on)'; purpose field on task 410: 'Replaces an earlier applier task that lacked the dev task in depends_on (substrate veto: source_not_in_upstream)'",
+              "state.jsonld: the v1 applier tasks for c1-c7 (tasks before 410) were blocked by this veto before any application occurred",
+              "OPERATOR-MEDIATION-LOG.md Event 13: 'Developer token-overflow silent truncation' + 'no daemon\u00e2\u2020\u2019orchestrator push notification' \u00e2\u20ac\u201d two of the three sub-events that made chain stalls hard to detect in round 4; same detection gap applies to the graph-correctness miss",
+              "state-verification-gate.md SVG-6 'Substrate Health' category: describes stall_dispatch_impossible detection that would catch depends-on chain errors before they consume dispatch cycles",
+              "daemon-orchestrator-stall-notification.md Category A 'Dispatch-impossible by depends-on': 'A task in status: ready whose depends_on includes any task in {blocked, failed, abandoned}. The picker filters these out ... so they accumulate silently'"
+            ],
+            "rationale": "All seven Round 5 c1-c7 applier tasks were constructed without the developer task in their depends_on, meaning the applier could not access developer outputs via UPSTREAM resolution. The substrate correctly vetoed all seven at dispatch time. However, the miss was not caught at task-append time (when the queue was composed), meaning seven tasks consumed ready-slot positions and one dispatch cycle before the structural error was visible. A graph-correctness validation at append time would have surfaced the missing dep before any tasks were dispatched, eliminating the v2 wave entirely. This is the dependency-graph pattern that the state-verification-gate SVG-6 category is designed to detect.",
+            "metrics": {
+              "chains_simultaneously_veto_fired": 7,
+              "cascade_tasks_generated_by_this_trigger": 14
+            }
+          },
+          {
+            "id": "DM-4",
+            "title": "35 apply_partial_failure events across the phase \u00e2\u20ac\u201d each immediately cascades downstream test-runner tasks to dispatch-impossible",
+            "severity": "major",
+            "kind": "blocker",
+            "evidence": [
+              "state.jsonld: 35 occurrences of apply_partial_failure across task output and history blocks",
+              "state.jsonld task 410 outputs: error: apply_partial_failure; applied: 6 changes; failed: [{id: C6, reason: overlaps_other_change, path: src/ui/PropertyCreationDialog.tsx}]",
+              "state.jsonld task 410 history: cps_veto fires on apply_partial_failure; task immediately \u00e2\u2020\u2019 blocked; downstream test-runner (411) becomes dispatch-impossible",
+              "OPERATOR-MEDIATION-LOG.md Event 13a: 'Chain \u00ce\u00b1 (new-project UX): architect ratified, applier reported apply_partial_failure (15/16 applied, C5 failed), task \u00e2\u2020\u2019 blocked. ... Both Chain \u00ce\u00b1 and Chain \u00ce\u00b4 now have stuck test-runner tasks (321, 326) sitting ready with depends_on pointing at blocked applier tasks \u00e2\u20ac\u201d they can never dispatch'",
+              "state.jsonld: 121 tasks currently in status: blocked; the majority trace ancestry to partial-apply cascades per operator_reset replaced_by chains"
+            ],
+            "rationale": "The CPS veto on apply_partial_failure is architecturally correct: a partial apply leaves the filesystem in a mixed state that cannot be verified. However, the delivery consequence is that every partial failure immediately blocks its downstream test-runner, which then blocks the next chain's applier (in sequential chain compositions). The 35 occurrences across Phase 2 represent 35 points where a content-level collision between the applier's before-snippet matching and the current disk state caused an immediate full-chain stall. Event 13a documents the most visible instance: two chains stalled simultaneously with stuck test-runner tasks that could never dispatch. The 121 currently-blocked tasks in state.jsonld are primarily the accumulated cascade children of these partial-failure events.",
+            "metrics": {
+              "apply_partial_failure_count": 35,
+              "tasks_currently_blocked": 121,
+              "tasks_completed": 362
+            }
+          },
+          {
+            "id": "DM-5",
+            "title": "Windows subprocess npm resolution failure (WinError 2) stalled the v3 Round 5 test chain for ~8.5 hours, requiring a v4 cascade across all 7 chains",
+            "severity": "major",
+            "kind": "blocker",
+            "evidence": [
+              "state.jsonld task 426 history: cps_veto at 2026-05-24T01:18:49Z on subprocess_failed 'could not start subprocess: [WinError 2] The system cannot find the file specified'; second cps_veto at 09:45:27Z after operator_reset with FNSR_TEST_RUNNER_CMD env var attempt; operator_reset to v4 at 09:49:37Z",
+              "state.jsonld task 439 inputs.cmd: '\"C:/Program Files/nodejs/npm.cmd\" test' \u00e2\u20ac\u201d absolute Windows path required for subprocess.run without shell=True",
+              "state.jsonld task 439 history: completed at 2026-05-24T09:51:26Z \u00e2\u20ac\u201d 2 minutes after operator_reset; the resolution itself was fast once the npm.cmd path was known",
+              "state.jsonld banking event bank-439-test-r5-c1-v4-1: 'daemon _test_runner uses shell=False and subprocess.run resolves npm to nothing on Windows because npm is actually npm.cmd ... Caused chain 1 v3 test 426 to block with WinError 2; cascaded to chains 2-7 being unable to run'",
+              "OPERATOR-MEDIATION-LOG.md Events 4-6: verification-step cluster \u00e2\u20ac\u201d subprocess_failed is Event 6's 'test-runner can't invoke subprocess at all'; same family as Phase 2 task 2.1's Event 6"
+            ],
+            "rationale": "The Windows npm.cmd resolution gap (bare 'npm' not resolvable via subprocess.run shell=False on Windows) blocked the v3 test-runner from 2026-05-24T01:18Z until 09:49Z \u00e2\u20ac\u201d an 8.5-hour elapsed stall. The stall caused two operator_reset attempts (one with FNSR_TEST_RUNNER_CMD env var, which also failed) before the correct fix (absolute npm.cmd path in inputs.cmd) was applied. This is a recurring environment-tooling gap: OPERATOR-MEDIATION-LOG Events 4-6 document the same family appearing at Phase 2 task 2.1. The banking event confirms the v3 stall directly cascaded to chains 2-7 having no path to proceed, forcing the v4 wave. The fix was structurally trivial (2-minute resolution) but its discovery consumed 8.5 hours of elapsed calendar time.",
+            "metrics": {
+              "block_elapsed_hours": 8.5,
+              "operator_reset_attempts_before_fix": 2,
+              "chains_blocked_by_this_trigger": 7
+            }
+          },
+          {
+            "id": "DM-6",
+            "title": "No phase-state machine: ROADMAP declares Phase 2 'Not Started' after 5 feedback rounds, 362 done tasks, and multi-week elapsed delivery",
+            "severity": "major",
+            "kind": "predictability",
+            "evidence": [
+              "state-verification-gate.md SVG-1.1: 'ROADMAP says Phase 2 Not Started while git log shows multiple Phase 2 commits shipped + Phase 2 UI deployed and stakeholder-iterated (Rounds 3, 4, 5, 5b). Severity: warn'",
+              "state-verification-gate.md: 'Validation strategy: SVG-1.1 should fire: ROADMAP Phase 2 Not Started + commit 4910d78 exists'",
+              "phase-lifecycle-orchestration.md canonical_reference: 'Aaron 2026-05-25 directive \u00e2\u20ac\u201d The process is actually the most important thing. Draft the Phase Lifecycle Orchestration with the automation we discussed.' \u00e2\u20ac\u201d confirming lifecycle automation is proposed, not yet operational",
+              "state.jsonld: 3 occurrences of phase_origin: phase-2 vs 362 done tasks and 5 feedback rounds executed",
+              "OPERATOR-MEDIATION-LOG.md Event 1: 'The framework's purpose is autonomy-trajectory assessment' \u00e2\u20ac\u201d Phase 2 operating mode was operator-mediated continuous-delivery; no phase-start declaration event was emitted",
+              "phase-lifecycle-orchestration.md: seven-phase state machine (planned \u00e2\u2020\u2019 implementing \u00e2\u2020\u2019 demo-released \u00e2\u2020\u2019 po-satisfied \u00e2\u2020\u2019 retro-complete \u00e2\u2020\u2019 drift-reconciled \u00e2\u2020\u2019 closed) does not yet exist in substrate; all transitions are inference-only from audit chain timestamps"
+            ],
+            "rationale": "Phase 2 has no declared lifecycle state events in the audit chain. The phase-lifecycle-orchestration.md primitive is a blueprint dated 2026-05-25, meaning Phase 2 operated entirely without a formal phase-state machine. As a result: there is no auditable record of when Phase 2 entered 'implementing', when demos were released (Round 3, 4, 5, 5b-1), or when the PO signaled feedback-round completion. The ROADMAP's 'Phase 2 Not Started' claim is a canonical-doc drift finding (SVG-1.1 severity: warn per state-verification-gate.md) that would fail on the first SVG probe. Sprint predictability analysis for Phase 2 is entirely inference-based from task @id ranges and timestamp archaeology \u00e2\u20ac\u201d planned-vs-actual deliverables cannot be read from first-class substrate events.",
+            "metrics": {
+              "phase_state_events_in_audit_chain": 3,
+              "feedback_rounds_executed": 5,
+              "tasks_done_in_phase_2_estimated": 220,
+              "operator_reset_events_total": 124
+            }
+          },
+          {
+            "id": "DM-7",
+            "title": "14 task_too_broad developer self-flags caused immediate CPS cascade stalls; each required abandon-and-replace of all downstream tasks",
+            "severity": "minor",
+            "kind": "coordination",
+            "evidence": [
+              "state.jsonld: 14 occurrences of task_too_broad across task output blocks",
+              "OPERATOR-MEDIATION-LOG.md Event 9: 'Developer self-flagged with outputs.error: task_too_broad + structured suggested_split payload ... CPS vetoed on the error field; task \u00e2\u2020\u2019 blocked; downstream 222-224 stalled (depends_on graph stuck on blocked predecessor)'",
+              "OPERATOR-MEDIATION-LOG.md Event 10a: 'Task 245 dev-smoke-suite blocked with same outputs.error: task_too_broad shape as task 221 (Event 9). CPS vetoed; downstream 246-248 stalled in status: ready with unsatisfied depends_on'",
+              "OPERATOR-MEDIATION-LOG.md Event 10b: 'Aaron observed: ready tasks but nothing in progress again' \u00e2\u20ac\u201d second operator-visible stall from same pattern",
+              "OPERATOR-MEDIATION-LOG.md Event 12: Developer used awaiting_operator_decision (correct shape per \u00c2\u00a77.6) but CPS still vetoed on missing required_outputs \u00e2\u20ac\u201d substrate implementation did not honor the bypass; added to the cascade cluster",
+              "OPERATOR-MEDIATION-LOG.md Event 12 closure: 'fixed in fnsr_daemon.py cps_check() \u00e2\u20ac\u201d awaiting_operator_decision shape now bypasses required_outputs check per CLAUDE.md \u00c2\u00a77.6' (2026-05-23)"
+            ],
+            "rationale": "Developer self-flags for scope-too-broad were consistently handled via the error: task_too_broad shape rather than the awaiting_operator_decision shape specified in CLAUDE.md \u00c2\u00a77.6. Each error-shape flag caused CPS to veto \u00e2\u2020\u2019 task blocked \u00e2\u2020\u2019 all downstream tasks lost dispatch eligibility. The pattern recurred at least twice in Events 9 and 10, each requiring abandon-and-replace of 3 downstream tasks (minimum 6 operator_reset events per occurrence). Events 9 and 10 together account for at least 12 operator_reset events from this pattern alone. The concurrent Event 12 bug (awaiting_operator_decision did not bypass required_outputs check) further complicated recovery shapes mid-phase. Both substrate bugs were fixed on 2026-05-23, reducing but not eliminating the coordination overhead for future rounds.",
+            "metrics": {
+              "task_too_broad_flags": 14,
+              "operator_resets_estimated_from_this_pattern": 12
+            }
+          },
+          {
+            "id": "DM-8",
+            "title": "Decomposition v1 scope-file errors (SME-R5-02) confirm that pre-dispatch planning artifacts introduce rework risk; 2 of 10 ontology chains would have targeted the wrong implementation file",
+            "severity": "advisory",
+            "kind": "predictability",
+            "evidence": [
+              "FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02: 'Decomposition v1 had scope-file errors; revised in this v2. Without this v2 correction, the developer dispatched on B2/B4 would have looked in the wrong file'",
+              "FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02 verbatim: 'The decomposition's scope field incorrectly identifies src/kernel/canonicalize.ts as the target; the correct file is src/tbox/index.ts (BOTH PROJECT_TBOX_TURTLE template string AND getProjectTBoxNodes() array)'",
+              "FEEDBACK-ROUND-5-DECOMPOSITION.md: SME-R5-01 (HIDDEN DEFECT) surfaced by SME review \u00e2\u20ac\u201d not caught by Aaron or coworker during Round 5 walkthrough; adds 1 chain to scope",
+              "FEEDBACK-ROUND-5-DECOMPOSITION.md summary: protocol chain is 'this decomposition \u00e2\u2020\u2019 semantic-sme review (task 374; DONE) \u00e2\u2020\u2019 Phase 05a operator adjudication \u00e2\u2020\u2019 implementation chains' \u00e2\u20ac\u201d minimum 3 pre-dispatch stages before chain 1 queues",
+              "FEEDBACK-ROUND-5-DECOMPOSITION.md: 4 of 10 now-scope ontology chains (R5-B1, B3, B5, B6) gated on Q-R5-X adjudication; dispatch cannot begin until foundational scope question is resolved",
+              "state.jsonld: 13 occurrences of agent: semantic-sme \u00e2\u20ac\u201d Spec 08 v0.3 first formal round application; SME now mandatory upstream of developer for ontology-content items (AP-7)"
+            ],
+            "rationale": "Decomposition v1 sent B2 and B4 to src/kernel/canonicalize.ts \u00e2\u20ac\u201d the wrong implementation file. Without the SME review cycle (task 374), developer chains B2 and B4 would have applied changes to canonicalize.ts against correct before-snippets that don't exist there, producing guaranteed apply_partial_failure cascades. The SME review prevented two recovery cascades at the cost of a pre-dispatch planning cycle. The trade is favorable (1 SME task vs 2 avoided cascades \u00c3\u2014 ~10 replacement tasks each), but the scope-error occurrence rate (2 of 12 chains affected by planning-artifact errors) suggests decomposition accuracy is a predictability variable. Additionally, Q-R5-X foundational adjudication gates 4 chains, meaning 40% of now-scope chains cannot dispatch until a single operator decision is made \u00e2\u20ac\u201d a single-point-of-blocking not visible in the task dependency graph.",
+            "metrics": {
+              "chains_with_wrong_scope_in_v1": 2,
+              "chains_gated_on_adjudication": 4,
+              "pre_dispatch_stages": 3,
+              "hidden_defects_surfaced_by_sme": 1
+            }
+          }
+        ],
+        "evidence_paths": [
+          "state.jsonld (tasks 410-481: Round 5 cascade chain records; all operator_reset + cps_veto history events)",
+          "state.jsonld banking event bank-425-apply-r5-c1-c6-only-1 (2026-05-25T10:19:33Z): recon-front cascade deadlock pattern summary",
+          "state.jsonld banking event bank-439-test-r5-c1-v4-1 (2026-05-25T10:19:35Z): Windows npm.cmd cascade root cause",
+          "OPERATOR-MEDIATION-LOG.md Events 1-13 (2026-05-20 \u00e2\u20ac\u201c 2026-05-22): 10-event Phase 2 operator-mediation log with full taxonomy",
+          "demo/FEEDBACK-ROUND-5-DECOMPOSITION.md SME-R5-02 and SME-R5-01 (post-SME revision v2)",
+          "surfaces/_primitives/daemon-orchestrator-stall-notification.md (Category A\u00e2\u20ac\u201cD stall taxonomy; v3.1.0-bridge status)",
+          "surfaces/_primitives/state-verification-gate.md (SVG-1.1 predicate: Phase 2 Not Started canonical-doc drift; SVG-2.1 commit-gap drift)",
+          "surfaces/_primitives/phase-lifecycle-orchestration.md (seven-phase state machine blueprint; v3.1.0-bridge scope)",
+          "state.jsonld aggregate counts: 362 done, 121 blocked, 5 ready, 1 in_progress, 4 awaiting_operator_decision; 124 operator_reset events; 28 cps_veto events; 35 apply_partial_failure occurrences; 14 task_too_broad flags; 7 ruling: denied; 1 ruling: deferred; 49 banking events"
+        ],
+        "open_questions": [
+          "What is the Phase 2 actual elapsed calendar time (implementing-start to po-satisfied)? The audit chain has timestamps but no phase-state-changed events; reconstruction requires first and last Phase 2 task timestamps from state.jsonld which were not extracted.",
+          "What fraction of the 121 currently-blocked tasks represent cascade-abandoned slots (delivery waste) vs active blockers awaiting resolution? The two categories have different recovery paths but are indistinguishable at status: blocked.",
+          "How many of the 124 operator_reset events fall within Phase 2 specifically vs Phase 1 pre-work? The Phase 1/2 boundary is task-ID-range-inferrable but not first-class-event-auditable given no phase-state machine.",
+          "The Round 5 v4 cascade: tasks 440-451 were abandoned before dispatching due to 'recon-front deadlock'. Were those applier deps actually deadlocked (pointing at abandoned task @ids), or were they structurally valid but abandoned preemptively? Task 440's depends_on [382-rat, 381-dev, 439-test-v4] appear valid. The exact deadlock evidence was the v5 cascade banking note, not a direct inspection of tasks 440-451 depends_on chain-completeness.",
+          "The Q-R5-X adjudication (operator choice between Option \u00ce\u00b1/\u00ce\u00b2/\u00ce\u00b3) has not yet been recorded in state.jsonld. Until resolved, 4 of 10 now-scope Round 5 chains cannot dispatch. Is there an awaiting_operator_decision task holding this, or is it informal operator-session memory?",
+          "Of the 7 architect ruling: denied events, how many triggered the Event 11 pass-2a-gating bug (applier ran despite denial) vs occurred after the 2026-05-23 daemon fix? The distinction matters for measuring how many actual code changes landed against architect intent."
+        ],
+        "summary": "Phase 2 (Browser UI Foundation) executed 5 stakeholder feedback rounds over multi-week elapsed time, producing 362 done tasks and 121 currently-blocked tasks in the audit chain. The defining delivery pattern is the Round 5 recon-front cascade: four sequential cascade rebuilds (v2 applier-deps veto, v3 C6-retry + WinError 2 block, v4 npm-cmd fix, v5 recon-front deadlock) consumed approximately 71 replacement task slots for 7 implementation chains. Each cascade trigger was distinct and orthogonal \u00e2\u20ac\u201d graph-correctness miss, partial-apply overlap, Windows subprocess resolution failure, recon-dep deadlock \u00e2\u20ac\u201d meaning no single upstream fix would have prevented all four. The 124 operator_reset events in the full audit chain are the clearest coordination overhead metric: each represents a manual dispatch intervention, with roughly 39+ concentrated in two burst clusters within Round 5 alone. Blocker distribution clusters at two structural points: applier-side (35 apply_partial_failure events, each immediately veto-cascading downstream) and test-runner-side (WinError 2, verification-step coverage gaps, Events 4-8 in OPERATOR-MEDIATION-LOG). The phase has no declared lifecycle state machine: ROADMAP reads 'Phase 2 Not Started' despite multi-week delivery, confirmed as SVG-1.1 drift evidence in state-verification-gate.md. Sprint predictability is therefore inference-only from task timestamp archaeology rather than first-class audit events. Pre-dispatch coordination overhead for Round 5 is also non-trivial: Spec 08 v0.3 mandatory SME upstream review (task 374) added a planning cycle that caught two scope-file errors (SME-R5-02) and one hidden defect (SME-R5-01) before any implementation queued, but the same cycle gates dispatch; additionally, the foundational Q-R5-X adjudication blocks 4 of 10 now-scope chains until a single operator decision is recorded."
+      }
+    },
+    {
+      "@id": "urn:fnsr:task:487-retro-phase2-risk",
+      "agent": "risk-analyst",
+      "status": "blocked",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "surface": "retro",
+        "retro_id": "phase-2-exit-retro",
+        "phase_origin": "phase-2",
+        "purpose": "Risk-analyst perspective for Phase 2 exit retro. Surface latent failure modes, systemic fragility, operational exposure that didn't surface as failures this phase but plausibly will if conditions change.",
+        "phase_scope": "Phase 2: Browser UI Foundation. The substrate primitives (SVG, PLO, watchdog) all landed mid-phase; they are operationally young.",
+        "context_files_to_review": [
+          "surfaces/_primitives/daemon-orchestrator-stall-notification.md",
+          "surfaces/_primitives/state-verification-gate.md",
+          "surfaces/_primitives/phase-lifecycle-orchestration.md",
+          "OPERATOR-MEDIATION-LOG.md"
+        ],
+        "deliberation_focus": "Latent risk: state_admin write-race (banked but not fixed); SVG predicates that haven't fired yet (4, 5, 7.1, 7.4) \u2014 are they correctly detecting nothing or are they silent in error? PLO v3.1.0-bridge has no daemon-side auto-chain \u2014 what discipline breaks when operator skips a step? Multi-cascade Round 5 \u2014 what's the worst case if cascade-fix itself has a bug? Phase 3 (Ontology Import) is unscoped \u2014 what risks does that bring in? Highlight the top 3 latent risks Aaron should be aware of entering Phase 3."
+      },
+      "attempts": 1,
+      "outputs": {
+        "proposed_risks": [
+          {
+            "id": "RA-1",
+            "title": "state_admin write commands have no lock acquisition, creating a live write-race against the daemon's polling loop",
+            "severity": "major",
+            "kind": "systemic_fragility",
+            "evidence": [
+              "state_admin.py:70-81 \u00e2\u20ac\u201d _load_state() opens state.jsonld with plain open(); _save_state() writes via os.replace() with no call to _acquire_lock or the locked_state() context manager",
+              "fnsr_daemon.py:100-112 \u00e2\u20ac\u201d locked_state() acquires the lock on state.jsonld.lock, then reads, yields, and writes; this guard is entirely absent from state_admin's read/write path",
+              "PLAYBOOK.md:937 \u00e2\u20ac\u201d 'Always stop the daemon first (Ctrl-C) to avoid race conditions. The daemon's lock is on state.jsonld.lock, not the data file.' \u00e2\u20ac\u201d confirming state_admin does NOT participate in the lock protocol",
+              "state.jsonld:59416 \u00e2\u20ac\u201d banking id bank-484-test-r5b-add-annotation-1 explicitly surfaced as 'state_admin write-race vs daemon polling'; open question in retro QA output: 'is this a latent test-infrastructure risk that could produce spurious failures in CI environments?'",
+              "state.jsonld:59629 \u00e2\u20ac\u201d QA agent open question confirms the race is unresolved: 'or was the race confirmed as session-only and bounded to the specific run context?'"
+            ],
+            "rationale": "The daemon's locked_state() acquires an OS-level lock on state.jsonld.lock before reading or writing state.jsonld. state_admin.py's _load_state/_save_state bypass this lock entirely. When the operator runs any state_admin write command (phase implementing, bank, retro phase-transition, promote-candidate) while the daemon is alive in its 2-second polling loop, a classic read-modify-write race exists: both processes read version N, state_admin writes version N+1 (with PLO event), the daemon writes version N+1' (with task completion) \u00e2\u20ac\u201d one overwrites the other, corrupting the hash chain. Phase 3 will increase state_admin write frequency because PLO phase-state tracking is now a first-class discipline, making this race more likely to materialize than it was in Phase 2.",
+            "trigger_conditions": "Operator runs any state_admin write command (bank, phase implementing/demo-released/po-satisfied, retro phase-transition, promote-candidate) while the daemon process is alive and in its 2-second idle poll between task dispatches. The race window is the duration of state_admin's load\u00e2\u2020\u2019modify\u00e2\u2020\u2019save cycle (~50\u00e2\u20ac\u201c200ms on OneDrive). Given that PLO tracking commands will be issued mid-session during Phase 3, and the daemon is typically left running, concurrent access is the default operational pattern.",
+            "estimated_likelihood": "medium",
+            "estimated_blast_radius": "substrate_wide"
+          },
+          {
+            "id": "RA-2",
+            "title": "PLO v3.1.0-bridge has no auto-chain: operator silently skips retro, drift reconciliation, or close when AP-PLO-2 is not triggered",
+            "severity": "major",
+            "kind": "systemic_fragility",
+            "evidence": [
+              "surfaces/_primitives/phase-lifecycle-orchestration.md:173\u00e2\u20ac\u201c191 \u00e2\u20ac\u201d 'v3.1.0-bridge (smallest viable): No auto-chain; operator types each command. Same shape as today's discipline but with substrate state-tracking + audit.'",
+              "state_admin.py:1680-1690 \u00e2\u20ac\u201d AP-PLO-2 hard refusal fires ONLY when the operator explicitly calls cmd_phase_close with from_state != drift-reconciled; there is NO substrate check that prevents starting Phase 4 work while Phase 3 is in po-satisfied state",
+              "surfaces/_primitives/phase-lifecycle-orchestration.md:41-47 \u00e2\u20ac\u201d 'Auto-chain pre-queues but does NOT auto-execute\u00e2\u20ac\u00a6 The substrate eliminates the \"remember to type the next command\" failure mode' \u00e2\u20ac\u201d but this is the v3.2 promise; v3.1.0-bridge explicitly omits it",
+              "OPERATOR-MEDIATION-LOG.md:56-66 \u00e2\u20ac\u201d Event 1 documents that the phase lifecycle is operator-policy; the substrate has no mechanism to enforce the sequence other than the explicit close-gate",
+              "retros/phase-2-exit-retro/RETRO_STATE.jsonld \u00e2\u20ac\u201d Phase 2 retro was initiated AFTER Phase 3 work was already being discussed, consistent with the pattern of lifecycle steps being skipped between phases"
+            ],
+            "rationale": "AP-PLO-2 enforces that `phase close` refuses unless state is `drift-reconciled`. This is the only hard gate in the v3.1.0-bridge implementation. But the substrate has no enforcement preventing the operator from (a) emitting `po-satisfied`, (b) immediately queueing Phase 4 development chains, and (c) never emitting `retro-complete`, `drift-reconciled`, or `close` for Phase 3. The auto-chain that would pre-queue and surface these confirmation gates (Tasks A\u00e2\u20ac\u201cE per the blueprint) is deferred to v3.2. The risk is structural: the v3.1.0-bridge increases the discipline's visibility without increasing its enforceability. Phase 2 demonstrated the pattern \u00e2\u20ac\u201d no PLO lifecycle events were emitted before this retro was initiated, and the retro was opened while Phase 3 scope was already being framed.",
+            "trigger_conditions": "Operator declares PO satisfied on Phase 3 (or simply considers Phase 3 done without emitting po-satisfied at all), then opens Phase 4 design conversations. No substrate event prevents Phase 4 tasks from being queued and dispatched. The PLO state for phase-3 remains 'implementing' or 'po-satisfied' indefinitely. Phase 3 bankings accumulate in state-1; Phase 3 OEDs remain unresolved without substrate signal; Phase 3 drift (SVG-1.x findings against ROADMAP) persists because no drift-reconciled event was emitted to acknowledge or fix it.",
+            "estimated_likelihood": "high",
+            "estimated_blast_radius": "substrate_wide"
+          },
+          {
+            "id": "RA-3",
+            "title": "SVG predicate exceptions are silently downgraded to info severity, causing git-dependent predicates to report false-clean on OneDrive/antivirus environments",
+            "severity": "major",
+            "kind": "hidden_failure_mode",
+            "evidence": [
+              "fnsr_state_verification.py:491-500 \u00e2\u20ac\u201d PREDICATES loop catches all exceptions with bare `except Exception as e:` and appends a finding with `severity: 'info'`, `drift_kind: 'predicate_error'`; no operator alert or elevated severity",
+              "fnsr_state_verification.py:530-535 \u00e2\u20ac\u201d `--blocking-only` filter shows only findings with severity='block'; a predicate_error at info severity is invisible to `--blocking-only` invocations",
+              "fnsr_state_verification.py:513 \u00e2\u20ac\u201d `has_blocking_drift: severity_counts['block'] > 0` \u00e2\u20ac\u201d a predicate_error finding does NOT increment block count; report surface says 'no blocking drift' even when git predicates failed",
+              "fnsr_state_verification.py:39-50 \u00e2\u20ac\u201d _git_run() uses 10-second timeout; raises no exception on timeout (returns returncode -1 and exception string in stderr), but other exception paths in git-dependent predicates (e.g., subprocess.TimeoutExpired if timeout parameter changes, OSError on lock contention) propagate to the outer try/except",
+              "fnsr_daemon.py:118-120 \u00e2\u20ac\u201d _atomic_write docstring explicitly names OneDrive sync, antivirus, Search indexer as sources of PermissionError on the same filesystem path; the same conditions apply to git subprocess invocations from fnsr_state_verification.py"
+            ],
+            "rationale": "The SVG predicates svg_2_1_commit_gap, svg_3_1_push_gap, and svg_7_1_demo_released_without_deploy all invoke git subprocesses. When these subprocesses fail for environmental reasons (OneDrive sync lock contention, antivirus scanner holding git index, Search indexer interfering with .git/), the exception propagates into the outer loop's catch-all and is logged as severity='info'. The operator running `python fnsr_state_verification.py --blocking-only` sees zero blocking findings \u00e2\u20ac\u201d which is technically correct (no block-class finding was appended) but operationally misleading: the predicates that would detect a commit-gap or push-gap have silently been skipped. This is the inverse of what a gate should do: failures-to-check should escalate severity, not suppress it.",
+            "trigger_conditions": "Operator runs `python fnsr_state_verification.py` (or the stall-watch's SVG integration) on Windows with OneDrive sync, Windows Defender, or Windows Search Indexer active on the GraphWrite project directory. Any git subprocess that raises an uncaught exception (subprocess.TimeoutExpired at t>10s, OSError on .git/ lock, PermissionError on .git/index) causes the corresponding predicate to produce a predicate_error finding at info severity. The report's has_blocking_drift field shows False, git predicates appear not-fired rather than failed, and the operator proceeds without knowing the drift check was skipped.",
+            "estimated_likelihood": "medium",
+            "estimated_blast_radius": "single_surface"
+          },
+          {
+            "id": "RA-4",
+            "title": "ADR-007 cascade fix left iao:OntologyDesignPattern in vmp-serializer.test.ts unit fixtures; stale fixtures pass today but will fail if Phase 3 adds strict @type validation",
+            "severity": "minor",
+            "kind": "hidden_failure_mode",
+            "evidence": [
+              "tests/vmp-serializer.test.ts:42 \u00e2\u20ac\u201d MINIMAL_VMP_ATID uses '@type': ['ecm:Project', 'iao:OntologyDesignPattern'] (pre-ADR-007 IRI)",
+              "tests/vmp-serializer.test.ts:64 \u00e2\u20ac\u201d UNORDERED_VMP uses 'type': ['iao:OntologyDesignPattern', 'ecm:Project'] (pre-ADR-007 IRI in input)",
+              "tests/vmp-serializer.test.ts:193 \u00e2\u20ac\u201d deepStrictEqual expects ['ecm:Project', 'iao:OntologyDesignPattern'] \u00e2\u20ac\u201d this passes today because lexicographic sort puts 'e' before 'i', making it correct for the OLD IRI string regardless of canonicalization intent",
+              "tests/vmp-serializer.test.ts:262 \u00e2\u20ac\u201d property-based test uses fc.constant(['ecm:Project', 'ecm:OntologyDesignPattern']) \u00e2\u20ac\u201d confirming the post-ADR-007 form was adopted in the fast-check suite but not in the unit-test fixtures",
+              "tests/cli-integration.test.ts:62, tests/emitters.test.ts:72, tests/manifest-entries.test.ts:51 \u00e2\u20ac\u201d all use ecm:OntologyDesignPattern, confirming the cascade updated these files",
+              "project/DECISIONS.md ADR-007 \u00e2\u20ac\u201d 'one-time coordinated change across ~17 files'; vmp-serializer.test.ts appears to have been missed or partially updated"
+            ],
+            "rationale": "ADR-007 renamed iao:OntologyDesignPattern to ecm:OntologyDesignPattern across ~17 files. Most test fixtures were updated (cli-integration, emitters, manifest-entries, semantic-projection assertions). But vmp-serializer.test.ts unit fixtures MINIMAL_VMP_ATID and UNORDERED_VMP still use the pre-ADR-007 IRI. These tests currently pass because the VMP serializer sorts @type arrays lexicographically regardless of IRI content \u00e2\u20ac\u201d 'ecm:Project' < 'iao:OntologyDesignPattern' alphabetically, producing the expected sorted output. No runtime validation catches the stale IRI. The failure mode is latent: Phase 3 imported-term immutability enforcement may introduce @type validation that distinguishes ecm:OntologyDesignPattern from iao:OntologyDesignPattern, at which point the unit test fixtures will fail. A developer reading these fixtures may also incorrectly treat iao:OntologyDesignPattern as currently valid.",
+            "trigger_conditions": "Phase 3 implements any of: (a) structural validation that checks project root @type includes ecm:OntologyDesignPattern specifically, or (b) migration logic that upgrades iao:OntologyDesignPattern to ecm:OntologyDesignPattern on load, or (c) a canonical-form normalizer pass that enforces the post-ADR-007 type. Any of these would cause the vmp-serializer.test.ts unit tests at lines 42/64/193 to fail, since their input fixtures carry the superseded IRI.",
+            "estimated_likelihood": "low",
+            "estimated_blast_radius": "single_task"
+          },
+          {
+            "id": "RA-5",
+            "title": "SVG-4 (banking lifecycle) and SVG-5 (forward-track aging) predicates are unimplemented; Phase 3 banking/FT drift will accumulate without substrate detection",
+            "severity": "advisory",
+            "kind": "hidden_failure_mode",
+            "evidence": [
+              "fnsr_state_verification.py:7-8 \u00e2\u20ac\u201d 'v3.1.0-bridge ships SVG-1.1, SVG-1.2, SVG-2.1, SVG-3.1. v3.2 will add daemon-side gate integration + SVG-4/5 (banking/FT lifecycle).'",
+              "fnsr_state_verification.py:443-449 \u00e2\u20ac\u201d PREDICATES tuple contains only svg_1_1, svg_1_2, svg_2_1, svg_3_1, svg_7_1, svg_7_3; SVG-4.x and SVG-5.x are absent",
+              "surfaces/_primitives/state-verification-gate.md:89-106 \u00e2\u20ac\u201d SVG-4.1 spec: 'banking events with state: 1; anchor task's phase has closed; banking still in state 1 \u00e2\u2020\u2019 drift'; SVG-4.2: discipline-correction bankings older than N days without canonical change",
+              "surfaces/_primitives/state-verification-gate.md:107-113 \u00e2\u20ac\u201d SVG-5.1 spec: 'forward-track events with state: A; deliberation_cycle has elapsed \u00e2\u2020\u2019 drift'",
+              "state.jsonld:59412-59416 \u00e2\u20ac\u201d multiple state-1 bankings from Phase 2 (bank-374, bank-425, bank-374-sme-r5-decomposition-2, bank-484) are present in the audit chain; none have been advanced to state-2 or state-3; no SVG predicate will flag this"
+            ],
+            "rationale": "The SVG blueprint explicitly defines SVG-4 (banking lifecycle drift) and SVG-5 (forward-track aging) as predicates that detect when accumulated observations rot in early lifecycle states without advancing. Both are deferred to v3.2, which is post-trajectory-closure scope. Phase 3 will accumulate its own set of state-1 bankings and state-A forward-tracks. At Phase 3 exit, the SVG probe will produce no findings for banking or FT lifecycle drift \u00e2\u20ac\u201d not because there is no drift, but because the predicates don't exist. The substrate's promise that 'banking lifecycle drift is detectable' is not delivered for Phase 3. This is a guaranteed gap, not a conditional one.",
+            "trigger_conditions": "Operator runs `python fnsr_state_verification.py` at Phase 3 exit retro and relies on its output to confirm lifecycle hygiene. The probe returns no SVG-4 or SVG-5 findings regardless of how many state-1 bankings or state-A forward-tracks have accumulated. If the operator interprets absence of findings as 'lifecycle is clean,' Phase 3 bankings will carry forward to Phase 4 in state-1, defeating the Spec 05 three-state lifecycle discipline.",
+            "estimated_likelihood": "high",
+            "estimated_blast_radius": "single_surface"
+          },
+          {
+            "id": "RA-6",
+            "title": "N3.js is in devDependencies only; Phase 3's import-ontology CLI will fail when GraphWrite is installed as a published npm package",
+            "severity": "advisory",
+            "kind": "coupling_brittleness",
+            "evidence": [
+              "package.json:48 \u00e2\u20ac\u201d 'n3': '^1.21.0' is listed under devDependencies, not dependencies",
+              "project/ROADMAP.md Phase 3 scope \u00e2\u20ac\u201d 'Turtle import via N3.js with explicit-term extraction: owl:Class, owl:ObjectProperty, owl:DatatypeProperty...'",
+              "CLAUDE.md \u00c2\u00a76 \u00e2\u20ac\u201d 'MUST NOT add runtime dependencies to GraphWrite package.json without explicit Human Orchestrator approval (devDependencies are acceptable)' \u00e2\u20ac\u201d Phase 3's N3.js promotion from devDependencies to dependencies requires explicit approval",
+              "project/ROADMAP.md Phase 1 scope \u00e2\u20ac\u201d CLI registers import-ontology as a stub returning exit code 2; Phase 3 unsheath this stub into a real implementation backed by N3.js"
+            ],
+            "rationale": "The established Event 3 convention (OPERATOR-MEDIATION-LOG.md) correctly classifies frontend bundle dependencies as devDependencies because Vite bundles them regardless. However, N3.js is different from React: it will be used in both the browser bundle AND the Node.js CLI import-ontology command. For the browser app, Vite bundling makes the devDependencies classification correct. For the CLI, when GraphWrite is published as an npm package and consumed via `npm install -g graphwrite`, devDependencies are not installed \u00e2\u20ac\u201d N3.js would be absent and `graphwrite import-ontology` would crash at require time. Phase 3's implementation chains will build against N3.js in devDependencies (works in development), and the packaging breakage will only surface at Phase 4 when the CLI becomes part of the deliverable scope.",
+            "trigger_conditions": "GraphWrite is published to npm (or distributed as a tarball) and a consumer installs it via npm install, omitting devDependencies. Any invocation of `graphwrite import-ontology <file.ttl>` fails at runtime with a module-not-found error for n3. This is currently deferred to Phase 4+ since no public distribution exists, but the Phase 3 implementation chains will establish the architectural pattern without fixing the classification.",
+            "estimated_likelihood": "low",
+            "estimated_blast_radius": "single_task"
+          }
+        ],
+        "evidence_paths": [
+          "state_admin.py:70-81 (_load_state/_save_state \u00e2\u20ac\u201d no lock acquisition)",
+          "fnsr_daemon.py:95-112 (locked_state context manager \u00e2\u20ac\u201d daemon's lock protocol)",
+          "PLAYBOOK.md:937 (operator-discipline note confirming state_admin not in lock protocol)",
+          "state.jsonld:59412-59416 (banking cluster \u00e2\u20ac\u201d state-1 bankings from Phase 2; write-race banking id bank-484)",
+          "state.jsonld:59629 (QA open question: write-race confirmed as session-only or CI risk?)",
+          "fnsr_state_verification.py:7-8 (SVG-4/5 explicitly deferred to v3.2)",
+          "fnsr_state_verification.py:443-449 (PREDICATES tuple \u00e2\u20ac\u201d SVG-4/5 absent)",
+          "fnsr_state_verification.py:491-500 (predicate exception \u00e2\u2020\u2019 info severity downgrade)",
+          "fnsr_state_verification.py:39-50 (_git_run 10s timeout; OneDrive environment)",
+          "fnsr_daemon.py:118-120 (_atomic_write documenting OneDrive/antivirus as failure sources)",
+          "surfaces/_primitives/phase-lifecycle-orchestration.md:173-191 (v3.1.0-bridge no auto-chain)",
+          "state_admin.py:1680-1690 (AP-PLO-2 hard refusal on close only)",
+          "surfaces/_primitives/state-verification-gate.md:89-113 (SVG-4/5 spec, unimplemented)",
+          "tests/vmp-serializer.test.ts:42,64,193,262 (stale iao: IRIs in unit fixtures vs updated ecm: in property-based tests)",
+          "package.json:48 (n3 in devDependencies)",
+          "project/ROADMAP.md Phase 3 scope (N3.js Turtle import as core feature)",
+          "CLAUDE.md \u00c2\u00a76 (devDependencies approval policy)",
+          "project/DECISIONS.md ADR-007 (~17-file cascade; vmp-serializer.test.ts not in updated set)"
+        ],
+        "open_questions": [
+          "Is OED-303 formally resolved anywhere in DECISIONS.md beyond ADR-004 (which only moves its gate, not resolves its content)? The ROADMAP dependency table requires 'OED-303 closed' for Phase 3 to begin; no ADR records the retention policy decision itself.",
+          "Has the state_admin write-race (bank-484-test-r5b-add-annotation-1) been characterized as session-only or reproducible in CI contexts where a background daemon and state_admin commands overlap? The QA agent flagged this as open in RETRO_STATE.jsonld.",
+          "Was the SVG probe run and its output reviewed at any point during Phase 2 exit? If so, did predicate_error findings appear (indicating git timeouts on OneDrive)?",
+          "Were the vmp-serializer.test.ts unit fixtures (lines 42, 64) intentionally kept with iao:OntologyDesignPattern to test pre-migration input handling, or was this missed by the ADR-007 cascade? The answer determines whether Phase 3 migration logic must accept iao:OntologyDesignPattern as a valid input form.",
+          "No phase_state_changed PLO events exist for phase-2 in the audit chain; phase-2 entered the substrate's PLO lifecycle at 'unknown' state. Will Phase 3 planning backfill phase-2 PLO events (implementing/demo-released/po-satisfied) to establish a clean baseline, or will phase-2 remain at 'unknown' \u00e2\u20ac\u201d potentially confusing SVG-7.x predicates that check PLO state?"
+        ],
+        "summary": "Five risks and one advisory are surfaced for Phase 2 exit. The three most operationally urgent entering Phase 3 are: (1) the state_admin write-race \u00e2\u20ac\u201d every PLO phase-tracking command and banking event issued while the daemon is running is a race against the daemon's polling read/write cycle, with no locking between the two processes; Phase 3 will increase this frequency because PLO adoption is now a first-class Phase 3 discipline; corrupted audit chain is the worst case. (2) PLO v3.1.0-bridge's missing auto-chain \u00e2\u20ac\u201d the AP-PLO-2 gate (refusing close without drift-reconciled) is the only structural enforcement; nothing prevents the operator from queueing Phase 4 chains immediately after declaring Phase 3 PO-satisfied, leaving the retro, drift reconciliation, and close steps unemitted indefinitely; Phase 2 demonstrated this pattern before PLO existed. (3) SVG predicate exception downgrade to info \u00e2\u20ac\u201d git subprocess failures on the OneDrive filesystem are caught silently and reported as info findings, not errors; the has_blocking_drift flag stays false and --blocking-only shows nothing, making the gate report false-clean on the environment where it is most needed. Below the top three: the ADR-007 cascade left stale iao:OntologyDesignPattern IRIs in vmp-serializer.test.ts unit fixtures that will only fail when Phase 3 introduces strict @type validation; SVG-4/5 lifecycle predicates are unimplemented (v3.2-deferred) so Phase 3 banking drift will accumulate without detection; N3.js is in devDependencies only and will fail in packaged CLI scenarios without Human Orchestrator approval to promote it."
+      },
+      "history": [
+        {
+          "ts": "2026-05-25T21:29:55Z",
+          "event": "cps_veto",
+          "payload": {
+            "reason": "freeform_brainstorm_drift: length-budget overruns: [{'path': 'proposed_risks[1].title', 'pattern': 'proposed_risks[*]/title', 'limit': 120, 'actual': 129}, {'path': 'proposed_risks[2].title', 'pattern': 'proposed_risks[*]/title', 'limit': 120, 'actual': 156}, {'path': 'proposed_risks[3].title', 'pattern': 'proposed_risks[*]/title', 'limit': 120, 'actual': 171}]",
+            "rejected_outputs": {
+              "proposed_risks": [
+                {
+                  "id": "RA-1",
+                  "title": "state_admin write commands have no lock acquisition, creating a live write-race against the daemon's polling loop",
+                  "severity": "major",
+                  "kind": "systemic_fragility",
+                  "evidence": [
+                    "state_admin.py:70-81 \u00e2\u20ac\u201d _load_state() opens state.jsonld with plain open(); _save_state() writes via os.replace() with no call to _acquire_lock or the locked_state() context manager",
+                    "fnsr_daemon.py:100-112 \u00e2\u20ac\u201d locked_state() acquires the lock on state.jsonld.lock, then reads, yields, and writes; this guard is entirely absent from state_admin's read/write path",
+                    "PLAYBOOK.md:937 \u00e2\u20ac\u201d 'Always stop the daemon first (Ctrl-C) to avoid race conditions. The daemon's lock is on state.jsonld.lock, not the data file.' \u00e2\u20ac\u201d confirming state_admin does NOT participate in the lock protocol",
+                    "state.jsonld:59416 \u00e2\u20ac\u201d banking id bank-484-test-r5b-add-annotation-1 explicitly surfaced as 'state_admin write-race vs daemon polling'; open question in retro QA output: 'is this a latent test-infrastructure risk that could produce spurious failures in CI environments?'",
+                    "state.jsonld:59629 \u00e2\u20ac\u201d QA agent open question confirms the race is unresolved: 'or was the race confirmed as session-only and bounded to the specific run context?'"
+                  ],
+                  "rationale": "The daemon's locked_state() acquires an OS-level lock on state.jsonld.lock before reading or writing state.jsonld. state_admin.py's _load_state/_save_state bypass this lock entirely. When the operator runs any state_admin write command (phase implementing, bank, retro phase-transition, promote-candidate) while the daemon is alive in its 2-second polling loop, a classic read-modify-write race exists: both processes read version N, state_admin writes version N+1 (with PLO event), the daemon writes version N+1' (with task completion) \u00e2\u20ac\u201d one overwrites the other, corrupting the hash chain. Phase 3 will increase state_admin write frequency because PLO phase-state tracking is now a first-class discipline, making this race more likely to materialize than it was in Phase 2.",
+                  "trigger_conditions": "Operator runs any state_admin write command (bank, phase implementing/demo-released/po-satisfied, retro phase-transition, promote-candidate) while the daemon process is alive and in its 2-second idle poll between task dispatches. The race window is the duration of state_admin's load\u00e2\u2020\u2019modify\u00e2\u2020\u2019save cycle (~50\u00e2\u20ac\u201c200ms on OneDrive). Given that PLO tracking commands will be issued mid-session during Phase 3, and the daemon is typically left running, concurrent access is the default operational pattern.",
+                  "estimated_likelihood": "medium",
+                  "estimated_blast_radius": "substrate_wide"
+                },
+                {
+                  "id": "RA-2",
+                  "title": "PLO v3.1.0-bridge has no auto-chain: operator silently skips retro, drift reconciliation, or close when AP-PLO-2 is not triggered",
+                  "severity": "major",
+                  "kind": "systemic_fragility",
+                  "evidence": [
+                    "surfaces/_primitives/phase-lifecycle-orchestration.md:173\u00e2\u20ac\u201c191 \u00e2\u20ac\u201d 'v3.1.0-bridge (smallest viable): No auto-chain; operator types each command. Same shape as today's discipline but with substrate state-tracking + audit.'",
+                    "state_admin.py:1680-1690 \u00e2\u20ac\u201d AP-PLO-2 hard refusal fires ONLY when the operator explicitly calls cmd_phase_close with from_state != drift-reconciled; there is NO substrate check that prevents starting Phase 4 work while Phase 3 is in po-satisfied state",
+                    "surfaces/_primitives/phase-lifecycle-orchestration.md:41-47 \u00e2\u20ac\u201d 'Auto-chain pre-queues but does NOT auto-execute\u00e2\u20ac\u00a6 The substrate eliminates the \"remember to type the next command\" failure mode' \u00e2\u20ac\u201d but this is the v3.2 promise; v3.1.0-bridge explicitly omits it",
+                    "OPERATOR-MEDIATION-LOG.md:56-66 \u00e2\u20ac\u201d Event 1 documents that the phase lifecycle is operator-policy; the substrate has no mechanism to enforce the sequence other than the explicit close-gate",
+                    "retros/phase-2-exit-retro/RETRO_STATE.jsonld \u00e2\u20ac\u201d Phase 2 retro was initiated AFTER Phase 3 work was already being discussed, consistent with the pattern of lifecycle steps being skipped between phases"
+                  ],
+                  "rationale": "AP-PLO-2 enforces that `phase close` refuses unless state is `drift-reconciled`. This is the only hard gate in the v3.1.0-bridge implementation. But the substrate has no enforcement preventing the operator from (a) emitting `po-satisfied`, (b) immediately queueing Phase 4 development chains, and (c) never emitting `retro-complete`, `drift-reconciled`, or `close` for Phase 3. The auto-chain that would pre-queue and surface these confirmation gates (Tasks A\u00e2\u20ac\u201cE per the blueprint) is deferred to v3.2. The risk is structural: the v3.1.0-bridge increases the discipline's visibility without increasing its enforceability. Phase 2 demonstrated the pattern \u00e2\u20ac\u201d no PLO lifecycle events were emitted before this retro was initiated, and the retro was opened while Phase 3 scope was already being framed.",
+                  "trigger_conditions": "Operator declares PO satisfied on Phase 3 (or simply considers Phase 3 done without emitting po-satisfied at all), then opens Phase 4 design conversations. No substrate event prevents Phase 4 tasks from being queued and dispatched. The PLO state for phase-3 remains 'implementing' or 'po-satisfied' indefinitely. Phase 3 bankings accumulate in state-1; Phase 3 OEDs remain unresolved without substrate signal; Phase 3 drift (SVG-1.x findings against ROADMAP) persists because no drift-reconciled event was emitted to acknowledge or fix it.",
+                  "estimated_likelihood": "high",
+                  "estimated_blast_radius": "substrate_wide"
+                },
+                {
+                  "id": "RA-3",
+                  "title": "SVG predicate exceptions are silently downgraded to info severity, causing git-dependent predicates to report false-clean on OneDrive/antivirus environments",
+                  "severity": "major",
+                  "kind": "hidden_failure_mode",
+                  "evidence": [
+                    "fnsr_state_verification.py:491-500 \u00e2\u20ac\u201d PREDICATES loop catches all exceptions with bare `except Exception as e:` and appends a finding with `severity: 'info'`, `drift_kind: 'predicate_error'`; no operator alert or elevated severity",
+                    "fnsr_state_verification.py:530-535 \u00e2\u20ac\u201d `--blocking-only` filter shows only findings with severity='block'; a predicate_error at info severity is invisible to `--blocking-only` invocations",
+                    "fnsr_state_verification.py:513 \u00e2\u20ac\u201d `has_blocking_drift: severity_counts['block'] > 0` \u00e2\u20ac\u201d a predicate_error finding does NOT increment block count; report surface says 'no blocking drift' even when git predicates failed",
+                    "fnsr_state_verification.py:39-50 \u00e2\u20ac\u201d _git_run() uses 10-second timeout; raises no exception on timeout (returns returncode -1 and exception string in stderr), but other exception paths in git-dependent predicates (e.g., subprocess.TimeoutExpired if timeout parameter changes, OSError on lock contention) propagate to the outer try/except",
+                    "fnsr_daemon.py:118-120 \u00e2\u20ac\u201d _atomic_write docstring explicitly names OneDrive sync, antivirus, Search indexer as sources of PermissionError on the same filesystem path; the same conditions apply to git subprocess invocations from fnsr_state_verification.py"
+                  ],
+                  "rationale": "The SVG predicates svg_2_1_commit_gap, svg_3_1_push_gap, and svg_7_1_demo_released_without_deploy all invoke git subprocesses. When these subprocesses fail for environmental reasons (OneDrive sync lock contention, antivirus scanner holding git index, Search indexer interfering with .git/), the exception propagates into the outer loop's catch-all and is logged as severity='info'. The operator running `python fnsr_state_verification.py --blocking-only` sees zero blocking findings \u00e2\u20ac\u201d which is technically correct (no block-class finding was appended) but operationally misleading: the predicates that would detect a commit-gap or push-gap have silently been skipped. This is the inverse of what a gate should do: failures-to-check should escalate severity, not suppress it.",
+                  "trigger_conditions": "Operator runs `python fnsr_state_verification.py` (or the stall-watch's SVG integration) on Windows with OneDrive sync, Windows Defender, or Windows Search Indexer active on the GraphWrite project directory. Any git subprocess that raises an uncaught exception (subprocess.TimeoutExpired at t>10s, OSError on .git/ lock, PermissionError on .git/index) causes the corresponding predicate to produce a predicate_error finding at info severity. The report's has_blocking_drift field shows False, git predicates appear not-fired rather than failed, and the operator proceeds without knowing the drift check was skipped.",
+                  "estimated_likelihood": "medium",
+                  "estimated_blast_radius": "single_surface"
+                },
+                {
+                  "id": "RA-4",
+                  "title": "ADR-007 cascade fix left iao:OntologyDesignPattern in vmp-serializer.test.ts unit fixtures; stale fixtures pass today but will fail if Phase 3 adds strict @type validation",
+                  "severity": "minor",
+                  "kind": "hidden_failure_mode",
+                  "evidence": [
+                    "tests/vmp-serializer.test.ts:42 \u00e2\u20ac\u201d MINIMAL_VMP_ATID uses '@type': ['ecm:Project', 'iao:OntologyDesignPattern'] (pre-ADR-007 IRI)",
+                    "tests/vmp-serializer.test.ts:64 \u00e2\u20ac\u201d UNORDERED_VMP uses 'type': ['iao:OntologyDesignPattern', 'ecm:Project'] (pre-ADR-007 IRI in input)",
+                    "tests/vmp-serializer.test.ts:193 \u00e2\u20ac\u201d deepStrictEqual expects ['ecm:Project', 'iao:OntologyDesignPattern'] \u00e2\u20ac\u201d this passes today because lexicographic sort puts 'e' before 'i', making it correct for the OLD IRI string regardless of canonicalization intent",
+                    "tests/vmp-serializer.test.ts:262 \u00e2\u20ac\u201d property-based test uses fc.constant(['ecm:Project', 'ecm:OntologyDesignPattern']) \u00e2\u20ac\u201d confirming the post-ADR-007 form was adopted in the fast-check suite but not in the unit-test fixtures",
+                    "tests/cli-integration.test.ts:62, tests/emitters.test.ts:72, tests/manifest-entries.test.ts:51 \u00e2\u20ac\u201d all use ecm:OntologyDesignPattern, confirming the cascade updated these files",
+                    "project/DECISIONS.md ADR-007 \u00e2\u20ac\u201d 'one-time coordinated change across ~17 files'; vmp-serializer.test.ts appears to have been missed or partially updated"
+                  ],
+                  "rationale": "ADR-007 renamed iao:OntologyDesignPattern to ecm:OntologyDesignPattern across ~17 files. Most test fixtures were updated (cli-integration, emitters, manifest-entries, semantic-projection assertions). But vmp-serializer.test.ts unit fixtures MINIMAL_VMP_ATID and UNORDERED_VMP still use the pre-ADR-007 IRI. These tests currently pass because the VMP serializer sorts @type arrays lexicographically regardless of IRI content \u00e2\u20ac\u201d 'ecm:Project' < 'iao:OntologyDesignPattern' alphabetically, producing the expected sorted output. No runtime validation catches the stale IRI. The failure mode is latent: Phase 3 imported-term immutability enforcement may introduce @type validation that distinguishes ecm:OntologyDesignPattern from iao:OntologyDesignPattern, at which point the unit test fixtures will fail. A developer reading these fixtures may also incorrectly treat iao:OntologyDesignPattern as currently valid.",
+                  "trigger_conditions": "Phase 3 implements any of: (a) structural validation that checks project root @type includes ecm:OntologyDesignPattern specifically, or (b) migration logic that upgrades iao:OntologyDesignPattern to ecm:OntologyDesignPattern on load, or (c) a canonical-form normalizer pass that enforces the post-ADR-007 type. Any of these would cause the vmp-serializer.test.ts unit tests at lines 42/64/193 to fail, since their input fixtures carry the superseded IRI.",
+                  "estimated_likelihood": "low",
+                  "estimated_blast_radius": "single_task"
+                },
+                {
+                  "id": "RA-5",
+                  "title": "SVG-4 (banking lifecycle) and SVG-5 (forward-track aging) predicates are unimplemented; Phase 3 banking/FT drift will accumulate without substrate detection",
+                  "severity": "advisory",
+                  "kind": "hidden_failure_mode",
+                  "evidence": [
+                    "fnsr_state_verification.py:7-8 \u00e2\u20ac\u201d 'v3.1.0-bridge ships SVG-1.1, SVG-1.2, SVG-2.1, SVG-3.1. v3.2 will add daemon-side gate integration + SVG-4/5 (banking/FT lifecycle).'",
+                    "fnsr_state_verification.py:443-449 \u00e2\u20ac\u201d PREDICATES tuple contains only svg_1_1, svg_1_2, svg_2_1, svg_3_1, svg_7_1, svg_7_3; SVG-4.x and SVG-5.x are absent",
+                    "surfaces/_primitives/state-verification-gate.md:89-106 \u00e2\u20ac\u201d SVG-4.1 spec: 'banking events with state: 1; anchor task's phase has closed; banking still in state 1 \u00e2\u2020\u2019 drift'; SVG-4.2: discipline-correction bankings older than N days without canonical change",
+                    "surfaces/_primitives/state-verification-gate.md:107-113 \u00e2\u20ac\u201d SVG-5.1 spec: 'forward-track events with state: A; deliberation_cycle has elapsed \u00e2\u2020\u2019 drift'",
+                    "state.jsonld:59412-59416 \u00e2\u20ac\u201d multiple state-1 bankings from Phase 2 (bank-374, bank-425, bank-374-sme-r5-decomposition-2, bank-484) are present in the audit chain; none have been advanced to state-2 or state-3; no SVG predicate will flag this"
+                  ],
+                  "rationale": "The SVG blueprint explicitly defines SVG-4 (banking lifecycle drift) and SVG-5 (forward-track aging) as predicates that detect when accumulated observations rot in early lifecycle states without advancing. Both are deferred to v3.2, which is post-trajectory-closure scope. Phase 3 will accumulate its own set of state-1 bankings and state-A forward-tracks. At Phase 3 exit, the SVG probe will produce no findings for banking or FT lifecycle drift \u00e2\u20ac\u201d not because there is no drift, but because the predicates don't exist. The substrate's promise that 'banking lifecycle drift is detectable' is not delivered for Phase 3. This is a guaranteed gap, not a conditional one.",
+                  "trigger_conditions": "Operator runs `python fnsr_state_verification.py` at Phase 3 exit retro and relies on its output to confirm lifecycle hygiene. The probe returns no SVG-4 or SVG-5 findings regardless of how many state-1 bankings or state-A forward-tracks have accumulated. If the operator interprets absence of findings as 'lifecycle is clean,' Phase 3 bankings will carry forward to Phase 4 in state-1, defeating the Spec 05 three-state lifecycle discipline.",
+                  "estimated_likelihood": "high",
+                  "estimated_blast_radius": "single_surface"
+                },
+                {
+                  "id": "RA-6",
+                  "title": "N3.js is in devDependencies only; Phase 3's import-ontology CLI will fail when GraphWrite is installed as a published npm package",
+                  "severity": "advisory",
+                  "kind": "coupling_brittleness",
+                  "evidence": [
+                    "package.json:48 \u00e2\u20ac\u201d 'n3': '^1.21.0' is listed under devDependencies, not dependencies",
+                    "project/ROADMAP.md Phase 3 scope \u00e2\u20ac\u201d 'Turtle import via N3.js with explicit-term extraction: owl:Class, owl:ObjectProperty, owl:DatatypeProperty...'",
+                    "CLAUDE.md \u00c2\u00a76 \u00e2\u20ac\u201d 'MUST NOT add runtime dependencies to GraphWrite package.json without explicit Human Orchestrator approval (devDependencies are acceptable)' \u00e2\u20ac\u201d Phase 3's N3.js promotion from devDependencies to dependencies requires explicit approval",
+                    "project/ROADMAP.md Phase 1 scope \u00e2\u20ac\u201d CLI registers import-ontology as a stub returning exit code 2; Phase 3 unsheath this stub into a real implementation backed by N3.js"
+                  ],
+                  "rationale": "The established Event 3 convention (OPERATOR-MEDIATION-LOG.md) correctly classifies frontend bundle dependencies as devDependencies because Vite bundles them regardless. However, N3.js is different from React: it will be used in both the browser bundle AND the Node.js CLI import-ontology command. For the browser app, Vite bundling makes the devDependencies classification correct. For the CLI, when GraphWrite is published as an npm package and consumed via `npm install -g graphwrite`, devDependencies are not installed \u00e2\u20ac\u201d N3.js would be absent and `graphwrite import-ontology` would crash at require time. Phase 3's implementation chains will build against N3.js in devDependencies (works in development), and the packaging breakage will only surface at Phase 4 when the CLI becomes part of the deliverable scope.",
+                  "trigger_conditions": "GraphWrite is published to npm (or distributed as a tarball) and a consumer installs it via npm install, omitting devDependencies. Any invocation of `graphwrite import-ontology <file.ttl>` fails at runtime with a module-not-found error for n3. This is currently deferred to Phase 4+ since no public distribution exists, but the Phase 3 implementation chains will establish the architectural pattern without fixing the classification.",
+                  "estimated_likelihood": "low",
+                  "estimated_blast_radius": "single_task"
+                }
+              ],
+              "evidence_paths": [
+                "state_admin.py:70-81 (_load_state/_save_state \u00e2\u20ac\u201d no lock acquisition)",
+                "fnsr_daemon.py:95-112 (locked_state context manager \u00e2\u20ac\u201d daemon's lock protocol)",
+                "PLAYBOOK.md:937 (operator-discipline note confirming state_admin not in lock protocol)",
+                "state.jsonld:59412-59416 (banking cluster \u00e2\u20ac\u201d state-1 bankings from Phase 2; write-race banking id bank-484)",
+                "state.jsonld:59629 (QA open question: write-race confirmed as session-only or CI risk?)",
+                "fnsr_state_verification.py:7-8 (SVG-4/5 explicitly deferred to v3.2)",
+                "fnsr_state_verification.py:443-449 (PREDICATES tuple \u00e2\u20ac\u201d SVG-4/5 absent)",
+                "fnsr_state_verification.py:491-500 (predicate exception \u00e2\u2020\u2019 info severity downgrade)",
+                "fnsr_state_verification.py:39-50 (_git_run 10s timeout; OneDrive environment)",
+                "fnsr_daemon.py:118-120 (_atomic_write documenting OneDrive/antivirus as failure sources)",
+                "surfaces/_primitives/phase-lifecycle-orchestration.md:173-191 (v3.1.0-bridge no auto-chain)",
+                "state_admin.py:1680-1690 (AP-PLO-2 hard refusal on close only)",
+                "surfaces/_primitives/state-verification-gate.md:89-113 (SVG-4/5 spec, unimplemented)",
+                "tests/vmp-serializer.test.ts:42,64,193,262 (stale iao: IRIs in unit fixtures vs updated ecm: in property-based tests)",
+                "package.json:48 (n3 in devDependencies)",
+                "project/ROADMAP.md Phase 3 scope (N3.js Turtle import as core feature)",
+                "CLAUDE.md \u00c2\u00a76 (devDependencies approval policy)",
+                "project/DECISIONS.md ADR-007 (~17-file cascade; vmp-serializer.test.ts not in updated set)"
+              ],
+              "open_questions": [
+                "Is OED-303 formally resolved anywhere in DECISIONS.md beyond ADR-004 (which only moves its gate, not resolves its content)? The ROADMAP dependency table requires 'OED-303 closed' for Phase 3 to begin; no ADR records the retention policy decision itself.",
+                "Has the state_admin write-race (bank-484-test-r5b-add-annotation-1) been characterized as session-only or reproducible in CI contexts where a background daemon and state_admin commands overlap? The QA agent flagged this as open in RETRO_STATE.jsonld.",
+                "Was the SVG probe run and its output reviewed at any point during Phase 2 exit? If so, did predicate_error findings appear (indicating git timeouts on OneDrive)?",
+                "Were the vmp-serializer.test.ts unit fixtures (lines 42, 64) intentionally kept with iao:OntologyDesignPattern to test pre-migration input handling, or was this missed by the ADR-007 cascade? The answer determines whether Phase 3 migration logic must accept iao:OntologyDesignPattern as a valid input form.",
+                "No phase_state_changed PLO events exist for phase-2 in the audit chain; phase-2 entered the substrate's PLO lifecycle at 'unknown' state. Will Phase 3 planning backfill phase-2 PLO events (implementing/demo-released/po-satisfied) to establish a clean baseline, or will phase-2 remain at 'unknown' \u00e2\u20ac\u201d potentially confusing SVG-7.x predicates that check PLO state?"
+              ],
+              "summary": "Five risks and one advisory are surfaced for Phase 2 exit. The three most operationally urgent entering Phase 3 are: (1) the state_admin write-race \u00e2\u20ac\u201d every PLO phase-tracking command and banking event issued while the daemon is running is a race against the daemon's polling read/write cycle, with no locking between the two processes; Phase 3 will increase this frequency because PLO adoption is now a first-class Phase 3 discipline; corrupted audit chain is the worst case. (2) PLO v3.1.0-bridge's missing auto-chain \u00e2\u20ac\u201d the AP-PLO-2 gate (refusing close without drift-reconciled) is the only structural enforcement; nothing prevents the operator from queueing Phase 4 chains immediately after declaring Phase 3 PO-satisfied, leaving the retro, drift reconciliation, and close steps unemitted indefinitely; Phase 2 demonstrated this pattern before PLO existed. (3) SVG predicate exception downgrade to info \u00e2\u20ac\u201d git subprocess failures on the OneDrive filesystem are caught silently and reported as info findings, not errors; the has_blocking_drift flag stays false and --blocking-only shows nothing, making the gate report false-clean on the environment where it is most needed. Below the top three: the ADR-007 cascade left stale iao:OntologyDesignPattern IRIs in vmp-serializer.test.ts unit fixtures that will only fail when Phase 3 introduces strict @type validation; SVG-4/5 lifecycle predicates are unimplemented (v3.2-deferred) so Phase 3 banking drift will accumulate without detection; N3.js is in devDependencies only and will fail in packaged CLI scenarios without Human Orchestrator approval to promote it."
+            }
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "630952b9da08c5b4ba10f545be6e9e39262c6e7ec02c6b72a260b406db5346bc"
         }
       ]
     }
