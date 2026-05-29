@@ -3527,13 +3527,24 @@ FIXER_STALE_HOURS = 24  # skip blocked tasks older than this (residue)
 
 
 def _count_fixer_attempts(state: dict[str, Any], anchor_id: str) -> int:
-    """Count prior fixer_auto_dispatched events for the anchor task."""
+    """Count prior fixer_auto_dispatched events for the anchor task.
+
+    A `fixer_attempts_reset` event in history zeros the running count —
+    only fixer_auto_dispatched events AFTER the most recent reset count.
+    This lets operators reset the recursion bound when a Fixer-contract
+    patch lands (v3.2.2). The reset is operator-emitted via
+    `state_admin reset-fixer-attempts <anchor>`; it appends an audit
+    event rather than mutating prior history (append-only audit chain).
+    """
     count = 0
     for t in state.get("tasks", []) or []:
         if t.get("@id") != anchor_id:
             continue
         for h in t.get("history", []) or []:
-            if h.get("event") == "fixer_auto_dispatched":
+            evt = h.get("event")
+            if evt == "fixer_attempts_reset":
+                count = 0  # operator-emitted reset; subsequent attempts re-count
+            elif evt == "fixer_auto_dispatched":
                 count += 1
     return count
 

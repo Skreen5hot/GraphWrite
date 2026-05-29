@@ -382,6 +382,126 @@ class TestSystemAgentsRegistration(unittest.TestCase):
         )
 
 
+class TestResetFixerAttempts(unittest.TestCase):
+    """v3.2.2: state_admin reset-fixer-attempts appends a
+    fixer_attempts_reset event; _count_fixer_attempts honors it (counts
+    only events AFTER the most recent reset)."""
+
+    def setUp(self):
+        import state_admin
+        self.state_admin = state_admin
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-reset-fixer-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _seed(self, tasks):
+        self.state_path.write_text(json.dumps({
+            "@context": "https://fnsr.example/context.jsonld",
+            "@id": "urn:fnsr:run:test",
+            "tasks": tasks,
+        }, indent=2), encoding="utf-8")
+
+    def test_reset_appends_event_to_anchor_history(self):
+        self._seed([{
+            "@id": "urn:t:anchor",
+            "history": [
+                _make_history_entry("fixer_auto_dispatched", {"x": 1}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 2}),
+            ],
+        }])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "reset-fixer-attempts", "urn:t:anchor",
+            "--reason", "v3.2.1 patch landed; prior attempts stale",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        anchor = state["tasks"][0]
+        last = anchor["history"][-1]
+        self.assertEqual(last["event"], "fixer_attempts_reset")
+        self.assertEqual(last["payload"]["prior_attempt_count_cleared"], 2)
+        self.assertEqual(
+            last["payload"]["reason"],
+            "v3.2.1 patch landed; prior attempts stale",
+        )
+
+    def test_count_fixer_attempts_zeros_at_reset(self):
+        # Two attempts; then reset; then one more attempt -> count = 1
+        state = {"tasks": [{
+            "@id": "urn:t:anchor",
+            "history": [
+                _make_history_entry("fixer_auto_dispatched", {"x": 1}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 2}),
+                _make_history_entry("fixer_attempts_reset",
+                                      {"reason": "test"}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 3}),
+            ],
+        }]}
+        self.assertEqual(d._count_fixer_attempts(state, "urn:t:anchor"), 1)
+
+    def test_count_fixer_attempts_zero_at_reset_with_no_subsequent(self):
+        # Reset alone, no subsequent attempts
+        state = {"tasks": [{
+            "@id": "urn:t:anchor",
+            "history": [
+                _make_history_entry("fixer_auto_dispatched", {"x": 1}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 2}),
+                _make_history_entry("fixer_attempts_reset", {}),
+            ],
+        }]}
+        self.assertEqual(d._count_fixer_attempts(state, "urn:t:anchor"), 0)
+
+    def test_multiple_resets_only_last_matters(self):
+        state = {"tasks": [{
+            "@id": "urn:t:anchor",
+            "history": [
+                _make_history_entry("fixer_auto_dispatched", {"x": 1}),
+                _make_history_entry("fixer_attempts_reset", {}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 2}),
+                _make_history_entry("fixer_attempts_reset", {}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 3}),
+            ],
+        }]}
+        self.assertEqual(d._count_fixer_attempts(state, "urn:t:anchor"), 1)
+
+    def test_reset_unknown_anchor_returns_error(self):
+        self._seed([])
+        rc = self.state_admin.main([
+            "--state-path", str(self.state_path),
+            "reset-fixer-attempts", "urn:t:nonexistent",
+            "--reason", "test",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_reset_unblocks_subsequent_auto_dispatch(self):
+        """The whole point: after reset, a stuck anchor at bound 2
+        becomes eligible for a 3rd attempt under the new contract."""
+        state = {"tasks": [{
+            "@id": "urn:t:anchor",
+            "status": "blocked",
+            "outputs": {"error": "apply_partial_failure"},
+            "history": [
+                _make_history_entry("cps_veto"),
+                _make_history_entry("fixer_auto_dispatched", {"x": 1}),
+                _make_history_entry("fixer_auto_dispatched", {"x": 2}),
+            ],
+        }]}
+        # Pre-reset: bound exhausted; no auto-dispatch
+        self.assertEqual(d._count_fixer_attempts(state, "urn:t:anchor"), 2)
+        result = d._try_auto_fixer_dispatch(state)
+        self.assertIsNone(result)
+        # Append reset event
+        state["tasks"][0]["history"].append(
+            _make_history_entry("fixer_attempts_reset", {"reason": "test"})
+        )
+        # Post-reset: count = 0; auto-dispatch should fire
+        self.assertEqual(d._count_fixer_attempts(state, "urn:t:anchor"), 0)
+        result = d._try_auto_fixer_dispatch(state)
+        self.assertIsNotNone(result)
+
+
 class TestAbandonStaleFixers(unittest.TestCase):
     """v3.2.1 bulk-abandon helper for the deprecated judgment-refusal
     Fixer outputs.error envelope."""

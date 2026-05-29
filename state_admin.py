@@ -228,6 +228,50 @@ def cmd_append_tasks(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reset_fixer_attempts(args: argparse.Namespace) -> int:
+    """Reset the Fixer recursion bound for an anchor task by appending a
+    `fixer_attempts_reset` audit event on the anchor's history. The
+    daemon's `_count_fixer_attempts` honors the reset: only
+    fixer_auto_dispatched events emitted AFTER the most recent reset
+    count toward FIXER_RECURSION_BOUND.
+
+    Operator use case (v3.2.2): a Fixer-contract patch has landed
+    (e.g., v3.2.1 escalation-surface fix). Prior-cycle attempts run with
+    the old contract are no longer relevant to recursion-bound
+    accounting. Reset lets the daemon dispatch fresh Fixers under the
+    new contract.
+
+    The reset is append-only (no rewriting of prior chain hashes;
+    matches the substrate's audit-integrity commitment).
+
+    --reason is recorded in the event payload for audit-discovery.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.anchor_task)
+    if task is None:
+        print(f"anchor task not found: {args.anchor_task}", file=sys.stderr)
+        return 1
+    # Count prior fixer attempts for the audit payload (so the reset
+    # event records what was cleared)
+    prior_count = 0
+    for h in task.get("history", []) or []:
+        evt = h.get("event")
+        if evt == "fixer_attempts_reset":
+            prior_count = 0
+        elif evt == "fixer_auto_dispatched":
+            prior_count += 1
+    _append_audit(task, "fixer_attempts_reset", {
+        "reason": args.reason,
+        "operator": args.operator,
+        "prior_attempt_count_cleared": prior_count,
+    })
+    _save_state(state_path, state)
+    print(f"fixer-attempts-reset: {args.anchor_task}  "
+          f"(cleared {prior_count} prior attempt(s))")
+    return 0
+
+
 def cmd_abandon_stale_fixers(args: argparse.Namespace) -> int:
     """Bulk-abandon blocked fixer tasks whose anchor has exhausted the
     recursion bound. v3.2.1 cleanup helper for the contract bug in
@@ -2158,6 +2202,22 @@ def _build_parser() -> argparse.ArgumentParser:
               "refuse to append on FAIL verdict. Per Aaron 2026-05-25 "
               "pre-dispatch chain validator (v3.1.0-bridge)."),
     )
+
+    p_reset_fixer = sub.add_parser(
+        "reset-fixer-attempts",
+        help=("v3.2.2. Reset Fixer recursion bound on an anchor task by "
+              "appending fixer_attempts_reset event. Subsequent Fixer "
+              "auto-dispatch on the anchor runs under current contract. "
+              "Use after a Fixer-contract patch (e.g., v3.2.1 escalation "
+              "fix) when prior-cycle attempts should not count toward bound."),
+    )
+    p_reset_fixer.add_argument("anchor_task",
+                                 help="anchor task @id to reset")
+    p_reset_fixer.add_argument("--reason", required=True,
+                                 help="rationale for the reset (recorded "
+                                      "in audit event)")
+    p_reset_fixer.add_argument("--operator", default="operator")
+    p_reset_fixer.set_defaults(func=cmd_reset_fixer_attempts)
 
     p_abandon_fixers = sub.add_parser(
         "abandon-stale-fixers",
