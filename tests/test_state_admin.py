@@ -1769,5 +1769,141 @@ class TestSvg7Predicates(unittest.TestCase):
         self.assertEqual(len(findings), 0)
 
 
+class TestOperatorLockDiscipline(unittest.TestCase):
+    """v3.3.1: operator CLI must hold state.jsonld.lock across the
+    load → mutate → save critical section so a concurrent daemon
+    cycle cannot silently overwrite the operator's mutation.
+
+    Regression for 2026-06-01 incident where a `state_admin resolve`
+    on task 760 reported success but the operator_resolution event
+    never landed in state — the daemon was running, its next cycle's
+    save dropped the resolve."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-lock-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        _seed_state(self.state_path, [])
+
+    def tearDown(self):
+        # Drain any lock leaked by a failing test
+        for k in list(state_admin._HELD_LOCKS):
+            try:
+                f = state_admin._HELD_LOCKS.pop(k)
+                d._release_lock(f)
+                f.close()
+            except OSError:
+                pass
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_load_acquires_lock_save_releases(self):
+        key = str(self.state_path.resolve())
+        self.assertNotIn(key, state_admin._HELD_LOCKS)
+        state = state_admin._load_state(self.state_path)
+        self.assertIn(key, state_admin._HELD_LOCKS,
+                      "lock not held after _load_state")
+        state_admin._save_state(self.state_path, state)
+        self.assertNotIn(key, state_admin._HELD_LOCKS,
+                         "lock not released after _save_state")
+
+    def test_concurrent_daemon_save_does_not_overwrite_operator_resolve(self):
+        """The bug: simulated daemon writes between operator's load and
+        save would clobber the operator's mutation. With the lock fix,
+        the simulated daemon write happens BEFORE the operator's load
+        (operator waits on lock) or AFTER the operator's save (operator
+        already released)."""
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:awaiting",
+             "agent": "recovery-dispatcher",
+             "status": "awaiting_operator_decision",
+             "outputs": {
+                 "status": "awaiting_operator_decision",
+                 "options": ["option A", "option B"],
+                 "recommendation": "Pick A",
+                 "diagnosis": "x",
+                 "anchor_task": "urn:fnsr:task:anchor",
+             },
+             "depends_on": [],
+             "history": [
+                 {"event": "completed", "payload": {},
+                  "prev_hash": "0" * 64, "chain_hash": "a" * 64},
+             ]},
+        ])
+        # Simulate the "daemon writes between operator load and save"
+        # interleave inside the operator's critical section. With lock
+        # held, the operator's save still wins because the simulated
+        # daemon write goes through atomic write (overwrites disk) but
+        # the operator's save afterwards overwrites again with the
+        # mutated state in memory. The key invariant: after _save_state,
+        # the disk reflects the operator's mutation.
+        state = state_admin._load_state(self.state_path)
+        # Daemon simulates a write to disk (e.g., a different task's
+        # completion). This write does NOT include the operator's
+        # in-memory mutation.
+        disk_state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        disk_state["tasks"].append(
+            {"@id": "urn:fnsr:task:daemon-added", "status": "done",
+             "depends_on": [], "history": []}
+        )
+        # Direct write bypassing the operator's lock (simulates a hostile
+        # writer; the real daemon would block on the lock).
+        self.state_path.write_text(
+            json.dumps(disk_state, indent=2), encoding="utf-8"
+        )
+        # Operator continues: mutates and saves.
+        task = state["tasks"][0]
+        task["status"] = "done"
+        task["outputs"]["operator_resolution"] = {
+            "chosen_option_index": 1, "chosen_option": "option A",
+            "operator": "test",
+        }
+        state_admin._save_state(self.state_path, state)
+        # The operator's mutation MUST win for the task it touched.
+        # The simulated concurrent write (daemon-added task) is lost
+        # because the test bypassed the lock. In production the daemon
+        # would HAVE waited on the lock, so this loss does not happen.
+        final = json.loads(self.state_path.read_text(encoding="utf-8"))
+        ids = [t["@id"] for t in final["tasks"]]
+        self.assertIn("urn:fnsr:task:awaiting", ids)
+        awaiting = next(t for t in final["tasks"]
+                         if t["@id"] == "urn:fnsr:task:awaiting")
+        self.assertEqual(awaiting["status"], "done",
+                          "operator resolve dropped despite lock held")
+        self.assertIn("operator_resolution", awaiting["outputs"])
+
+    def test_resolve_command_persists_to_disk(self):
+        """End-to-end: cmd_resolve via state_admin.main must result in
+        status=done on disk. The 2026-06-01 incident: cmd_resolve printed
+        'resolved: ...' but disk still showed awaiting_operator_decision."""
+        _seed_state(self.state_path, [
+            {"@id": "urn:fnsr:task:r1",
+             "agent": "recovery-dispatcher",
+             "status": "awaiting_operator_decision",
+             "outputs": {
+                 "status": "awaiting_operator_decision",
+                 "options": ["A", "B"],
+                 "recommendation": "Pick A",
+                 "diagnosis": "x",
+                 "anchor_task": "urn:fnsr:task:anchor",
+             },
+             "depends_on": [],
+             "history": [
+                 {"event": "completed", "payload": {},
+                  "prev_hash": "0" * 64, "chain_hash": "a" * 64},
+             ]},
+        ])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:r1", "--option", "1",
+            "--notes", "regression test",
+        ])
+        self.assertEqual(rc, 0)
+        final = json.loads(self.state_path.read_text(encoding="utf-8"))
+        task = next(t for t in final["tasks"]
+                    if t["@id"] == "urn:fnsr:task:r1")
+        self.assertEqual(task["status"], "done")
+        events = [h["event"] for h in task["history"]]
+        self.assertIn("operator_resolution", events)
+
+
 if __name__ == "__main__":
     unittest.main()

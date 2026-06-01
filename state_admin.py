@@ -67,9 +67,46 @@ if str(_THIS_DIR) not in sys.path:
 import fnsr_daemon as d
 
 
+# Operator-CLI commands hold the same state.jsonld.lock the daemon uses.
+# v3.3.1: prior to this fix, _load_state and _save_state were naked file
+# I/O; a concurrent daemon read-modify-write between the operator's load
+# and save silently overwrote the operator's mutation. Symptom: a resolve
+# command output "resolved: ..." but task status didn't change because
+# the daemon's next cycle save dropped the resolve event from history.
+# The fix: every operator command acquires state.jsonld.lock on _load_state
+# and releases it on _save_state, so the operator's load → mutate → save
+# is one OS-locked critical section the daemon cannot interleave with.
+#
+# The lock fileobj is stashed on a module-level dict keyed by resolved
+# state path (handles tests using tmpdir paths). Lock leaks on Python
+# crash are bounded — operator CLI is a one-shot subprocess; OS releases
+# the file handle on process exit.
+
+_HELD_LOCKS: dict[str, Any] = {}
+
+
 def _load_state(state_path: Path) -> dict[str, Any]:
     if not state_path.exists():
         raise SystemExit(f"state file not found: {state_path}")
+    lock_path = state_path.with_suffix(state_path.suffix + ".lock")
+    lockf = open(lock_path, "a+b")
+    lockf.seek(0, os.SEEK_END)
+    if lockf.tell() == 0:
+        lockf.write(b" ")
+        lockf.flush()
+    d._acquire_lock(lockf)
+    key = str(state_path.resolve())
+    # Defensive: if a prior command leaked a lock on this path within the
+    # same process, release it before stashing the new one. In practice
+    # operator CLI is one-shot so this is paranoia.
+    prior = _HELD_LOCKS.pop(key, None)
+    if prior is not None:
+        try:
+            d._release_lock(prior)
+            prior.close()
+        except OSError:
+            pass
+    _HELD_LOCKS[key] = lockf
     with open(state_path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -79,6 +116,13 @@ def _save_state(state_path: Path, state: dict[str, Any]) -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
     os.replace(tmp, state_path)
+    key = str(state_path.resolve())
+    lockf = _HELD_LOCKS.pop(key, None)
+    if lockf is not None:
+        try:
+            d._release_lock(lockf)
+        finally:
+            lockf.close()
 
 
 def _find_task(state: dict[str, Any], task_id: str) -> Optional[dict[str, Any]]:
