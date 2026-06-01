@@ -3578,27 +3578,37 @@ def _stalls_eligible_for_fixer(state: dict[str, Any]) -> list[dict[str, Any]]:
         age_hours = (now - last_ts).total_seconds() / 3600
         if age_hours > FIXER_STALE_HOURS:
             continue  # stale residue
-        # Skip if event is abandon (operator-initiated). state_admin
-        # abandon emits `operator_reset` with reset_fields.status
-        # containing "abandoned" — recognize that payload signal in
-        # addition to a literal task_abandoned event. v3.2.3 fix: prior
-        # versions only checked event=="task_abandoned" but state_admin
-        # never emits that name, so abandoned tasks were re-picked for
-        # Fixer auto-dispatch (Fixer-on-abandoned cascade).
-        last_evt = None
-        last_payload = None
-        for h in reversed(t.get("history", []) or []):
-            if h.get("event"):
-                last_evt = h.get("event")
-                last_payload = h.get("payload") or {}
+        # Skip if task was operator-abandoned. The substrate has NO
+        # un-abandon semantic; once an abandon marker exists in history,
+        # the task is permanently operator-decided. Scan ALL history
+        # for either:
+        #   - event == "task_abandoned" (literal abandon event), OR
+        #   - event == "operator_reset" with payload.reset_fields.status
+        #     containing "abandoned" (state_admin.cmd_abandon emits this
+        #     shape — operator_reset is the audit event name, with the
+        #     abandon signal in payload).
+        #
+        # v3.2.3 fix scanned only the most-recent history event, which
+        # missed cases where post-abandon noise events (e.g., pre-fix
+        # Fixer auto-dispatches recovering an abandoned anchor) buried
+        # the abandon marker. v3.2.4 scans the full history so a single
+        # abandon marker terminates Fixer eligibility forever.
+        is_abandoned = False
+        for h in t.get("history", []) or []:
+            evt = h.get("event")
+            if evt == "task_abandoned":
+                is_abandoned = True
                 break
-        if last_evt == "task_abandoned":
+            if evt == "operator_reset":
+                payload = h.get("payload") or {}
+                if isinstance(payload, dict):
+                    reset_fields = payload.get("reset_fields") or {}
+                    status_str = str(reset_fields.get("status", ""))
+                    if "abandoned" in status_str:
+                        is_abandoned = True
+                        break
+        if is_abandoned:
             continue
-        if last_evt == "operator_reset" and isinstance(last_payload, dict):
-            reset_fields = last_payload.get("reset_fields") or {}
-            status_str = str(reset_fields.get("status", ""))
-            if "abandoned" in status_str:
-                continue
         # Determine stall_kind from outputs
         outputs = t.get("outputs") or {}
         err = outputs.get("error") if isinstance(outputs, dict) else None

@@ -107,6 +107,34 @@ class TestStallEligibility(unittest.TestCase):
         }]}
         self.assertEqual(d._stalls_eligible_for_fixer(state), [])
 
+    def test_v3_2_4_full_history_scan_for_abandon_marker(self):
+        """v3.2.4: filter scans ALL history for abandon marker, not just
+        the most-recent event. Pre-v3.2.4 (v3.2.3) only checked the last
+        event — so a post-abandon Fixer auto-dispatch entry (from
+        v3.2.0 cruft) would 'hide' the abandon marker and re-eligible
+        the task. The substrate has no un-abandon semantic; once
+        abandoned, permanently abandoned."""
+        state = {"tasks": [{
+            "@id": "urn:t:abandoned-then-stale-fixer",
+            "status": "blocked",
+            "outputs": {"error": "apply_partial_failure"},
+            "history": [
+                # Step 1: operator abandoned via state_admin
+                _make_history_entry("operator_reset", {
+                    "reason": "operator abandon",
+                    "reset_fields": {"status": "ready -> blocked (abandoned)"},
+                }),
+                # Step 2: pre-v3.2.3 daemon re-dispatched a Fixer
+                # (wasted; the bug)
+                _make_history_entry("fixer_auto_dispatched", {
+                    "fixer_task": "urn:t:wasted-fixer",
+                }),
+            ],
+        }]}
+        # v3.2.3 filter (last-event-only) would WRONGLY mark this eligible.
+        # v3.2.4 scans all history → finds the abandon marker → skips.
+        self.assertEqual(d._stalls_eligible_for_fixer(state), [])
+
     def test_operator_reset_non_abandon_still_eligible(self):
         """An operator_reset that doesn't carry the abandoned marker
         (e.g., reset to ready for retry) should NOT exclude the task —
