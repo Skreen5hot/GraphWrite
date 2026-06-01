@@ -228,6 +228,38 @@ def cmd_append_tasks(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pending(args: argparse.Namespace) -> int:
+    """v3.3.0. Emit pending operator decisions as human-readable Markdown.
+
+    Closes the architectural emission gap: substrate stored
+    `awaiting_operator_decision` tasks but had no channel to make them
+    discoverable to the operator. This command renders them to
+    `fnsr.operator_decisions.md` (operator-discoverable file) AND prints
+    a compact summary.
+
+    Per Aaron 2026-06-01: "Are we 'emitting' the 'awaiting_operator_decisions'
+    somewhere?" — answer was NO; this command IS the emission.
+    """
+    try:
+        import fnsr_operator_decisions
+    except ImportError as e:
+        print(f"fnsr_operator_decisions unavailable: {e}", file=sys.stderr)
+        return 1
+    state_path = Path(args.state_path)
+    summary = fnsr_operator_decisions.emit(state_path)
+    print(f"pending decisions: {summary['pending_count']} task(s) "
+          f"across {summary['anchors_count']} anchor(s)")
+    if summary.get("wrote_file"):
+        print(f"  written to: {summary['output_path']}")
+    if args.print:
+        state = fnsr_operator_decisions._load_state(state_path)
+        if state is not None:
+            md = fnsr_operator_decisions.render_markdown(state)
+            print()
+            print(fnsr_operator_decisions._ascii_safe(md))
+    return 0
+
+
 def cmd_reset_fixer_attempts(args: argparse.Namespace) -> int:
     """Reset the Fixer recursion bound for an anchor task by appending a
     `fixer_attempts_reset` audit event on the anchor's history. The
@@ -1679,6 +1711,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "fnsr_stall_watch.py",
     "fnsr_state_verification.py",
     "fnsr_chain_validator.py",
+    "fnsr_operator_decisions.py",
     "state_admin.py",
     "PLAYBOOK.md",
     ".gitignore",
@@ -1760,6 +1793,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "tests/test_state_admin.py",
     "tests/test_chain_validator.py",
     "tests/test_fixer.py",
+    "tests/test_operator_decisions.py",
     "tests/test_test_runner.py",
     "tests/test_upstream.py",
     "tests/test_verification_ritual.py",
@@ -2202,6 +2236,17 @@ def _build_parser() -> argparse.ArgumentParser:
               "refuse to append on FAIL verdict. Per Aaron 2026-05-25 "
               "pre-dispatch chain validator (v3.1.0-bridge)."),
     )
+
+    p_pending = sub.add_parser(
+        "pending",
+        help=("v3.3.0 emission. Render pending operator decisions to "
+              "fnsr.operator_decisions.md (operator-discoverable Markdown). "
+              "Prints summary count to stdout. --print also dumps the "
+              "Markdown to stdout."),
+    )
+    p_pending.add_argument("--print", action="store_true",
+                            help="dump Markdown to stdout in addition to writing file")
+    p_pending.set_defaults(func=cmd_pending)
 
     p_reset_fixer = sub.add_parser(
         "reset-fixer-attempts",

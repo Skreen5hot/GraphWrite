@@ -310,6 +310,17 @@ def probe_once(root: Path) -> dict:
     except Exception as e:
         svg_summary = {"error": f"svg probe failed: {e}"}
 
+    # v3.3.0: emit pending operator decisions to
+    # fnsr.operator_decisions.md whenever the watchdog runs. Operator's
+    # IDE can show that file; substrate now PUSHES the decisions into
+    # operator's discoverability surface rather than just storing them.
+    pending_decisions_summary = None
+    try:
+        import fnsr_operator_decisions
+        pending_decisions_summary = fnsr_operator_decisions.emit(state_path)
+    except Exception as e:
+        pending_decisions_summary = {"error": f"operator-decisions emit failed: {e}"}
+
     state = _load_state(state_path)
     if state is None:
         report = {
@@ -349,6 +360,7 @@ def probe_once(root: Path) -> dict:
             "silent_crash_suspected": silent_crash_suspected,
             "silent_crash_threshold_seconds": SILENT_CRASH_THRESHOLD_SECONDS,
             "svg_summary": svg_summary,
+            "pending_decisions_summary": pending_decisions_summary,
             **stall,
         }
         # Final recommendation classification
@@ -411,6 +423,22 @@ def probe_once(root: Path) -> dict:
                     + f" | SVG_WARN: {warns} drift finding(s) — see fnsr.svg_status.json"
                 )
 
+        # v3.3.0: surface pending operator decisions inline in
+        # recommendation. Operator's IDE shows fnsr.operator_decisions.md;
+        # watchdog recommendation reminds operator the file exists.
+        if (isinstance(pending_decisions_summary, dict)
+                and not pending_decisions_summary.get("error")):
+            pending_n = pending_decisions_summary.get("pending_count", 0)
+            anchors_n = pending_decisions_summary.get("anchors_count", 0)
+            if pending_n > 0:
+                out_path = pending_decisions_summary.get("output_path", "")
+                out_short = Path(out_path).name if out_path else "fnsr.operator_decisions.md"
+                report["recommendation"] = (
+                    f"PENDING_DECISIONS: {pending_n} task(s) "
+                    f"across {anchors_n} anchor(s) — see {out_short} | "
+                    + report["recommendation"]
+                )
+
     # Write the report
     try:
         with status_out.open("w", encoding="utf-8") as f:
@@ -463,6 +491,11 @@ def main() -> int:
             print(f"dispatch_impossible_FRESH={fresh} (ACTION required)")
         if stale > 0:
             print(f"dispatch_impossible_STALE={stale} (informational; prior-phase residue)")
+        pd = report.get("pending_decisions_summary") or {}
+        if not pd.get("error"):
+            pn = pd.get("pending_count", 0)
+            if pn > 0:
+                print(f"pending_decisions={pn} (see {Path(pd.get('output_path','')).name})")
         svg = report.get("svg_summary") or {}
         if not svg.get("error"):
             sc = svg.get("severity_counts", {})

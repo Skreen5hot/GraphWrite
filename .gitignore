@@ -13,6 +13,9 @@ fnsr.pid
 fnsr_test.pid
 fnsr.stall_status.json
 fnsr.svg_status.json
+fnsr.operator_decisions.md
+daemon.stdout.log
+daemon.stderr.log
 raw_output.txt
 
 # Per-user Claude Code preferences (allowlist; not portable)
@@ -54,6 +57,7 @@ round*-cmd-fix.json
 round*-cmd-fix-build.py
 round*-cmd-fix-abandon.sh
 round*-sme-review-task.json
+phase-*-retro-chain.json
 feedback-round-*-decomposition-chain.json
 fnsr-spec-*-chain.json
 r43-split-tmp.txt
