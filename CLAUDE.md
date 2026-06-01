@@ -173,10 +173,20 @@ Some questions cannot be answered by an agent — they require operator judgment
 When this shape is recognized, the daemon commits the task with `status=awaiting_operator_decision`. The operator resolves it via:
 
 ```
-python state_admin.py resolve <task-id> <option-index> [--note "..."]
+python state_admin.py resolve <task-id> --option N \
+    --execution-mode {manual-followup-queued|state-surgery-applied|no-execution-required} \
+    [<mode-specific args>] [--notes "..."]
 ```
 
-Resolution appends an `operator_resolution` audit entry (chain-hashed), annotates `outputs.operator_resolution = {option_index, option_text, note}`, and sets `status=done` so downstream tasks become routable.
+**v3.3.2 substrate-discipline patch — the resolve→execution link.** Resolving the surface alone does NOT execute the chosen option. The 2026-06-01 752-recon-p3-c1c incident exposed the gap: the operator resolved two dispatcher tasks via `state_admin resolve --option 1` but the option's recommendation ("wrap F1 in envelope on the anchor task") never ran, so the anchor stayed `status=blocked` and the chain stayed wedged. The substrate now refuses to resolve without an `--execution-mode` declaration that records HOW the chosen option is being executed:
+
+- `--execution-mode manual-followup-queued --followup-task-ids id1,id2,...` — operator has appended followup tasks to state.jsonld via `state_admin append-tasks`; resolve validates each @id exists.
+- `--execution-mode state-surgery-applied --state-surgery-targets id1,id2,... [--reason "..."]` — operator has already mutated the listed tasks (e.g., wrapped malformed outputs, marked status=done); resolve validates each target exists.
+- `--execution-mode no-execution-required --reason "..."` — operator chose an option that requires no execution (informational close, "accept the current state"). The reason is mandatory and recorded for audit.
+
+Resolution appends an `operator_resolution` audit entry (chain-hashed) with payload `{chosen_option_index, chosen_option, operator, execution_mode, execution_payload, notes?}`, annotates `outputs.operator_resolution` identically, and sets `status=done` so downstream tasks become routable. The `execution_payload` carries the mode-specific fields (`followup_task_ids` / `state_surgery_targets` / `reason`).
+
+Downstream agents reading via UPSTREAM see the chosen option AND the operator's execution declaration, so they can verify the resolution semantics match the followup state.
 
 ## 7.7 Banking Lifecycle (Spec 05)
 

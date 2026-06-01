@@ -213,6 +213,8 @@ class TestResolveCommand(unittest.TestCase):
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:Q1", "--option", "2",
             "--notes", "B has the simpler dependency graph",
+            "--execution-mode", "no-execution-required",
+            "--reason", "test path; no followup task required",
         ])
         self.assertEqual(rc, 0)
         state = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -224,6 +226,9 @@ class TestResolveCommand(unittest.TestCase):
         self.assertEqual(last["payload"]["chosen_option"], "B")
         self.assertEqual(last["payload"]["notes"],
                          "B has the simpler dependency graph")
+        # v3.3.2: execution-mode recorded
+        self.assertEqual(last["payload"]["execution_mode"],
+                         "no-execution-required")
         # Outputs also annotated for downstream agents
         self.assertEqual(
             t["outputs"]["operator_resolution"]["chosen_option_index"], 2
@@ -236,6 +241,8 @@ class TestResolveCommand(unittest.TestCase):
         rc = state_admin.main([
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:done", "--option", "1",
+            "--execution-mode", "no-execution-required",
+            "--reason", "test",
         ])
         self.assertEqual(rc, 1)
 
@@ -244,6 +251,8 @@ class TestResolveCommand(unittest.TestCase):
         rc = state_admin.main([
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:Q1", "--option", "5",
+            "--execution-mode", "no-execution-required",
+            "--reason", "test",
         ])
         self.assertEqual(rc, 1)
 
@@ -252,6 +261,8 @@ class TestResolveCommand(unittest.TestCase):
         rc = state_admin.main([
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:Q1", "--option", "0",
+            "--execution-mode", "no-execution-required",
+            "--reason", "test",
         ])
         self.assertEqual(rc, 1)
 
@@ -282,6 +293,8 @@ class TestResolveCommand(unittest.TestCase):
         state_admin.main([
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:Q1", "--option", "1",
+            "--execution-mode", "no-execution-required",
+            "--reason", "test path",
         ])
         rc = state_admin.main([
             "--state-path", str(self.state_path),
@@ -1895,6 +1908,8 @@ class TestOperatorLockDiscipline(unittest.TestCase):
             "--state-path", str(self.state_path),
             "resolve", "urn:fnsr:task:r1", "--option", "1",
             "--notes", "regression test",
+            "--execution-mode", "no-execution-required",
+            "--reason", "regression coverage of lock discipline",
         ])
         self.assertEqual(rc, 0)
         final = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -1903,6 +1918,182 @@ class TestOperatorLockDiscipline(unittest.TestCase):
         self.assertEqual(task["status"], "done")
         events = [h["event"] for h in task["history"]]
         self.assertIn("operator_resolution", events)
+
+
+class TestResolveExecutionMode(unittest.TestCase):
+    """v3.3.2: cmd_resolve refuses to resolve an awaiting_operator_decision
+    task without an --execution-mode declaration. Closes the 2026-06-01
+    752-recon-p3-c1c gap where resolving the dispatcher surface didn't
+    execute the option's recommendation, leaving the anchor wedged.
+
+    Three execution modes:
+      manual-followup-queued: --followup-task-ids id1,id2 (must exist)
+      state-surgery-applied:  --state-surgery-targets id1,id2 (must exist)
+      no-execution-required:  --reason "..."
+    """
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-exec-mode-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+
+    def tearDown(self):
+        for k in list(state_admin._HELD_LOCKS):
+            try:
+                f = state_admin._HELD_LOCKS.pop(k)
+                d._release_lock(f)
+                f.close()
+            except OSError:
+                pass
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _seed(self, extra_tasks=None):
+        tasks = [{
+            "@id": "urn:fnsr:task:dispatch",
+            "agent": "recovery-dispatcher",
+            "status": "awaiting_operator_decision",
+            "outputs": {
+                "status": "awaiting_operator_decision",
+                "options": ["wrap-in-envelope", "abandon-and-requeue"],
+                "recommendation": "wrap-in-envelope",
+                "diagnosis": "x",
+                "anchor_task": "urn:fnsr:task:anchor",
+            },
+            "depends_on": [],
+            "history": [{
+                "event": "completed", "payload": {},
+                "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+            }],
+        }]
+        if extra_tasks:
+            tasks.extend(extra_tasks)
+        _seed_state(self.state_path, tasks)
+
+    def test_argparse_requires_execution_mode(self):
+        """argparse refuses to invoke cmd_resolve without --execution-mode."""
+        self._seed()
+        with self.assertRaises(SystemExit):
+            state_admin.main([
+                "--state-path", str(self.state_path),
+                "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            ])
+
+    def test_no_execution_required_requires_reason(self):
+        self._seed()
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "no-execution-required",
+        ])
+        self.assertEqual(rc, 1)
+        # Task must still be awaiting (resolve refused)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"],
+                         "awaiting_operator_decision")
+
+    def test_manual_followup_queued_requires_task_ids(self):
+        self._seed()
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "manual-followup-queued",
+        ])
+        self.assertEqual(rc, 1)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"],
+                         "awaiting_operator_decision")
+
+    def test_manual_followup_refuses_nonexistent_task_id(self):
+        """The substrate refuses if any followup-task-id isn't in state."""
+        self._seed()
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "manual-followup-queued",
+            "--followup-task-ids", "urn:fnsr:task:does-not-exist",
+        ])
+        self.assertEqual(rc, 1)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["tasks"][0]["status"],
+                         "awaiting_operator_decision")
+
+    def test_manual_followup_succeeds_with_existing_task_ids(self):
+        """Happy path: followup tasks exist in state, resolve commits."""
+        self._seed(extra_tasks=[{
+            "@id": "urn:fnsr:task:followup-1",
+            "agent": "developer", "status": "ready",
+            "depends_on": [], "history": [],
+        }, {
+            "@id": "urn:fnsr:task:followup-2",
+            "agent": "applier", "status": "ready",
+            "depends_on": ["urn:fnsr:task:followup-1"], "history": [],
+        }])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "manual-followup-queued",
+            "--followup-task-ids",
+            "urn:fnsr:task:followup-1,urn:fnsr:task:followup-2",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        dispatch = state["tasks"][0]
+        self.assertEqual(dispatch["status"], "done")
+        last = dispatch["history"][-1]
+        self.assertEqual(last["event"], "operator_resolution")
+        self.assertEqual(last["payload"]["execution_mode"],
+                         "manual-followup-queued")
+        self.assertEqual(
+            last["payload"]["execution_payload"]["followup_task_ids"],
+            ["urn:fnsr:task:followup-1", "urn:fnsr:task:followup-2"],
+        )
+
+    def test_state_surgery_applied_requires_targets(self):
+        self._seed()
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "state-surgery-applied",
+        ])
+        self.assertEqual(rc, 1)
+
+    def test_state_surgery_applied_succeeds(self):
+        self._seed(extra_tasks=[{
+            "@id": "urn:fnsr:task:anchor",
+            "agent": "reconnaissance", "status": "done",
+            "depends_on": [], "history": [],
+            "outputs": {"findings": [{"id": "F1"}],
+                         "summary": "wrapped",
+                         "evidence_paths": []},
+        }])
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "state-surgery-applied",
+            "--state-surgery-targets", "urn:fnsr:task:anchor",
+            "--reason", "wrapped F1 into envelope; anchor now done",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        dispatch = next(t for t in state["tasks"]
+                         if t["@id"] == "urn:fnsr:task:dispatch")
+        self.assertEqual(dispatch["status"], "done")
+        last = dispatch["history"][-1]
+        self.assertEqual(last["payload"]["execution_mode"],
+                         "state-surgery-applied")
+        self.assertEqual(
+            last["payload"]["execution_payload"]["state_surgery_targets"],
+            ["urn:fnsr:task:anchor"],
+        )
+
+    def test_state_surgery_refuses_nonexistent_target(self):
+        self._seed()
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "resolve", "urn:fnsr:task:dispatch", "--option", "1",
+            "--execution-mode", "state-surgery-applied",
+            "--state-surgery-targets", "urn:fnsr:task:ghost",
+        ])
+        self.assertEqual(rc, 1)
 
 
 if __name__ == "__main__":

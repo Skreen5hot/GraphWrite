@@ -125,6 +125,19 @@ def _save_state(state_path: Path, state: dict[str, Any]) -> None:
             lockf.close()
 
 
+def _release_state_lock(state_path: Path) -> None:
+    """Release the lock acquired by _load_state without writing state back.
+    Used by error-return paths in commands that want to abort without
+    persisting any mutation."""
+    key = str(state_path.resolve())
+    lockf = _HELD_LOCKS.pop(key, None)
+    if lockf is not None:
+        try:
+            d._release_lock(lockf)
+        finally:
+            lockf.close()
+
+
 def _find_task(state: dict[str, Any], task_id: str) -> Optional[dict[str, Any]]:
     for t in state.get("tasks", []):
         if t.get("@id") == task_id:
@@ -541,40 +554,115 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validate_execution_mode(
+    args: argparse.Namespace, state: dict[str, Any]
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """v3.3.2: validate the operator's --execution-mode declaration on
+    resolve. Returns (execution_payload, error_message). If error_message
+    is non-None, the resolve must refuse.
+
+    Per the 2026-06-01 752-recon-p3-c1c diagnosis: resolving an
+    awaiting_operator_decision without producing the action the chosen
+    option described left the anchor task wedged. The substrate now
+    refuses such resolves and records the execution linkage in audit.
+    """
+    mode = args.execution_mode
+    by_id = {t.get("@id"): t for t in state.get("tasks", [])}
+
+    if mode == "manual-followup-queued":
+        raw = (args.followup_task_ids or "").strip()
+        if not raw:
+            return None, ("--followup-task-ids required when "
+                          "--execution-mode=manual-followup-queued")
+        ids = [x.strip() for x in raw.split(",") if x.strip()]
+        if not ids:
+            return None, ("--followup-task-ids must contain at least one "
+                          "task @id")
+        missing = [tid for tid in ids if tid not in by_id]
+        if missing:
+            return None, (f"followup task(s) not in state.jsonld: "
+                          f"{', '.join(missing)}. Queue them via "
+                          f"`state_admin append-tasks` before resolving.")
+        return {"mode": mode, "followup_task_ids": ids}, None
+
+    if mode == "state-surgery-applied":
+        raw = (args.state_surgery_targets or "").strip()
+        if not raw:
+            return None, ("--state-surgery-targets required when "
+                          "--execution-mode=state-surgery-applied")
+        ids = [x.strip() for x in raw.split(",") if x.strip()]
+        if not ids:
+            return None, ("--state-surgery-targets must contain at least "
+                          "one task @id")
+        missing = [tid for tid in ids if tid not in by_id]
+        if missing:
+            return None, (f"state-surgery target(s) not in state.jsonld: "
+                          f"{', '.join(missing)}")
+        payload: dict[str, Any] = {"mode": mode, "state_surgery_targets": ids}
+        if args.execution_reason:
+            payload["reason"] = args.execution_reason
+        return payload, None
+
+    if mode == "no-execution-required":
+        reason = (args.execution_reason or "").strip()
+        if not reason:
+            return None, ("--reason required when "
+                          "--execution-mode=no-execution-required")
+        return {"mode": mode, "reason": reason}, None
+
+    return None, f"unknown execution-mode: {mode!r}"
+
+
 def cmd_resolve(args: argparse.Namespace) -> int:
     """Resolve an `awaiting_operator_decision` task by picking one of the
     options the agent surfaced. Records the operator_resolution audit event,
     annotates the task's outputs with the chosen option, and marks the task
     done so downstream chain dependencies advance.
 
-    The chosen ADR (if the operator wants one drafted) is the operator's
-    next step — queue a question-resolver task with the resolution as a
-    structured answer, or edit DECISIONS.md directly.
+    v3.3.2 adds the --execution-mode discipline: the operator MUST declare
+    HOW the chosen option is being executed (manual-followup-queued with
+    --followup-task-ids; state-surgery-applied with --state-surgery-targets;
+    or no-execution-required with --reason). The substrate refuses to
+    resolve without the execution link recorded in audit. Closes the
+    2026-06-01 752-recon-p3-c1c gap where resolving the operator-decision
+    surface didn't execute the option's recommendation.
     """
     state_path = Path(args.state_path)
     state = _load_state(state_path)
     task = _find_task(state, args.task_id)
     if task is None:
         print(f"task not found: {args.task_id}", file=sys.stderr)
+        _release_state_lock(state_path)
         return 1
     if task.get("status") != "awaiting_operator_decision":
         print(f"task {args.task_id} status is {task.get('status')!r}, "
               f"not awaiting_operator_decision", file=sys.stderr)
+        _release_state_lock(state_path)
         return 1
     outputs = task.get("outputs") or {}
     options = outputs.get("options")
     if not isinstance(options, list) or not options:
         print(f"task {args.task_id} has no options to resolve", file=sys.stderr)
+        _release_state_lock(state_path)
         return 1
     if args.option < 1 or args.option > len(options):
         print(f"option {args.option} out of range; task has {len(options)} "
               f"option(s)", file=sys.stderr)
+        _release_state_lock(state_path)
+        return 1
+    # v3.3.2: validate execution-mode declaration
+    execution_payload, err = _validate_execution_mode(args, state)
+    if err is not None:
+        print(f"resolve refused: {err}", file=sys.stderr)
+        _release_state_lock(state_path)
         return 1
     chosen_option = options[args.option - 1]
     payload = {
         "chosen_option_index": args.option,
         "chosen_option": chosen_option,
         "operator": args.operator,
+        "execution_mode": execution_payload["mode"],
+        "execution_payload": execution_payload,
     }
     if args.notes:
         payload["notes"] = args.notes
@@ -585,8 +673,9 @@ def cmd_resolve(args: argparse.Namespace) -> int:
         task["outputs"]["operator_resolution"] = payload
     task["status"] = "done"
     _save_state(state_path, state)
+    mode = execution_payload["mode"]
     print(f"resolved: {args.task_id}  (option {args.option} of "
-          f"{len(options)})")
+          f"{len(options)}; execution_mode={mode})")
     return 0
 
 
@@ -2356,6 +2445,37 @@ def _build_parser() -> argparse.ArgumentParser:
                             help="optional operator notes recorded with the "
                                  "resolution")
     p_resolve.add_argument("--operator", default="operator")
+    # v3.3.2 substrate-discipline fix: enforce the resolve -> execution
+    # link. Per the 2026-06-01 752-recon-p3-c1c diagnosis, resolving an
+    # awaiting_operator_decision task previously closed the operator
+    # surface without producing the action the chosen option described,
+    # leaving the anchor task wedged. The substrate now requires the
+    # operator to declare HOW the chosen option is being executed before
+    # the resolve commits.
+    p_resolve.add_argument(
+        "--execution-mode", dest="execution_mode", required=True,
+        choices=["manual-followup-queued", "no-execution-required",
+                 "state-surgery-applied"],
+        help="how the chosen option is being executed. "
+             "manual-followup-queued: provide --followup-task-ids of "
+             "tasks already appended to state.jsonld that execute the "
+             "option. no-execution-required: provide --reason; option "
+             "chose 'do nothing' / informational close. "
+             "state-surgery-applied: provide --state-surgery-targets of "
+             "tasks the operator already mutated; substrate records "
+             "the linkage.")
+    p_resolve.add_argument(
+        "--followup-task-ids", dest="followup_task_ids",
+        help="comma-separated task @ids that execute the option "
+             "(required when --execution-mode=manual-followup-queued)")
+    p_resolve.add_argument(
+        "--state-surgery-targets", dest="state_surgery_targets",
+        help="comma-separated task @ids the operator state-surgeried "
+             "(required when --execution-mode=state-surgery-applied)")
+    p_resolve.add_argument(
+        "--reason", dest="execution_reason",
+        help="reason text (required when "
+             "--execution-mode=no-execution-required)")
     p_resolve.set_defaults(func=cmd_resolve)
 
     p_bank = sub.add_parser("bank",
