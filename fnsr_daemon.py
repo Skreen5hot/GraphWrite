@@ -3609,6 +3609,17 @@ def _stalls_eligible_for_fixer(state: dict[str, Any]) -> list[dict[str, Any]]:
                         break
         if is_abandoned:
             continue
+        # v3.2.5 NameError fix: re-walk for last event used by the
+        # classifier below. Pre-v3.2.5 `last_evt` was localized inside the
+        # abandon-detection block (v3.2.4 refactor) but the classifier
+        # still referenced it — NameError on every cycle when the
+        # abandon path didn't trigger, silently disabling recovery.
+        # Caught now by the per-branch test matrix (Gap C).
+        last_evt = None
+        for h in reversed(t.get("history", []) or []):
+            if h.get("event"):
+                last_evt = h.get("event")
+                break
         # Determine stall_kind from outputs
         outputs = t.get("outputs") or {}
         err = outputs.get("error") if isinstance(outputs, dict) else None
@@ -3785,7 +3796,25 @@ def run_one_cycle() -> bool:
             # immediately picks up the fixer task (high-priority).
             # locked_state() auto-saves on context exit; no explicit
             # save needed here.
-            queued = _try_auto_fixer_dispatch(state)
+            #
+            # v3.2.5 Gap A: isolate exceptions in the Fixer auto-dispatch
+            # helper so a bug in recovery code doesn't silently kill the
+            # daemon main loop. Exception is logged to stderr (captured
+            # via daemon.stderr.log when daemon started with
+            # -RedirectStandardError); daemon continues polling. Before
+            # this isolation, v3.2.4's NameError in
+            # _stalls_eligible_for_fixer crashed every idle cycle while
+            # `daemon_alive=True` (process existed, main loop dead).
+            try:
+                queued = _try_auto_fixer_dispatch(state)
+            except Exception as exc:
+                log.error(
+                    "auto-fixer dispatch crashed (recovery layer "
+                    "temporarily disabled until patched): %s",
+                    exc,
+                    exc_info=True,
+                )
+                queued = None
             if queued is not None:
                 return True
             return False

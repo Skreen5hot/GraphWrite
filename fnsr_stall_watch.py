@@ -36,6 +36,7 @@ STABLE_THRESHOLD_SECONDS = 60  # state must be stable for >= N seconds before st
 HUNG_IN_PROGRESS_MINUTES = 30  # in_progress > N minutes counts as hung
 STALE_RESIDUE_HOURS = 24  # blocked deps older than N hours = stale (informational), not ACTION
 COMMIT_GAP_FRESH_HOURS = 2  # uncommitted src/ diff fresher than N hours = ACTION (commit-gap)
+SILENT_CRASH_THRESHOLD_SECONDS = 120  # v3.2.5: daemon alive + dispatchable work + state stable > 2 min = silent crash
 
 
 def _is_daemon_alive(pid_file: Path) -> tuple[bool, int | None]:
@@ -324,6 +325,18 @@ def probe_once(root: Path) -> dict:
         }
     else:
         stall = _detect_stalls(state)
+        # v3.2.5 Gap B: silent-crash detection. If the daemon process
+        # exists (daemon_alive=True) AND dispatchable work exists AND
+        # state.jsonld hasn't been touched for > SILENT_CRASH_THRESHOLD,
+        # the daemon's main loop is effectively dead even though the
+        # process is alive. Pre-v3.2.5 the watchdog reported
+        # daemon_alive=True purely from process-exists check; couldn't
+        # distinguish "polling normally" from "crashing every cycle".
+        silent_crash_suspected = (
+            daemon_alive
+            and stall.get("dispatchable_now", 0) > 0
+            and stable_for_seconds >= SILENT_CRASH_THRESHOLD_SECONDS
+        )
         report = {
             "probe_timestamp_iso": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "state_jsonld_path": str(state_path),
@@ -333,6 +346,8 @@ def probe_once(root: Path) -> dict:
             "stable_long_enough_for_stall": stable_for_seconds >= STABLE_THRESHOLD_SECONDS,
             "daemon_alive": daemon_alive,
             "daemon_pid": daemon_pid,
+            "silent_crash_suspected": silent_crash_suspected,
+            "silent_crash_threshold_seconds": SILENT_CRASH_THRESHOLD_SECONDS,
             "svg_summary": svg_summary,
             **stall,
         }
@@ -351,6 +366,16 @@ def probe_once(root: Path) -> dict:
         elif stall["stall_kind"] == "stall_with_work":
             if not daemon_alive:
                 report["recommendation"] = "ACTION: daemon dead but dispatchable work exists; restart daemon"
+            elif silent_crash_suspected:
+                report["recommendation"] = (
+                    f"ACTION_SILENT_CRASH_SUSPECTED: daemon process exists but "
+                    f"state.jsonld has not changed in "
+                    f"{round(stable_for_seconds, 1)}s while dispatchable work "
+                    f"is queued (threshold {SILENT_CRASH_THRESHOLD_SECONDS}s). "
+                    "Daemon's main loop likely crashing on every iteration. "
+                    "INSPECT daemon.stderr.log for traceback; restart daemon "
+                    "after patching."
+                )
             else:
                 report["recommendation"] = (
                     "ACTION: daemon alive but not dispatching despite dispatchable work; "

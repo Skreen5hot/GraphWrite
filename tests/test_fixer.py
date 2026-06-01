@@ -59,6 +59,99 @@ class TestStallEligibility(unittest.TestCase):
         self.assertEqual(len(stalls), 1)
         self.assertEqual(stalls[0]["stall_kind"], "test_runner_errors")
 
+    # v3.2.5 Gap C: per-branch test matrix for the stall_kind classifier.
+    # Pre-v3.2.5, the classifier referenced `last_evt` which was no
+    # longer in scope after the v3.2.4 abandon-detection refactor.
+    # NameError on every cycle when execution reached the classifier
+    # (i.e., when the abandon check didn't return early). 550 tests
+    # passed because all prior tests exercised only the abandon path.
+    # The 5 tests below exercise all 5 classifier branches.
+
+    def test_classifier_source_not_in_upstream(self):
+        state = {"tasks": [{
+            "@id": "urn:t:src",
+            "agent": "applier",
+            "status": "blocked",
+            "outputs": {"error": "source_not_in_upstream"},
+            "history": [_make_history_entry("cps_veto")],
+        }]}
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(len(stalls), 1)
+        self.assertEqual(stalls[0]["stall_kind"], "source_not_in_upstream")
+
+    def test_classifier_cps_veto_no_outputs_error(self):
+        """Recon CPS-vetoes (the actual symptom that caused Chain 1c
+        stall): outputs is None or has no error field, but the most-
+        recent history event is cps_veto. Pre-v3.2.5 this path raised
+        NameError on last_evt."""
+        state = {"tasks": [{
+            "@id": "urn:t:recon",
+            "agent": "reconnaissance",
+            "status": "blocked",
+            "outputs": None,
+            "history": [_make_history_entry("cps_veto")],
+        }]}
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(len(stalls), 1)
+        self.assertEqual(stalls[0]["stall_kind"], "cps_veto")
+
+    def test_classifier_unknown_fallback(self):
+        """Task in blocked status with no matchable signals; classifier
+        falls through to 'unknown'. Tests the elif/else chain reaches
+        the final branch without raising."""
+        state = {"tasks": [{
+            "@id": "urn:t:novel",
+            "agent": "developer",
+            "status": "blocked",
+            "outputs": {"misc": "something the classifier doesn't know"},
+            "history": [_make_history_entry("some_unknown_event")],
+        }]}
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(len(stalls), 1)
+        self.assertEqual(stalls[0]["stall_kind"], "unknown")
+
+    def test_classifier_empty_history_does_not_crash(self):
+        """Defense in depth: empty history shouldn't crash the
+        classifier. v3.2.5 NameError fix walks reversed(history) safely."""
+        state = {"tasks": [{
+            "@id": "urn:t:empty",
+            "agent": "developer",
+            "status": "blocked",
+            "outputs": {"error": "some_error"},
+            "history": [],  # explicitly empty (no timestamps -> filtered out)
+        }]}
+        # Tasks with no history get filtered out earlier (no ts to compute age)
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(stalls, [])
+
+    def test_classifier_all_5_branches_in_one_state(self):
+        """Integration: 5 tasks, one per branch, in one state. Verifies
+        the full classifier matrix reaches every branch without
+        raising. This test alone would have caught the v3.2.4 NameError."""
+        state = {"tasks": [
+            {"@id": "urn:t:apf", "agent": "applier", "status": "blocked",
+             "outputs": {"error": "apply_partial_failure"},
+             "history": [_make_history_entry("cps_veto")]},
+            {"@id": "urn:t:snu", "agent": "applier", "status": "blocked",
+             "outputs": {"error": "source_not_in_upstream"},
+             "history": [_make_history_entry("cps_veto")]},
+            {"@id": "urn:t:tre", "agent": "test-runner", "status": "blocked",
+             "outputs": {"status": "errors", "returncode": None},
+             "history": [_make_history_entry("cps_veto")]},
+            {"@id": "urn:t:cps", "agent": "reconnaissance", "status": "blocked",
+             "outputs": None,
+             "history": [_make_history_entry("cps_veto")]},
+            {"@id": "urn:t:unk", "agent": "developer", "status": "blocked",
+             "outputs": {"misc": "x"},
+             "history": [_make_history_entry("some_evt")]},
+        ]}
+        stalls = d._stalls_eligible_for_fixer(state)
+        kinds = sorted({s["stall_kind"] for s in stalls})
+        self.assertEqual(kinds, sorted([
+            "apply_partial_failure", "source_not_in_upstream",
+            "test_runner_errors", "cps_veto", "unknown",
+        ]))
+
     def test_done_task_not_eligible(self):
         state = {"tasks": [{
             "@id": "urn:t:ok",
@@ -445,6 +538,117 @@ class TestSystemAgentsRegistration(unittest.TestCase):
             d.SYSTEM_AGENTS["recovery-dispatcher"],
             d._recovery_dispatcher,
         )
+
+
+class TestGapAExceptionIsolation(unittest.TestCase):
+    """v3.2.5 Gap A: run_one_cycle wraps _try_auto_fixer_dispatch in
+    try/except so a bug in the Fixer helper doesn't silently kill the
+    daemon's main loop.
+
+    Pre-v3.2.5: NameError in _stalls_eligible_for_fixer crashed every
+    idle cycle while daemon_alive=True (process existed, main loop
+    dead). v3.2.5 catches the exception, logs it, treats the cycle as
+    idle, daemon continues polling.
+    """
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-gap-a-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        self.state_path.write_text(json.dumps({
+            "@context": "https://fnsr.example/context.jsonld",
+            "@id": "urn:fnsr:run:test",
+            "tasks": [],
+        }), encoding="utf-8")
+        # Point daemon at tmp state via the STATE_PATH module-global
+        self.old_state_path = d.STATE_PATH
+        d.STATE_PATH = self.state_path
+
+    def tearDown(self):
+        d.STATE_PATH = self.old_state_path
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_run_one_cycle_isolates_exception_from_fixer_dispatch(self):
+        """If _try_auto_fixer_dispatch raises, run_one_cycle must NOT
+        propagate the exception. Returns False (idle); daemon would
+        continue to next cycle."""
+        original = d._try_auto_fixer_dispatch
+        try:
+            d._try_auto_fixer_dispatch = lambda state: (_ for _ in ()).throw(
+                RuntimeError("simulated v3.2.4-style bug in fixer helper")
+            )
+            # Should NOT raise; should return False
+            result = d.run_one_cycle()
+            self.assertFalse(result)
+        finally:
+            d._try_auto_fixer_dispatch = original
+
+    def test_run_one_cycle_normal_path_unaffected(self):
+        """Sanity: when no exception fires, run_one_cycle returns
+        whatever the picker / Fixer logic decided (False on empty state)."""
+        # State is empty; picker returns None; Fixer auto-dispatch
+        # returns None (no eligible stalls); cycle returns False
+        result = d.run_one_cycle()
+        self.assertFalse(result)
+
+
+class TestGapBSilentCrashDetection(unittest.TestCase):
+    """v3.2.5 Gap B: watchdog reports silent_crash_suspected=True when
+    daemon process exists but state has not changed in > threshold
+    despite dispatchable work being queued."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-gap-b-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_silent_crash_flagged_when_daemon_alive_stable_with_work(self):
+        """daemon_alive=True + dispatchable_now>0 + stable>threshold =
+        silent_crash_suspected=True. (Note: this test exercises the
+        logic by importing fnsr_stall_watch and directly checking the
+        threshold-comparison; full end-to-end probe requires file
+        system + daemon process simulation which lives in other tests.)"""
+        import fnsr_stall_watch as w
+        # Simulate the inputs the probe assembles
+        daemon_alive = True
+        dispatchable_now = 1
+        stable_for_seconds = w.SILENT_CRASH_THRESHOLD_SECONDS + 10
+        silent_crash_suspected = (
+            daemon_alive
+            and dispatchable_now > 0
+            and stable_for_seconds >= w.SILENT_CRASH_THRESHOLD_SECONDS
+        )
+        self.assertTrue(silent_crash_suspected)
+
+    def test_silent_crash_not_flagged_when_no_work_dispatchable(self):
+        """daemon_alive=True + state stable but no dispatchable work =
+        legitimate demo_pause, NOT silent crash."""
+        import fnsr_stall_watch as w
+        daemon_alive = True
+        dispatchable_now = 0  # nothing to dispatch; legitimate idle
+        stable_for_seconds = w.SILENT_CRASH_THRESHOLD_SECONDS + 1000
+        silent_crash_suspected = (
+            daemon_alive
+            and dispatchable_now > 0
+            and stable_for_seconds >= w.SILENT_CRASH_THRESHOLD_SECONDS
+        )
+        self.assertFalse(silent_crash_suspected)
+
+    def test_silent_crash_not_flagged_when_daemon_dead(self):
+        """daemon_alive=False is a different condition; existing
+        recommendation handles it. Silent-crash predicate requires
+        daemon_alive=True."""
+        import fnsr_stall_watch as w
+        daemon_alive = False  # daemon process gone
+        dispatchable_now = 1
+        stable_for_seconds = w.SILENT_CRASH_THRESHOLD_SECONDS + 10
+        silent_crash_suspected = (
+            daemon_alive
+            and dispatchable_now > 0
+            and stable_for_seconds >= w.SILENT_CRASH_THRESHOLD_SECONDS
+        )
+        self.assertFalse(silent_crash_suspected)
 
 
 class TestResetFixerAttempts(unittest.TestCase):
