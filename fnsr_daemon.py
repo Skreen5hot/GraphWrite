@@ -3578,14 +3578,27 @@ def _stalls_eligible_for_fixer(state: dict[str, Any]) -> list[dict[str, Any]]:
         age_hours = (now - last_ts).total_seconds() / 3600
         if age_hours > FIXER_STALE_HOURS:
             continue  # stale residue
-        # Skip if event is abandon (operator-initiated)
+        # Skip if event is abandon (operator-initiated). state_admin
+        # abandon emits `operator_reset` with reset_fields.status
+        # containing "abandoned" — recognize that payload signal in
+        # addition to a literal task_abandoned event. v3.2.3 fix: prior
+        # versions only checked event=="task_abandoned" but state_admin
+        # never emits that name, so abandoned tasks were re-picked for
+        # Fixer auto-dispatch (Fixer-on-abandoned cascade).
         last_evt = None
+        last_payload = None
         for h in reversed(t.get("history", []) or []):
             if h.get("event"):
                 last_evt = h.get("event")
+                last_payload = h.get("payload") or {}
                 break
         if last_evt == "task_abandoned":
             continue
+        if last_evt == "operator_reset" and isinstance(last_payload, dict):
+            reset_fields = last_payload.get("reset_fields") or {}
+            status_str = str(reset_fields.get("status", ""))
+            if "abandoned" in status_str:
+                continue
         # Determine stall_kind from outputs
         outputs = t.get("outputs") or {}
         err = outputs.get("error") if isinstance(outputs, dict) else None

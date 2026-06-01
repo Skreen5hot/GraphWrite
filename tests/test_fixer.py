@@ -89,6 +89,43 @@ class TestStallEligibility(unittest.TestCase):
         }]}
         self.assertEqual(d._stalls_eligible_for_fixer(state), [])
 
+    def test_operator_reset_abandon_excluded(self):
+        """v3.2.3: state_admin abandon emits operator_reset with
+        reset_fields.status containing 'abandoned'. The filter must
+        recognize that payload signal (prior versions only checked
+        event=='task_abandoned' which state_admin never emits, so
+        abandoned tasks got re-picked for Fixer auto-dispatch)."""
+        state = {"tasks": [{
+            "@id": "urn:t:abandoned-via-state-admin",
+            "status": "blocked",
+            "outputs": {"error": "apply_partial_failure"},
+            "history": [_make_history_entry("operator_reset", {
+                "reason": "operator-decided abandon",
+                "reset_fields": {"status": "ready -> blocked (abandoned)"},
+                "operator": "operator",
+            })],
+        }]}
+        self.assertEqual(d._stalls_eligible_for_fixer(state), [])
+
+    def test_operator_reset_non_abandon_still_eligible(self):
+        """An operator_reset that doesn't carry the abandoned marker
+        (e.g., reset to ready for retry) should NOT exclude the task —
+        that's a legitimate operator action that may want a fresh Fixer."""
+        state = {"tasks": [{
+            "@id": "urn:t:reset-for-retry",
+            "status": "blocked",
+            "outputs": {"error": "apply_partial_failure"},
+            "history": [_make_history_entry("operator_reset", {
+                "reason": "retry after env fix",
+                "reset_fields": {"status": "failed -> ready"},
+            })],
+        }]}
+        # Note: status is "blocked" but last reset wasn't abandon —
+        # eligible.
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(len(stalls), 1)
+        self.assertEqual(stalls[0]["anchor_id"], "urn:t:reset-for-retry")
+
     def test_fixer_attempt_count_walks_audit(self):
         state = {"tasks": [{
             "@id": "urn:t:anchor",
