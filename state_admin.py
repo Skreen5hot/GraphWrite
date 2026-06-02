@@ -317,6 +317,45 @@ def cmd_pending(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_status_message(args: argparse.Namespace) -> int:
+    """v3.4.0. Emit the unified system-status communication file.
+
+    Per Aaron 2026-06-02: anytime the substrate stops, the operator
+    needs a SINGLE communication file that classifies current state and
+    tells them what to do. Three action-required states + two
+    informational. See surfaces/_primitives/system-status-communication.md
+    (when authored) and fnsr_status.py for the classifier source.
+
+    Supersedes `fnsr.operator_decisions.md` as the primary entry-point
+    surface; operator_decisions.md remains as the decision-detail file
+    referenced from the status file when classification is
+    decision-necessary.
+    """
+    try:
+        import fnsr_status
+    except ImportError as e:
+        print(f"fnsr_status unavailable: {e}", file=sys.stderr)
+        return 1
+    state_path = Path(args.state_path)
+    # Status file lives next to state.jsonld (mirrors operator_decisions.md
+    # discoverability convention)
+    output_path = state_path.parent / fnsr_status.STATUS_FILE
+    summary = fnsr_status.emit(
+        state_path, output_path, repo_root=state_path.parent
+    )
+    cls = summary.get("state_classification", "?")
+    print(f"system status: {cls}")
+    if summary.get("wrote_file"):
+        print(f"  written to: {summary['output_path']}")
+    if args.print:
+        try:
+            print()
+            print(output_path.read_text(encoding="utf-8"))
+        except OSError as e:
+            print(f"  (could not read for --print: {e})", file=sys.stderr)
+    return 0
+
+
 def cmd_reset_fixer_attempts(args: argparse.Namespace) -> int:
     """Reset the Fixer recursion bound for an anchor task by appending a
     `fixer_attempts_reset` audit event on the anchor's history. The
@@ -1845,6 +1884,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "fnsr_state_verification.py",
     "fnsr_chain_validator.py",
     "fnsr_operator_decisions.py",
+    "fnsr_status.py",
     "state_admin.py",
     "PLAYBOOK.md",
     ".gitignore",
@@ -1927,6 +1967,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     "tests/test_chain_validator.py",
     "tests/test_fixer.py",
     "tests/test_operator_decisions.py",
+    "tests/test_status.py",
     "tests/test_test_runner.py",
     "tests/test_upstream.py",
     "tests/test_verification_ritual.py",
@@ -2380,6 +2421,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_pending.add_argument("--print", action="store_true",
                             help="dump Markdown to stdout in addition to writing file")
     p_pending.set_defaults(func=cmd_pending)
+
+    p_status_msg = sub.add_parser(
+        "status-message",
+        help=("v3.4.0 unified status surface. Classify current substrate "
+              "state (decision-necessary / working / ready-for-review / "
+              "ready-for-release / idle) and write fnsr.status.md as the "
+              "single operator-facing communication file. Supersedes "
+              "fnsr.operator_decisions.md as the primary entry-point; "
+              "operator_decisions.md is referenced from the status file "
+              "when classification is decision-necessary."),
+    )
+    p_status_msg.add_argument("--print", action="store_true",
+                               help="dump status Markdown to stdout in addition "
+                                    "to writing fnsr.status.md")
+    p_status_msg.set_defaults(func=cmd_status_message)
 
     p_reset_fixer = sub.add_parser(
         "reset-fixer-attempts",

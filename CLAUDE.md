@@ -499,6 +499,40 @@ v3.1.0 is the originally-scoped trajectory's terminal release. The substrate's f
 
 See [`ariadne/archive/retrospectives/2026-05-substrate-v2.9.0-to-v3.0.md`](file:///c:/Users/aaron/OneDrive/Documents/ariadne/archive/retrospectives/2026-05-substrate-v2.9.0-to-v3.0.md) §7 for the closure framing.
 
+## 7.14 System Status Communication Surface (v3.4.0)
+
+Per Aaron 2026-06-02: anytime the substrate stops, the operator needs a **single communication file** that classifies current state and tells them what to do. [`fnsr.status.md`](fnsr.status.md) is that file. It supersedes [`fnsr.operator_decisions.md`](fnsr.operator_decisions.md) as the primary entry-point surface; operator_decisions.md remains as the decision-detail file referenced from the status file when classification is `decision-necessary`.
+
+### The five communication states
+
+| State | Trigger | Operator message |
+|---|---|---|
+| **decision-necessary** | ≥1 task in `status=awaiting_operator_decision` | *"N operator decision(s) pending. See fnsr.operator_decisions.md..."* |
+| **working** | `in_progress > 0` OR ≥1 dispatchable ready task (all deps done) | *"Substrate is actively dispatching: N in-progress, M dispatchable..."* |
+| **ready-for-review** | latest PLO state of any phase ∈ {`demo-released`} AND no decisions pending AND queue idle | *"Test at {deploy-url} and validate at [demo-doc]. Awaiting your review."* |
+| **ready-for-release** | latest PLO state of any phase ∈ {`po-satisfied`, `drift-reconciled`} AND queue idle | *"Ready for production deployment. Awaiting your release."* |
+| **idle** | none of the above | *"Substrate idle; consider emitting phase demo-released if the just-completed chain is ready for review."* |
+
+Precedence is top-down: `decision-necessary` always wins over a `demo-released` phase; `working` wins over `ready-for-review` (active dispatch beats waiting for review). Classification is a pure function of state.jsonld + PLO `phase_state_changed` events (latest-timestamp-wins per phase).
+
+### Emission channels
+
+1. **On-demand CLI:** `python state_admin.py status-message [--print]`
+2. **Auto-refresh:** [`fnsr_stall_watch.py`](fnsr_stall_watch.py) calls `fnsr_status.emit()` on every probe; the watchdog's `recommendation` field prepends `SYSTEM_STATUS=<classification>` for action-required states (decision-necessary / ready-for-review / ready-for-release); CLI tail prints `system_status=<classification>`.
+3. **The file itself:** `fnsr.status.md` lives next to `state.jsonld`; any operator opening the repo sees it.
+
+### Demo-doc convention
+
+When classification is `ready-for-review`, the renderer scans `demo/PHASE-N-*.md` for the demo doc matching the phase id. If found, the doc path is linked in the operator message; if not, the message falls back to "validate via the demo doc (no demo/PHASE-N-*.md found...)". This convention is the substrate's expectation: per-phase demo docs live at `demo/PHASE-N-{short-name}.md`.
+
+### PLO-event integration
+
+The `phase_state_changed` audit event payload carries `deploy_url`, `build_ref`, and `notes`. The status renderer reads these directly from the latest PLO event per phase, so the operator messages stay grounded in the most recent operator-authoritative transition. Operators emitting `state_admin phase demo-released <phase-id> --deploy-url <url> --build-ref <sha>` populate the ready-for-review message verbatim.
+
+### Supersedes ft-767 (partial)
+
+The v3.1.0-era forward-track `ft-767-recovery-dispatch-755-apply-p3-c1c-1` (subject: `capability:phase-readiness-auto-detect-v3.4`) scoped four missing pieces. v3.4.0 ships two of them: the **readiness probe predicate** (via the PLO event walker) and the **recommendation channel** (via the status file). The remaining two — **phase-membership signal on tasks** and **machine-readable phase acceptance criteria** — remain forward-tracked because they require ≥2 phase cycles of friction observation before a stable shape emerges (per the established substrate-build discipline).
+
 ## 8. Session Workflow
 
 ### Starting a session

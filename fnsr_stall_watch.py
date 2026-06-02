@@ -321,6 +321,20 @@ def probe_once(root: Path) -> dict:
     except Exception as e:
         pending_decisions_summary = {"error": f"operator-decisions emit failed: {e}"}
 
+    # v3.4.0: emit unified system-status communication file. Anytime the
+    # watchdog probes — whether the substrate is stopped, working, or
+    # has pending decisions — fnsr.status.md is refreshed with the
+    # one-line classification + the operator-action message (Decision
+    # Necessary / Ready for PO Review / Done / Working / Idle). Operator
+    # can open fnsr.status.md at any moment and know exactly what state
+    # the substrate is in. Per Aaron 2026-06-02 directive.
+    status_summary = None
+    try:
+        import fnsr_status
+        status_summary = fnsr_status.emit(state_path)
+    except Exception as e:
+        status_summary = {"error": f"status emit failed: {e}"}
+
     state = _load_state(state_path)
     if state is None:
         report = {
@@ -361,6 +375,7 @@ def probe_once(root: Path) -> dict:
             "silent_crash_threshold_seconds": SILENT_CRASH_THRESHOLD_SECONDS,
             "svg_summary": svg_summary,
             "pending_decisions_summary": pending_decisions_summary,
+            "system_status": status_summary,
             **stall,
         }
         # Final recommendation classification
@@ -439,6 +454,21 @@ def probe_once(root: Path) -> dict:
                     + report["recommendation"]
                 )
 
+        # v3.4.0: surface unified status classification inline. The
+        # system_status field is the operator's primary entry point;
+        # the recommendation field carries the one-line summary so
+        # operators reading the JSON probe report or CLI tail see it
+        # without opening fnsr.status.md.
+        if (isinstance(status_summary, dict)
+                and not status_summary.get("error")):
+            cls = status_summary.get("state_classification", "")
+            if cls and cls not in ("working", "idle"):
+                # Action-required states prepend a SYSTEM_STATUS tag
+                report["recommendation"] = (
+                    f"SYSTEM_STATUS={cls} (see fnsr.status.md) | "
+                    + report["recommendation"]
+                )
+
     # Write the report
     try:
         with status_out.open("w", encoding="utf-8") as f:
@@ -496,6 +526,12 @@ def main() -> int:
             pn = pd.get("pending_count", 0)
             if pn > 0:
                 print(f"pending_decisions={pn} (see {Path(pd.get('output_path','')).name})")
+        # v3.4.0: unified status classification
+        ss = report.get("system_status") or {}
+        if not ss.get("error"):
+            cls = ss.get("state_classification", "")
+            if cls:
+                print(f"system_status={cls} (see fnsr.status.md)")
         svg = report.get("svg_summary") or {}
         if not svg.get("error"):
             sc = svg.get("severity_counts", {})
