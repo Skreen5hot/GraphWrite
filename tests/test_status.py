@@ -145,6 +145,86 @@ class TestClassifier(unittest.TestCase):
         cls = fs.classify(state)
         self.assertEqual(cls["state"], fs.STATE_READY_FOR_RELEASE)
 
+    def test_chain_complete_fires_when_done_task_newer_than_plo_ts(self):
+        """v3.5.2: phase in implementing + a done task with history ts
+        newer than the latest phase_state_changed event for that phase
+        → chain-complete (the operator should emit demo-released)."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "status": "done", "depends_on": [],
+             "history": [{
+                 "event": "phase_state_changed",
+                 "ts": "2026-06-02T10:00:00Z",
+                 "payload": {"phase_id": "phase-3",
+                              "to_state": "implementing"}}]},
+            {"@id": "urn:t:dev-just-finished", "status": "done",
+             "depends_on": [], "history": [
+                {"event": "dispatched", "ts": "2026-06-02T11:00:00Z",
+                  "payload": {}},
+                {"event": "completed", "ts": "2026-06-02T11:30:00Z",
+                  "payload": {}}]},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_CHAIN_COMPLETE)
+        self.assertEqual(cls["phase_id"], "phase-3")
+        self.assertEqual(cls["phase_state"], "implementing")
+        self.assertEqual(cls["latest_done_task"],
+                          "urn:t:dev-just-finished")
+        self.assertEqual(cls["latest_done_ts"], "2026-06-02T11:30:00Z")
+
+    def test_chain_complete_does_NOT_fire_when_no_done_task_after_plo_ts(self):
+        """Phase just transitioned to implementing; no work yet
+        completed since. Should be idle, not chain-complete."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "status": "done", "depends_on": [],
+             "history": [
+                {"event": "completed", "ts": "2026-06-02T09:00:00Z",
+                  "payload": {}},
+                {"event": "phase_state_changed",
+                 "ts": "2026-06-02T10:00:00Z",
+                 "payload": {"phase_id": "phase-3",
+                              "to_state": "implementing"}}]},
+        ]}
+        cls = fs.classify(state)
+        # PLO ts (10:00) > completed ts (09:00); no done after PLO → idle
+        self.assertEqual(cls["state"], fs.STATE_IDLE)
+
+    def test_chain_complete_loses_to_working(self):
+        """If in_progress > 0, working wins over chain-complete."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "status": "done", "depends_on": [],
+             "history": [{
+                 "event": "phase_state_changed",
+                 "ts": "2026-06-02T10:00:00Z",
+                 "payload": {"phase_id": "phase-3",
+                              "to_state": "implementing"}}]},
+            {"@id": "urn:t:in-flight", "status": "in_progress",
+             "depends_on": [], "history": []},
+            {"@id": "urn:t:done-newer", "status": "done",
+             "depends_on": [], "history": [
+                {"event": "completed", "ts": "2026-06-02T11:30:00Z",
+                  "payload": {}}]},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_WORKING)
+
+    def test_chain_complete_loses_to_ready_for_review(self):
+        """If a phase is in demo-released, ready-for-review wins
+        regardless of chain-complete signals on other phases."""
+        state = {"tasks": [
+            {"@id": "urn:t:a", "status": "done", "depends_on": [],
+             "history": [{
+                 "event": "phase_state_changed",
+                 "ts": "2026-06-02T10:00:00Z",
+                 "payload": {"phase_id": "phase-3",
+                              "to_state": "demo-released"}}]},
+            {"@id": "urn:t:done-newer", "status": "done",
+             "depends_on": [], "history": [
+                {"event": "completed", "ts": "2026-06-02T11:30:00Z",
+                  "payload": {}}]},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_READY_FOR_REVIEW)
+
 
 class TestRender(unittest.TestCase):
     def test_render_decision_necessary(self):
@@ -202,6 +282,27 @@ class TestRender(unittest.TestCase):
         md = fs.render_markdown({"state": fs.STATE_IDLE})
         self.assertIn("Idle", md)
         self.assertIn("state_admin phase demo-released", md)
+
+    def test_render_chain_complete_substitutes_task_id(self):
+        """v3.5.2: chain-complete render shows the exact next-command
+        with --anchor-task populated."""
+        md = fs.render_markdown({
+            "state": fs.STATE_CHAIN_COMPLETE,
+            "phase_id": "phase-3",
+            "phase_state": "implementing",
+            "latest_done_task": "urn:fnsr:task:781-test-p3-c3",
+            "latest_done_ts": "2026-06-02T12:07:55Z",
+            "phase_transition_ts": "2026-06-02T10:53:46Z",
+        })
+        self.assertIn("Chain Complete", md)
+        self.assertIn("phase-3", md)
+        self.assertIn("urn:fnsr:task:781-test-p3-c3", md)
+        # The suggested next-command must include both steps
+        self.assertIn("git commit", md)
+        self.assertIn("phase demo-released phase-3", md)
+        self.assertIn("--anchor-task urn:fnsr:task:781-test-p3-c3", md)
+        self.assertIn("--regenerate-demo-doc", md)
+        self.assertIn("ready-for-review", md)
 
 
 class TestFindDemoDoc(unittest.TestCase):

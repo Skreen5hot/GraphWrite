@@ -85402,6 +85402,1121 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-06-02T10:52:42Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "Chain 2 demo passed; re-enter implementing for Chain 3 (IMPLEMENTATION_PLAN \u00a73.2 imported-term immutability + remap workflow)"
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "922438d8fa507dc60395bc2d35efe1a76e14b3cf3d3c0f5172817f4aefb51dbf"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:777-recon-p3-c3",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3 -- Imported-Term Immutability + Remap Workflow (sub-task 3.2)",
+        "purpose": "Reconnaissance for Phase 3 sub-task 3.2 (IMPLEMENTATION_PLAN). Investigate: (1) how terms are currently typed/stored in the project JSON-LD (term-shape; ecm:source semantics; ecm:ontologyId field); (2) the existing term-edit affordances surfaced in src/ui/ (EditTermDialog.tsx, Inspector.tsx, TermSidebar.tsx) -- where edit/delete buttons live, how they are gated, and what state controls their disabled state; (3) the SPEC reference for imported-term immutability (SPEC section 13.3) and the remap-references workflow (SPEC section 13.6); (4) existing Playwright test scaffolding in tests/playwright/ -- the test runner pattern, fixture conventions, and where new playwright tests should land; (5) Chain 2 already augmented imported terms with ecm:source = 'ecm:imported-ontology' and ecm:ontologyId at CLI-import time -- verify this lands in the project document; the immutability check downstream should read those flags. Identify the minimal surface area where read-only rendering should be gated on the ecm:source field and where the remap workflow should be exposed (likely a new affordance on the Inspector or a new RemapDialog component). Document the IRI-rewrite scope: which fields contain class IRIs (ecm:classIris) and predicate IRIs (ecm:predicateIri) that need rewriting, vs which fields are preserved-on-round-trip-only.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "src/ui/EditTermDialog.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/TermSidebar.tsx",
+          "src/ui/CanvasView.tsx",
+          "src/cli/index.ts",
+          "src/import/turtle-import.ts",
+          "tests/",
+          "playwright.config.ts"
+        ],
+        "spec_refs": [
+          "SPEC section 13.3",
+          "SPEC section 13.6",
+          "FR-U010",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "SPEC \u00c2\u00a75.7 defines the term object shape with `ecm:source` (three allowed values: `ecm:imported-ontology`, `ecm:project-created`, `ecm:system-starter-example`) and `ecm:ontologyId` (null for non-imported; ontology record UUID for imported terms).",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "445-481",
+                "excerpt": "Allowed `ecm:source` values: `ecm:imported-ontology`, `ecm:project-created`, `ecm:system-starter-example`. ... `ecm:ontologyId`: null"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "The CLI `import-ontology` command already augments every extracted term with `ecm:source: 'ecm:imported-ontology'` and `ecm:ontologyId: result.ontology.id` before appending them to the project's `ecm:terms` array.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "323-328",
+                "excerpt": "const augmentedTerms = result.terms.map((term) => ({\n  ...term,\n  \"ecm:source\": \"ecm:imported-ontology\" as const,\n  \"ecm:ontologyId\": result.ontology.id,\n}));"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "The `ImportedTermObject` interface in `src/import/turtle-import.ts` does NOT include `ecm:source` or `ecm:ontologyId`; those fields are added only at the CLI adapter boundary, not inside the core import function.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "60-67",
+                "excerpt": "export interface ImportedTermObject {\n  readonly id: string;\n  readonly type: ImportedTermType;\n  readonly \"rdfs:label\"?: ...;\n  readonly \"rdfs:comment\"?: string;\n  readonly \"rdfs:subClassOf\"?: ...;\n  readonly \"rdfs:subPropertyOf\"?: ...;\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "`TermSidebar.tsx` already gates the click handler on `ecm:source === 'ecm:project-created'`; imported terms receive `aria-disabled=\"true\"` and no `role=\"button\"`, blocking EditTermDialog from opening.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "152-170",
+                "excerpt": "const isClickable = onTermClick !== undefined && term[\"ecm:source\"] === \"ecm:project-created\";\nconst isImported = term[\"ecm:source\"] === \"ecm:imported-ontology\";\n...\nrole={isClickable ? \"button\" : undefined}\naria-disabled={isImported ? \"true\" : undefined}\nonClick={isClickable ? () => { onTermClick(term); } : undefined}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "A Playwright test (AC4 in `tests/playwright/term-crud.spec.ts`) already verifies that imported terms carry `aria-disabled=\"true\"`, lack `role=\"button\"`, and clicking them does not open `EditTermDialog`; this test passes against the `imported-term.jsonld` fixture.",
+            "evidence": [
+              {
+                "file": "tests/playwright/term-crud.spec.ts",
+                "lines": "219-246",
+                "excerpt": "\"AC4: Imported term read-only: aria-disabled present; click does not open EditTermDialog (FR-U010; Chain C)\"\n...await expect(importedItem).toHaveAttribute(\"aria-disabled\", \"true\");\nawait expect(importedItem).not.toHaveAttribute(\"role\", \"button\");\nawait importedItem.click();\nawait expect(page.getByTestId(\"gw-dialog-edit-term\")).not.toBeVisible();"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "The `imported-term.jsonld` Playwright fixture has `ecm:ontologyId: null` (not a real ontology UUID), meaning it was hand-crafted and does not reflect the actual project state produced by the CLI `import-ontology` command (which sets `ecm:ontologyId` to a real UUID).",
+            "evidence": [
+              {
+                "file": "tests/playwright/fixtures/imported-term.jsonld",
+                "lines": "82-88",
+                "excerpt": "\"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n\"ecm:ontologyId\": null,\n\"ecm:source\": \"ecm:imported-ontology\",\n\"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n\"id\": \"https://example.org/ontology/ImportedClass\""
+              },
+              {
+                "file": "src/cli/index.ts",
+                "lines": "323-328",
+                "excerpt": "\"ecm:ontologyId\": result.ontology.id"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "SPEC \u00c2\u00a713.3 declares imported term IRIs immutable in v0.3 and states the MVP supports project-local replacement terms only (not copy-to-project-created or remove-and-re-import paths).",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1032-1041",
+                "excerpt": "### 13.3 Imported Term IRI Change\nImported ontology term IRIs are immutable in v0.3. The user has three options for substitution:\n- create a project-local replacement term with a new IRI and migrate references manually;\n- copy the imported term into the project-created vocabulary;\n- remove the ontology and re-import a corrected version.\nThe MVP supports project-local replacement terms only."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "SPEC \u00c2\u00a713.6 defines the remap-references operation as user-invocable: the user first creates a project-created term, then invokes remap to rewrite all `ecm:classIris`/`ecm:predicateIri` references from the imported IRI to the new IRI; the imported ontology record and imported term entry remain untouched.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1056-1058",
+                "excerpt": "If a project-created term is created with the intent to supersede an imported term, the user may invoke a \"remap references\" operation that rewrites instance and relation references from the imported IRI to the project-created IRI. The imported term remains in the project (as immutable imported metadata) but is no longer referenced."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "No `RemapDialog` component, no `remapReferences` function, and no remap-related UI affordance exists anywhere under `src/`; the remap workflow described in SPEC \u00c2\u00a713.6 and IMPLEMENTATION_PLAN \u00c2\u00a73.2 is entirely absent from the current codebase.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "1-343",
+                "excerpt": "(no remap affordance; imported terms have no click handler, only aria-disabled)"
+              },
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "1-888",
+                "excerpt": "(no term-inspection mode; Inspector only handles selectedRelationId and selectedInstanceId)"
+              }
+            ],
+            "kind": "gap"
+          },
+          {
+            "id": "F10",
+            "claim": "The existing `refactorIri` function in `src/refactor/index.ts` rewrites four reference field types: `ecm:classIris` array entries on instances, `ecm:predicateIri` on relations and literal assertions, `ecm:subjectIri` on relations and literal assertions, and `ecm:objectIri` on relations; it does NOT rewrite entity `id` fields.",
+            "evidence": [
+              {
+                "file": "src/refactor/index.ts",
+                "lines": "8-14",
+                "excerpt": "Cascade-updates all occurrences of oldIri in:\n  ecm:classIris    -- array entries on ecm:instances items\n  ecm:predicateIri -- string on ecm:relations and ecm:literalAssertions\n  ecm:subjectIri   -- string on ecm:relations and ecm:literalAssertions\n  ecm:objectIri    -- string on ecm:relations items only"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "`refactorIri` contains a collision check (lines 168-178) that aborts and returns unmodified project if `newIri` already exists in `ecm:terms` or `ecm:instances`; because the remap workflow requires `newIri` (the project-created replacement) to already exist in `ecm:terms`, calling `refactorIri(project, importedIri, projectCreatedIri)` directly will always trigger this collision guard.",
+            "evidence": [
+              {
+                "file": "src/refactor/index.ts",
+                "lines": "167-178",
+                "excerpt": "const existingIds = collectSemanticEntityIds(project);\nif (existingIds.has(newIri)) {\n  return {\n    project,\n    oldIri,\n    newIri,\n    referenceCount: 0,\n    affectedEntityTypes: [],\n    collision: { collidingIri: newIri, collidingEntityId: newIri },\n  };\n}"
+              },
+              {
+                "file": "src/refactor/index.ts",
+                "lines": "120-132",
+                "excerpt": "function collectSemanticEntityIds(...) {\n  for (const key of [\"ecm:terms\", \"ecm:instances\"] as const) {\n    for (const entity of getEntityArray(project, key)) {\n      const id = getStr(entity, \"id\");\n      if (id !== undefined) map.set(id, key);\n    }\n  }\n}"
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F12",
+            "claim": "Fields in the term object that are preserved on round-trip only (`rdfs:subClassOf`, `rdfs:subPropertyOf`, `rdfs:range`) are NOT targets of the IRI-rewrite cascade in `refactorIri`; those fields record the hierarchy/range within the imported term's own shape and are not occurrence references rewritten by the remap workflow.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "483-483",
+                "excerpt": "`rdfs:subClassOf` is permitted on classes; `rdfs:subPropertyOf` is permitted on properties. `rdfs:range` is permitted on `owl:DatatypeProperty` terms; ... These fields are preserved on round-trip."
+              },
+              {
+                "file": "src/refactor/index.ts",
+                "lines": "182-250",
+                "excerpt": "(only ecm:classIris, ecm:predicateIri, ecm:subjectIri, ecm:objectIri are traversed; rdfs:subClassOf / rdfs:subPropertyOf / rdfs:range are untouched)"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "`Inspector.tsx` currently has no 'selected term' mode; it only handles `selectedRelationId` (relation mode) and `selectedInstanceId` (instance mode), so a remap affordance cannot be surfaced through the existing Inspector without extending its props.",
+            "evidence": [
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "268-278",
+                "excerpt": "interface InspectorProps {\n  selectedRelationId: string | null;\n  selectedInstanceId: string | null;\n  project: Record<string, unknown> | null;\n  onProjectChange?: (updated: Record<string, unknown>) => void;\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "The Playwright test suite runs from `./tests/playwright/`, targets `http://localhost:4173` via `npm run preview`, uses Chromium only, and all test fixtures are `.jsonld` files under `tests/playwright/fixtures/`; new Phase 3 Playwright tests should follow the same `getByTestId('gw-*')` convention.",
+            "evidence": [
+              {
+                "file": "playwright.config.ts",
+                "lines": "1-28",
+                "excerpt": "testDir: \"./tests/playwright\",\nuse: { headless: true, baseURL: \"http://localhost:4173\" },\nprojects: [{ name: \"chromium\", use: { ...devices[\"Desktop Chrome\"] } }]"
+              },
+              {
+                "file": "tests/playwright/term-crud.spec.ts",
+                "lines": "15-37",
+                "excerpt": "const IMPORTED_TERM_FIXTURE = path.join(process.cwd(), \"tests\", \"playwright\", \"fixtures\", \"imported-term.jsonld\");"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a73.2 acceptance criteria AC3 and AC4 require unit tests (not just Playwright tests): AC3 is 'Remap A\u00e2\u2020\u2019B: zero occurrences of imported IRI A in `ecm:classIris`/`ecm:predicateIri` after remap' and AC4 is 'Imported ontology record (with IRI A) remains in `ecm:ontologies` after remap'.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "565-569",
+                "excerpt": "- Remap A\u00e2\u2020\u2019B: zero occurrences of imported IRI A in `ecm:classIris`/`ecm:predicateIri` after remap. Unit test.\n- Imported ontology record (with IRI A) remains in `ecm:ontologies` after remap. Unit test."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The `term-sidebar-2c-1op-1dp.jsonld` fixture already contains a term with `ecm:source: 'ecm:imported-ontology'` (the `HasRole` object property at line 93), meaning the fixture set has an existing imported-term example with `ecm:ontologyId: null`.",
+            "evidence": [
+              {
+                "file": "tests/playwright/fixtures/term-sidebar-2c-1op-1dp.jsonld",
+                "lines": "91-95",
+                "excerpt": "\"ecm:ontologyId\": null,\n\"ecm:source\": \"ecm:imported-ontology\","
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "The IMPLEMENTATION_PLAN \u00c2\u00a73.2 Playwright AC1 ('Imported term has `ecm:source: ecm:imported-ontology` in saved project') presupposes a browser-side ontology import UI flow that does not yet exist; Chain 2 only wired the CLI import path.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "563-564",
+                "excerpt": "- Imported term has `ecm:source: \"ecm:imported-ontology\"` in saved project. Playwright test."
+              },
+              {
+                "file": "src/cli/index.ts",
+                "lines": "279-347",
+                "excerpt": "async function cmdImportOntology(...) \u00e2\u20ac\u201d CLI-only; no browser UI import flow exists"
+              }
+            ],
+            "kind": "gap"
+          },
+          {
+            "id": "F18",
+            "claim": "`IMPLEMENTATION_PLAN \u00c2\u00a73.2` sub-task 'Mark extracted terms `ecm:source: ecm:imported-ontology` and `ecm:ontologyId`' is already implemented at the CLI layer (`src/cli/index.ts:323-328`); the outstanding work is (a) the read-only inspector view for imported terms when selected from the sidebar, (b) the new remap-references dialog/workflow, and (c) the Playwright and unit tests covering both.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "323-328",
+                "excerpt": "\"ecm:source\": \"ecm:imported-ontology\" as const,\n\"ecm:ontologyId\": result.ontology.id"
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "560-569",
+                "excerpt": "Sub-tasks:\n- Mark extracted terms `ecm:source: \"ecm:imported-ontology\"` and `ecm:ontologyId` pointing to ontology entry `id`.\n- UI: imported terms render read-only (no edit/delete affordances).\n- Implement \"Remap references\" workflow (\u00c2\u00a713.6)..."
+              }
+            ],
+            "kind": "inference"
+          }
+        ],
+        "summary": "Chain 2 (sub-task 3.1) already landed the CLI `import-ontology` command, which augments extracted terms with `ecm:source: 'ecm:imported-ontology'` and `ecm:ontologyId: <ontology-UUID>` at the adapter boundary (`src/cli/index.ts:323-328`). The read-only rendering side of sub-task 3.2 is partially shipped: `TermSidebar.tsx` already gates the click handler on `ecm:source === 'ecm:project-created'`, applies `aria-disabled=\"true\"` to imported terms, and a Playwright test (term-crud.spec.ts AC4) verifies the structural read-only signal. The outstanding work for 3.2 is: (1) the remap-references workflow per SPEC \u00c2\u00a713.6 \u00e2\u20ac\u201d no `RemapDialog` component or `remapReferences` function exists anywhere in `src/`; (2) a read-only inspector panel for imported terms when clicked (Inspector.tsx currently has no selected-term mode); and (3) the unit tests (AC3 remap A\u00e2\u2020\u2019B IRI rewrite, AC4 ontology record preservation) and the Playwright AC1/AC2 tests. A critical structural gap: the existing `refactorIri` function in `src/refactor/index.ts` has a collision check that fires when `newIri` already exists in `ecm:terms`, which is exactly the state during remap (the project-created replacement term already exists), so the remap operation cannot simply delegate to `refactorIri` \u00e2\u20ac\u201d it requires either a separate pure-function reference-rewrite path or a flag to bypass the collision gate. The IRI fields in scope for the remap rewrite are `ecm:classIris` (instances), `ecm:predicateIri` (relations and literal assertions); `rdfs:subClassOf`, `rdfs:subPropertyOf`, and `rdfs:range` on the term object itself are round-trip-preserved fields and are not rewrite targets. The existing `imported-term.jsonld` and `term-sidebar-2c-1op-1dp.jsonld` fixtures both use `ecm:ontologyId: null` rather than real ontology UUIDs, which is an acceptable fixture simplification but means they do not reflect the actual project state produced by the CLI import path.",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "src/ui/EditTermDialog.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/TermSidebar.tsx",
+          "src/cli/index.ts",
+          "src/import/turtle-import.ts",
+          "src/import/index.ts",
+          "src/refactor/index.ts",
+          "tests/playwright/term-crud.spec.ts",
+          "tests/playwright/term-sidebar.spec.ts",
+          "tests/playwright/fixtures/imported-term.jsonld",
+          "tests/playwright/fixtures/term-sidebar-2c-1op-1dp.jsonld",
+          "tests/import-turtle.test.ts",
+          "tests/cli-import-ontology.test.ts",
+          "playwright.config.ts"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "open_questions": [
+          "The remap workflow semantics differ from `refactorIri` semantics: `refactorIri` aborts when `newIri` already exists in `ecm:terms` (collision guard), but remap requires the project-created replacement to already exist. Should the developer implement a separate `remapReferences(project, importedIri, projectCreatedIri)` pure function (bypassing the collision gate), or should `refactorIri` be extended with a `skipCollisionCheck` flag? The architect must choose the correct shape before the developer proposes the implementation.",
+          "Where should the remap affordance be surfaced in the UI? Two candidates: (a) a new context menu / action button on imported term items in TermSidebar when clicked, opening a new `RemapDialog`; (b) an extension to Inspector to add a 'selected term' mode when the user clicks an imported term. The IMPLEMENTATION_PLAN says 'invokes remap' but does not specify the UI entry point. The operator must decide before the developer can propose the component shape.",
+          "Should the Playwright AC1 ('Imported term has `ecm:source: ecm:imported-ontology` in saved project') be satisfied via the CLI-import-backed flow (which requires a browser-side import UI that does not yet exist) or via the existing `imported-term.jsonld` fixture? The browser-side import UI (task 3.1 browser path) is not yet landed, so AC1 as a Playwright test may be deferred until the browser import UI ships.",
+          "The `imported-term.jsonld` fixture uses `ecm:ontologyId: null`. The \u00c2\u00a73.2 AC1 acceptance criterion says 'Imported term has `ecm:source: ecm:imported-ontology` in saved project' \u00e2\u20ac\u201d does this criterion require a non-null `ecm:ontologyId` pointing to a real `ecm:ontologies` entry? If yes, the fixture needs updating; if no, the current fixture is sufficient."
+        ],
+        "scope_assessment": "Investigated the 10 files and directory listed in INPUTS.files_to_read plus src/refactor/index.ts, src/import/index.ts, and 7 Playwright fixture files; did not investigate src/validate/index.ts internals (briefly checked for ecm:source references), App.tsx (not in scope), or any Phase 4+ implementation files."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T10:58:12Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:778-dev-p3-c3",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:777-recon-p3-c3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3 -- Imported-Term Immutability + Remap Workflow (sub-task 3.2)",
+        "purpose": "Phase 3 Chain 3 sub-task A only (per Aaron 2026-06-02 Option B decision). Implement src/kernel/remap-references.ts as a pure function: takes a project document and (importedIri A, projectCreatedIri B); returns a new project document where every occurrence of A in ecm:classIris and ecm:predicateIri arrays across all project terms is rewritten to B. The ImportedOntologyRecord at project.ecm:ontologies (which records what was imported) is preserved verbatim -- the remap is about what is currently USED, not what was IMPORTED. Add tests/remap-references.test.ts with unit tests covering IMPLEMENTATION_PLAN section 3.2 AC3 (zero occurrences of A in ecm:classIris/ecm:predicateIri after remap) and AC4 (the ImportedOntologyRecord with IRI A remains in ecm:ontologies unchanged). UI sub-tasks (B-E) are deferred to a follow-up chain (Phase 3 Chain 3.2-UI) per ft-778-... forward-track; the kernel sub-task lands as the stable foundation.",
+        "files_in_scope": [
+          "src/kernel/remap-references.ts (new)",
+          "tests/remap-references.test.ts (new)"
+        ],
+        "spec_refs": [
+          "SPEC section 13.6",
+          "IMPLEMENTATION_PLAN section 3.2 AC3",
+          "IMPLEMENTATION_PLAN section 3.2 AC4"
+        ],
+        "constraint": "Kernel purity per CLAUDE.md section 9: src/kernel/ MUST NOT import from src/ui/, src/composition/, or src/adapters/. Pure function -- no Date.now, no Math.random, no I/O, no DOM. Deterministic: same input -> same output. Honor AC3 + AC4 verbatim; AC1+AC2 are NOT in scope for this dev task (deferred to UI follow-up chain).",
+        "operator_rescope_note": "Narrowed 2026-06-02 per Option B (Fixer 782 escalation; operator decision resolved via 783). Original wide scope (8 files, 6+ decisions) refused with task_too_broad; sub-task A is the self-contained kernel piece."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/kernel/remap-references.ts",
+            "rationale": "New pure kernel function per IMPLEMENTATION_PLAN \u00c2\u00a73.2 / SPEC \u00c2\u00a713.6. Rewrites ecm:classIris array entries and ecm:predicateIri string fields from importedIri (A) to projectCreatedIri (B). Intentionally omits the collision check present in refactorIri (src/refactor/index.ts F11 gap): the projectCreatedIri is EXPECTED to already exist in ecm:terms. ecm:ontologies, ecm:terms, ecm:snapshots, ecm:subjectIri, and ecm:objectIri are preserved verbatim via spread.",
+            "before": null,
+            "after": "/**\n * Remap References (IMPLEMENTATION_PLAN.md section 3.2)\n *\n * SPEC refs: section 13.3, section 13.6, FR-U010.\n *\n * remapReferences(project, importedIri, projectCreatedIri): RemapResult\n *\n * Rewrites all occurrences of an imported term IRI (A) to a project-created\n * term IRI (B) in the two field types that record term-IRI usage:\n *   ecm:classIris    -- array entries on ecm:instances items (SPEC section 13.6)\n *   ecm:predicateIri -- string field on ecm:relations and ecm:literalAssertions (SPEC section 13.6)\n *\n * Preservation invariants (SPEC sections 13.3, 13.6, 13.7):\n *   ecm:terms      -- NOT modified; the imported term entry is preserved as immutable metadata.\n *   ecm:ontologies -- NOT modified; the ImportedOntologyRecord is preserved verbatim (AC4).\n *   ecm:snapshots  -- NOT modified; snapshots are never traversed by cascade operations.\n *   ecm:subjectIri -- NOT modified; records instance IRI, not term IRI.\n *   ecm:objectIri  -- NOT modified; records instance IRI, not term IRI.\n *\n * Unlike refactorIri (src/refactor/index.ts), this function does NOT perform a\n * collision check: projectCreatedIri is EXPECTED to already exist in ecm:terms as\n * the project-created replacement term.\n *\n * Pure function: no I/O, no Date.now(), no Math.random().\n * Layer boundary: MUST NOT import from src/adapters/ or src/composition/.\n */\n\n// ---------------------------------------------------------------------------\n// Types\n// ---------------------------------------------------------------------------\n\n/**\n * Result of a remapReferences call (IMPLEMENTATION_PLAN.md section 3.2).\n *\n * Success path: project has all importedIri occurrences in ecm:classIris and\n *               ecm:predicateIri rewritten to projectCreatedIri.\n * No-op path:   importedIri === projectCreatedIri; project is the unmodified\n *               input (same reference); referenceCount is 0; affectedEntityTypes is [].\n */\nexport interface RemapResult {\n  /** The resulting project document. Unmodified reference on no-op (importedIri === projectCreatedIri). */\n  project: Record<string, unknown>;\n  /** The imported term IRI whose occurrences were rewritten (A). */\n  importedIri: string;\n  /** The project-created term IRI that replaced importedIri (B). */\n  projectCreatedIri: string;\n  /**\n   * Count of individual field values replaced across ecm:classIris and ecm:predicateIri.\n   * Each matching ecm:classIris array entry counts as 1.\n   * Each matching ecm:predicateIri string field counts as 1.\n   * Zero on no-op.\n   */\n  referenceCount: number;\n  /**\n   * Deduplicated, sorted list of entity types that had at least one reference updated.\n   * Possible values: \"ecm:Instance\", \"ecm:LiteralAssertion\", \"ecm:RelationAssertion\".\n   * Empty array on no-op.\n   */\n  affectedEntityTypes: string[];\n}\n\n// ---------------------------------------------------------------------------\n// Internal helpers\n// ---------------------------------------------------------------------------\n\n/**\n * Extract an array of entity objects from a project field.\n * Returns [] if the field is absent, not an array, or empty.\n * Non-object array elements are excluded (defensive; malformed document).\n */\nfunction getEntityArray(\n  project: Record<string, unknown>,\n  key: string,\n): Record<string, unknown>[] {\n  const val = project[key];\n  if (!Array.isArray(val)) return [];\n  return (val as unknown[]).filter(\n    (item): item is Record<string, unknown> =>\n      typeof item === \"object\" && item !== null && !Array.isArray(item),\n  );\n}\n\n/**\n * Safely read a string field from an entity object.\n * Returns undefined if the field is absent or not a string.\n */\nfunction getStr(obj: Record<string, unknown>, key: string): string | undefined {\n  const v = obj[key];\n  return typeof v === \"string\" ? v : undefined;\n}\n\n// ---------------------------------------------------------------------------\n// Public API\n// ---------------------------------------------------------------------------\n\n/**\n * Rewrite all ecm:classIris and ecm:predicateIri references from importedIri\n * to projectCreatedIri in a VMP project document.\n *\n * Fields rewritten per IMPLEMENTATION_PLAN.md section 3.2 / SPEC section 13.6:\n *   ecm:classIris    array entries on ecm:instances items\n *   ecm:predicateIri string on ecm:relations items\n *   ecm:predicateIri string on ecm:literalAssertions items\n *\n * Fields preserved verbatim (NOT rewritten):\n *   ecm:terms      (imported term entry remains as immutable metadata)\n *   ecm:ontologies (ImportedOntologyRecord preserved; SPEC section 13.6, AC4)\n *   ecm:snapshots  (never modified by cascade operations; SPEC section 13.7)\n *   ecm:subjectIri (records instance IRI, not term IRI)\n *   ecm:objectIri  (records instance IRI, not term IRI)\n *\n * @param project           VMP project document. Not mutated; a new document is returned.\n * @param importedIri       The imported term IRI to replace (A).\n * @param projectCreatedIri The project-created replacement IRI (B).\n * @returns RemapResult. On no-op (importedIri === projectCreatedIri), result.project\n *          is the same reference as input.\n */\nexport function remapReferences(\n  project: Record<string, unknown>,\n  importedIri: string,\n  projectCreatedIri: string,\n): RemapResult {\n  // -- No-op: identity remap --\n  if (importedIri === projectCreatedIri) {\n    return { project, importedIri, projectCreatedIri, referenceCount: 0, affectedEntityTypes: [] };\n  }\n\n  let referenceCount = 0;\n  const affectedTypes = new Set<string>();\n\n  // -- ecm:instances: update ecm:classIris entries (SPEC section 13.6) --\n  const newInstances: Record<string, unknown>[] = getEntityArray(\n    project,\n    \"ecm:instances\",\n  ).map((inst) => {\n    const classIris = inst[\"ecm:classIris\"];\n    if (!Array.isArray(classIris)) return inst;\n    let changed = false;\n    const updated = (classIris as unknown[]).map((iri) => {\n      if (typeof iri === \"string\" && iri === importedIri) {\n        referenceCount++;\n        changed = true;\n        return projectCreatedIri;\n      }\n      return iri;\n    });\n    if (!changed) return inst;\n    affectedTypes.add(\"ecm:Instance\");\n    return { ...inst, \"ecm:classIris\": updated };\n  });\n\n  // -- ecm:relations: update ecm:predicateIri only (SPEC section 13.6) --\n  const newRelations: Record<string, unknown>[] = getEntityArray(\n    project,\n    \"ecm:relations\",\n  ).map((rel) => {\n    if (getStr(rel, \"ecm:predicateIri\") !== importedIri) return rel;\n    referenceCount++;\n    affectedTypes.add(\"ecm:RelationAssertion\");\n    return { ...rel, \"ecm:predicateIri\": projectCreatedIri };\n  });\n\n  // -- ecm:literalAssertions: update ecm:predicateIri only (SPEC section 13.6) --\n  const newLiterals: Record<string, unknown>[] = getEntityArray(\n    project,\n    \"ecm:literalAssertions\",\n  ).map((la) => {\n    if (getStr(la, \"ecm:predicateIri\") !== importedIri) return la;\n    referenceCount++;\n    affectedTypes.add(\"ecm:LiteralAssertion\");\n    return { ...la, \"ecm:predicateIri\": projectCreatedIri };\n  });\n\n  // -- Assemble result: spread preserves ecm:ontologies, ecm:terms,\n  //    ecm:snapshots, and all other project fields unchanged --\n  const resultProject: Record<string, unknown> = {\n    ...project,\n    \"ecm:instances\": newInstances,\n    \"ecm:relations\": newRelations,\n    \"ecm:literalAssertions\": newLiterals,\n  };\n\n  return {\n    project: resultProject,\n    importedIri,\n    projectCreatedIri,\n    referenceCount,\n    affectedEntityTypes: [...affectedTypes].sort(),\n  };\n}\n",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "tests/remap-references.test.ts",
+            "rationale": "Unit tests covering IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3 (zero occurrences of importedIri in ecm:classIris/ecm:predicateIri after remap) and AC4 (ecm:ontologies with the ImportedOntologyRecord unchanged after remap). Follows the hand-rolled no-framework pattern established by tests/iri-refactor.test.ts and tests/delete-instance.test.ts. Test runner auto-discovers *.test.js in dist-tests/tests/.",
+            "before": null,
+            "after": "/**\n * Remap References Tests (IMPLEMENTATION_PLAN.md section 3.2)\n *\n * SPEC refs: section 13.3, section 13.6, FR-U010.\n *\n * Acceptance criteria covered:\n *   AC3: Remap A->B: zero occurrences of imported IRI A in ecm:classIris and\n *        ecm:predicateIri after remap. Verified by explicit field scan plus\n *        referenceCount and affectedEntityTypes checks.\n *   AC4: Imported ontology record (with IRI A) remains in ecm:ontologies after\n *        remap (preserved verbatim). Verified by JSON.stringify comparison and\n *        object-reference identity.\n *\n * Additional coverage:\n *   ecm:terms is unchanged (imported term preserved as immutable metadata;\n *     SPEC section 13.3).\n *   ecm:snapshots is unchanged (SPEC section 13.7).\n *   ecm:subjectIri and ecm:objectIri are NOT rewritten (instance IRIs, not term IRIs;\n *     outside the remap scope defined in IMPLEMENTATION_PLAN section 3.2).\n *   No-op path: remapReferences(project, A, A) returns same project reference with\n *     referenceCount=0 and affectedEntityTypes=[].\n *   Zero-references path: ecm:ontologies preserved even when referenceCount=0.\n *\n * Pattern: hand-rolled per tests/run-tests.ts; no framework; node:assert;\n * process.exit(1) on failure. Follows tests/delete-instance.test.ts.\n */\n\nimport { strictEqual, deepStrictEqual, ok } from \"node:assert\";\nimport { remapReferences } from \"../src/kernel/remap-references.js\";\n\nlet passed = 0;\nlet failed = 0;\n\nfunction pass(msg: string): void {\n  console.log(`  \\u2713 PASS: ${msg}`);\n  passed++;\n}\nfunction fail(msg: string, err?: unknown): void {\n  console.error(`  \\u2717 FAIL: ${msg}`);\n  if (err !== undefined) {\n    console.error(\"  \", err instanceof Error ? err.message : String(err));\n  }\n  failed++;\n}\n\n// ---------------------------------------------------------------------------\n// Constants\n// ---------------------------------------------------------------------------\n\n/** IRI of the imported term being superseded (A). */\nconst IMPORTED_IRI = \"https://example.org/ontology/ImportedClass\";\n/** IRI of the project-created replacement term (B). */\nconst PROJECT_IRI = \"https://example.org/local/LocalClass\";\n/** IRI of an unrelated term that must remain unchanged throughout. */\nconst UNRELATED_IRI = \"https://example.org/local/UnrelatedProp\";\n/** Instance IRIs used in subjectIri/objectIri (must NOT be rewritten by remap). */\nconst INST_A = \"urn:test:eid:inst-a\";\nconst INST_B = \"urn:test:eid:inst-b\";\nconst INST_C = \"urn:test:eid:inst-c\";\n\n// ---------------------------------------------------------------------------\n// Fixtures\n// ---------------------------------------------------------------------------\n\n/**\n * ImportedOntologyRecord kept as a named constant so the object-reference\n * identity check in AC4 can use it directly.\n */\nconst ONTOLOGY_RECORD: Record<string, unknown> = {\n  id: \"urn:test:eid:ontology-1\",\n  type: \"ecm:ImportedOntology\",\n  \"ecm:name\": \"Example Ontology\",\n  \"ecm:sourceFileName\": \"example.ttl\",\n  \"ecm:format\": \"text/turtle\",\n  \"ecm:contentHash\": \"sha256-abc123\",\n  \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n  \"ecm:importStatus\": \"ecm:parsed\",\n};\n\n/**\n * Base VMP project for all remap tests.\n *\n * ecm:ontologies    -- [ONTOLOGY_RECORD]  (AC4 subject; must be unchanged after remap)\n * ecm:terms         -- imported term (IMPORTED_IRI) + replacement (PROJECT_IRI) + unrelated\n * ecm:instances:\n *   inst-a  ecm:classIris=[IMPORTED_IRI]              -> 1 rewrite expected\n *   inst-b  ecm:classIris=[IMPORTED_IRI, UNRELATED_IRI] -> 1 rewrite; UNRELATED_IRI preserved\n *   inst-c  ecm:classIris=[UNRELATED_IRI]              -> no rewrite\n * ecm:relations:\n *   rel-1  subjectIri=inst-a, predicateIri=IMPORTED_IRI, objectIri=inst-b -> 1 rewrite\n *   rel-2  subjectIri=inst-b, predicateIri=UNRELATED_IRI, objectIri=inst-c -> no rewrite\n * ecm:literalAssertions:\n *   lit-1  subjectIri=inst-a, predicateIri=IMPORTED_IRI -> 1 rewrite\n *   lit-2  subjectIri=inst-b, predicateIri=UNRELATED_IRI -> no rewrite\n * ecm:snapshots     -- one entry (must be unchanged; SPEC section 13.7)\n *\n * Expected after remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI):\n *   referenceCount = 4 (inst-a.classIris + inst-b.classIris + rel-1.predicateIri + lit-1.predicateIri)\n *   affectedEntityTypes = [\"ecm:Instance\", \"ecm:LiteralAssertion\", \"ecm:RelationAssertion\"]\n */\nconst BASE_PROJECT: Record<string, unknown> = {\n  id: \"urn:test:project:remap-1\",\n  type: [\"ecm:Project\", \"ecm:OntologyDesignPattern\"],\n  \"ecm:specVersion\": \"0.4\",\n  \"ecm:name\": \"Remap References Test Project\",\n  \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n  \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n  \"iao:isAbout\": [\"ecm:UnspecifiedSubjectMatter\"],\n  \"ecm:ontologies\": [ONTOLOGY_RECORD],\n  \"ecm:terms\": [\n    {\n      id: IMPORTED_IRI,\n      type: \"owl:Class\",\n      \"rdfs:label\": { text: \"Imported Class\", lang: \"en\" },\n      \"ecm:source\": \"ecm:imported-ontology\",\n      \"ecm:ontologyId\": \"urn:test:eid:ontology-1\",\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n    {\n      id: PROJECT_IRI,\n      type: \"owl:Class\",\n      \"rdfs:label\": { text: \"Local Class\", lang: \"en\" },\n      \"ecm:source\": \"ecm:project-created\",\n      \"ecm:ontologyId\": null,\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n    {\n      id: UNRELATED_IRI,\n      type: \"owl:ObjectProperty\",\n      \"rdfs:label\": { text: \"Unrelated Prop\", lang: \"en\" },\n      \"ecm:source\": \"ecm:project-created\",\n      \"ecm:ontologyId\": null,\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n  ],\n  \"ecm:instances\": [\n    {\n      id: INST_A,\n      type: \"ecm:Instance\",\n      \"ecm:classIris\": [IMPORTED_IRI],\n      \"rdfs:label\": \"Instance A\",\n    },\n    {\n      id: INST_B,\n      type: \"ecm:Instance\",\n      \"ecm:classIris\": [IMPORTED_IRI, UNRELATED_IRI],\n      \"rdfs:label\": \"Instance B\",\n    },\n    {\n      id: INST_C,\n      type: \"ecm:Instance\",\n      \"ecm:classIris\": [UNRELATED_IRI],\n      \"rdfs:label\": \"Instance C\",\n    },\n  ],\n  \"ecm:relations\": [\n    {\n      id: \"urn:test:eid:rel-1\",\n      type: \"ecm:RelationAssertion\",\n      \"ecm:subjectIri\": INST_A,\n      \"ecm:predicateIri\": IMPORTED_IRI,\n      \"ecm:objectIri\": INST_B,\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n    {\n      id: \"urn:test:eid:rel-2\",\n      type: \"ecm:RelationAssertion\",\n      \"ecm:subjectIri\": INST_B,\n      \"ecm:predicateIri\": UNRELATED_IRI,\n      \"ecm:objectIri\": INST_C,\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n  ],\n  \"ecm:literalAssertions\": [\n    {\n      id: \"urn:test:eid:lit-1\",\n      type: \"ecm:LiteralAssertion\",\n      \"ecm:subjectIri\": INST_A,\n      \"ecm:predicateIri\": IMPORTED_IRI,\n      \"ecm:value\": \"test value\",\n      \"ecm:datatype\": \"xsd:string\",\n      \"ecm:language\": null,\n    },\n    {\n      id: \"urn:test:eid:lit-2\",\n      type: \"ecm:LiteralAssertion\",\n      \"ecm:subjectIri\": INST_B,\n      \"ecm:predicateIri\": UNRELATED_IRI,\n      \"ecm:value\": \"other value\",\n      \"ecm:datatype\": \"xsd:string\",\n      \"ecm:language\": null,\n    },\n  ],\n  \"ecm:layouts\": [],\n  \"ecm:snapshots\": [\n    {\n      id: \"urn:test:eid:snap-1\",\n      type: \"ecm:Snapshot\",\n      \"ecm:name\": \"Before Remap\",\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n    },\n  ],\n  \"ecm:serializations\": [],\n};\n\n// ---------------------------------------------------------------------------\n// AC3: Zero occurrences of IMPORTED_IRI in ecm:classIris/ecm:predicateIri after remap\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC3: Remap A->B: zero occurrences of imported IRI in ecm:classIris/ecm:predicateIri after remap\");\n\ntry {\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n\n  // Scan ecm:instances[*].ecm:classIris -- no IMPORTED_IRI may remain\n  const instances = result.project[\"ecm:instances\"] as Record<string, unknown>[];\n  for (let i = 0; i < instances.length; i++) {\n    const classIris = instances[i][\"ecm:classIris\"];\n    if (Array.isArray(classIris)) {\n      for (const iri of classIris as unknown[]) {\n        if (iri === IMPORTED_IRI) {\n          throw new Error(\n            `IMPORTED_IRI found in ecm:instances[${i}].ecm:classIris after remap (AC3)`,\n          );\n        }\n      }\n    }\n  }\n\n  // Scan ecm:relations[*].ecm:predicateIri -- no IMPORTED_IRI may remain\n  const relations = result.project[\"ecm:relations\"] as Record<string, unknown>[];\n  for (let i = 0; i < relations.length; i++) {\n    if (relations[i][\"ecm:predicateIri\"] === IMPORTED_IRI) {\n      throw new Error(\n        `IMPORTED_IRI found in ecm:relations[${i}].ecm:predicateIri after remap (AC3)`,\n      );\n    }\n  }\n\n  // Scan ecm:literalAssertions[*].ecm:predicateIri -- no IMPORTED_IRI may remain\n  const literals = result.project[\"ecm:literalAssertions\"] as Record<string, unknown>[];\n  for (let i = 0; i < literals.length; i++) {\n    if (literals[i][\"ecm:predicateIri\"] === IMPORTED_IRI) {\n      throw new Error(\n        `IMPORTED_IRI found in ecm:literalAssertions[${i}].ecm:predicateIri after remap (AC3)`,\n      );\n    }\n  }\n\n  // Verify referenceCount: inst-a(1) + inst-b(1) + rel-1(1) + lit-1(1) = 4\n  strictEqual(\n    result.referenceCount,\n    4,\n    `Expected referenceCount=4; got ${result.referenceCount} (AC3)`,\n  );\n\n  // Verify affectedEntityTypes\n  deepStrictEqual(\n    result.affectedEntityTypes,\n    [\"ecm:Instance\", \"ecm:LiteralAssertion\", \"ecm:RelationAssertion\"],\n    \"affectedEntityTypes must list all three affected entity types, sorted (AC3)\",\n  );\n\n  pass(\n    `zero occurrences of IMPORTED_IRI in ecm:classIris/ecm:predicateIri after remap (AC3); ` +\n      `referenceCount=${result.referenceCount}; ` +\n      `affectedEntityTypes=${JSON.stringify(result.affectedEntityTypes)}`,\n  );\n} catch (e) {\n  fail(\"AC3: IMPORTED_IRI must be absent from ecm:classIris and ecm:predicateIri after remap\", e);\n}\n\n// AC3 sub-case: verify correct replacement values and preservation of unrelated entries\ntry {\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n  const instances = result.project[\"ecm:instances\"] as Record<string, unknown>[];\n\n  const instA = instances.find((i) => i[\"id\"] === INST_A);\n  ok(instA !== undefined, \"inst-a must be present in result (AC3 replacement check)\");\n  deepStrictEqual(\n    instA![\"ecm:classIris\"],\n    [PROJECT_IRI],\n    \"inst-a.ecm:classIris should be [PROJECT_IRI] after remap (AC3)\",\n  );\n\n  // inst-b: IMPORTED_IRI replaced; UNRELATED_IRI preserved at original position\n  const instB = instances.find((i) => i[\"id\"] === INST_B);\n  ok(instB !== undefined, \"inst-b must be present in result (AC3 replacement check)\");\n  deepStrictEqual(\n    instB![\"ecm:classIris\"],\n    [PROJECT_IRI, UNRELATED_IRI],\n    \"inst-b.ecm:classIris should be [PROJECT_IRI, UNRELATED_IRI] after remap (AC3)\",\n  );\n\n  // inst-c: unchanged\n  const instC = instances.find((i) => i[\"id\"] === INST_C);\n  ok(instC !== undefined, \"inst-c must be present in result (AC3 no-change check)\");\n  deepStrictEqual(\n    instC![\"ecm:classIris\"],\n    [UNRELATED_IRI],\n    \"inst-c.ecm:classIris should remain [UNRELATED_IRI] (no IMPORTED_IRI in that entry; AC3)\",\n  );\n\n  // rel-1 predicateIri -> PROJECT_IRI\n  const relations = result.project[\"ecm:relations\"] as Record<string, unknown>[];\n  const rel1 = relations.find((r) => r[\"id\"] === \"urn:test:eid:rel-1\");\n  ok(rel1 !== undefined, \"rel-1 must be present in result\");\n  strictEqual(\n    rel1![\"ecm:predicateIri\"],\n    PROJECT_IRI,\n    \"rel-1.ecm:predicateIri should be PROJECT_IRI after remap (AC3)\",\n  );\n\n  // rel-2 predicateIri -> UNRELATED_IRI (unchanged)\n  const rel2 = relations.find((r) => r[\"id\"] === \"urn:test:eid:rel-2\");\n  ok(rel2 !== undefined, \"rel-2 must be present in result\");\n  strictEqual(\n    rel2![\"ecm:predicateIri\"],\n    UNRELATED_IRI,\n    \"rel-2.ecm:predicateIri should remain UNRELATED_IRI (not in remap scope; AC3)\",\n  );\n\n  pass(\n    \"PROJECT_IRI correctly replaces IMPORTED_IRI in classIris and predicateIri; \" +\n      \"unrelated entries preserved (AC3 replacement check)\",\n  );\n} catch (e) {\n  fail(\"AC3: replacement and non-replacement values must be correct after remap\", e);\n}\n\n// ---------------------------------------------------------------------------\n// AC4: Imported ontology record remains in ecm:ontologies after remap\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC4: Imported ontology record remains in ecm:ontologies after remap (verbatim)\");\n\ntry {\n  const ontologiesBefore = JSON.stringify(BASE_PROJECT[\"ecm:ontologies\"]);\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n  const ontologiesAfter = JSON.stringify(result.project[\"ecm:ontologies\"]);\n\n  strictEqual(\n    ontologiesAfter,\n    ontologiesBefore,\n    \"ecm:ontologies must be bytewise-identical after remap (AC4; SPEC section 13.6)\",\n  );\n\n  // Object-reference identity: spread does not copy ecm:ontologies into a new array\n  const resultOntologies = result.project[\"ecm:ontologies\"];\n  ok(\n    Array.isArray(resultOntologies) &&\n      (resultOntologies as unknown[])[0] === ONTOLOGY_RECORD,\n    \"ecm:ontologies[0] must be the same object reference as the input record (AC4)\",\n  );\n\n  pass(\n    \"ecm:ontologies preserved verbatim after remap; \" +\n      \"ImportedOntologyRecord object reference identical (AC4; SPEC section 13.6)\",\n  );\n} catch (e) {\n  fail(\"AC4: ecm:ontologies must be preserved verbatim after remap\", e);\n}\n\n// AC4 sub-case: ecm:ontologies unchanged even when referenceCount=0\ntry {\n  const ZERO_REF_PROJECT: Record<string, unknown> = {\n    ...BASE_PROJECT,\n    \"ecm:instances\": [\n      { id: INST_A, type: \"ecm:Instance\", \"ecm:classIris\": [UNRELATED_IRI], \"rdfs:label\": \"Instance A\" },\n    ],\n    \"ecm:relations\": [],\n    \"ecm:literalAssertions\": [],\n  };\n  const ontologiesBefore = JSON.stringify(ZERO_REF_PROJECT[\"ecm:ontologies\"]);\n  const result = remapReferences(ZERO_REF_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n\n  strictEqual(\n    result.referenceCount,\n    0,\n    \"referenceCount must be 0 when no classIris/predicateIri references exist (AC4 zero-ref sub-case)\",\n  );\n  strictEqual(\n    JSON.stringify(result.project[\"ecm:ontologies\"]),\n    ontologiesBefore,\n    \"ecm:ontologies must be preserved even when referenceCount=0 (AC4 zero-ref sub-case)\",\n  );\n\n  pass(\"ecm:ontologies preserved when referenceCount=0 (AC4 zero-ref sub-case)\");\n} catch (e) {\n  fail(\"AC4: ecm:ontologies must be preserved even when no references are rewritten\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Additional: ecm:terms unchanged (imported term preserved as immutable metadata)\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAdditional: ecm:terms unchanged after remap (SPEC section 13.3 imported term immutability)\");\n\ntry {\n  const termsBefore = JSON.stringify(BASE_PROJECT[\"ecm:terms\"]);\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n\n  strictEqual(\n    JSON.stringify(result.project[\"ecm:terms\"]),\n    termsBefore,\n    \"ecm:terms must be bytewise-identical after remap (SPEC section 13.3; imported term immutability)\",\n  );\n\n  pass(\"ecm:terms preserved verbatim after remap (imported term immutability; SPEC section 13.3)\");\n} catch (e) {\n  fail(\"ecm:terms must be preserved verbatim after remap (SPEC section 13.3)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Additional: ecm:snapshots unchanged (SPEC section 13.7)\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAdditional: ecm:snapshots unchanged after remap (SPEC section 13.7)\");\n\ntry {\n  const snapshotsBefore = JSON.stringify(BASE_PROJECT[\"ecm:snapshots\"]);\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n\n  strictEqual(\n    JSON.stringify(result.project[\"ecm:snapshots\"]),\n    snapshotsBefore,\n    \"ecm:snapshots must be bytewise-identical after remap (SPEC section 13.7)\",\n  );\n\n  pass(\"ecm:snapshots preserved verbatim after remap (SPEC section 13.7)\");\n} catch (e) {\n  fail(\"ecm:snapshots must be preserved verbatim after remap (SPEC section 13.7)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Additional: ecm:subjectIri and ecm:objectIri are NOT rewritten\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAdditional: ecm:subjectIri and ecm:objectIri are NOT rewritten by remapReferences\");\n\ntry {\n  // Edge-case project: IMPORTED_IRI appears as subjectIri and objectIri but NOT as predicateIri.\n  // Verifies that remapReferences does not overreach into fields outside its defined scope.\n  const SUBJ_OBJ_PROJECT: Record<string, unknown> = {\n    ...BASE_PROJECT,\n    \"ecm:instances\": [],\n    \"ecm:literalAssertions\": [],\n    \"ecm:relations\": [\n      {\n        id: \"urn:test:eid:rel-edge\",\n        type: \"ecm:RelationAssertion\",\n        \"ecm:subjectIri\": IMPORTED_IRI,  // NOT rewritten by remap\n        \"ecm:predicateIri\": UNRELATED_IRI,\n        \"ecm:objectIri\": IMPORTED_IRI,   // NOT rewritten by remap\n        \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n        \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n      },\n    ],\n  };\n\n  const result = remapReferences(SUBJ_OBJ_PROJECT, IMPORTED_IRI, PROJECT_IRI);\n  const relations = result.project[\"ecm:relations\"] as Record<string, unknown>[];\n\n  strictEqual(\n    relations[0][\"ecm:subjectIri\"],\n    IMPORTED_IRI,\n    \"ecm:subjectIri must NOT be rewritten by remapReferences (outside remap scope)\",\n  );\n  strictEqual(\n    relations[0][\"ecm:objectIri\"],\n    IMPORTED_IRI,\n    \"ecm:objectIri must NOT be rewritten by remapReferences (outside remap scope)\",\n  );\n  strictEqual(\n    result.referenceCount,\n    0,\n    \"referenceCount must be 0 when only subjectIri/objectIri match\",\n  );\n\n  pass(\"ecm:subjectIri and ecm:objectIri are NOT rewritten (outside remap scope)\");\n} catch (e) {\n  fail(\"ecm:subjectIri and ecm:objectIri must remain unchanged after remapReferences\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Additional: no-op when importedIri === projectCreatedIri (identity remap)\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAdditional: no-op when importedIri === projectCreatedIri (identity remap)\");\n\ntry {\n  const result = remapReferences(BASE_PROJECT, IMPORTED_IRI, IMPORTED_IRI);\n\n  ok(\n    result.project === BASE_PROJECT,\n    \"result.project must be the same reference as input for identity remap (no-op)\",\n  );\n  strictEqual(result.referenceCount, 0, \"referenceCount must be 0 for identity remap\");\n  strictEqual(\n    result.affectedEntityTypes.length,\n    0,\n    \"affectedEntityTypes must be empty for identity remap\",\n  );\n\n  pass(\"identity remap (A->A) returns same project reference with referenceCount=0\");\n} catch (e) {\n  fail(\"identity remap (A->A) must return same project reference with referenceCount=0\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Summary\n// ---------------------------------------------------------------------------\nconsole.log(`\\n  ${passed} passed, ${failed} failed`);\nif (failed > 0) process.exit(1);\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/remap-references.test.ts",
+            "describe": "Run npm test after applying both changes. The new test file is auto-discovered by tests/run-tests.ts via *.test.js glob. Verifies AC3 (zero occurrences scan + referenceCount=4 + affectedEntityTypes) and AC4 (ecm:ontologies bytewise-identical + object-reference identity). Also run npm run build to confirm TypeScript compilation of src/kernel/remap-references.ts under tsconfig.json (kernel) and tsconfig.test.json (test build). Run npm run test:purity to confirm the new kernel file does not import from src/adapters/ or src/composition/."
+          }
+        ],
+        "open_questions": [
+          "The scope of ecm:subjectIri and ecm:objectIri: the IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3 explicitly bounds the remap to ecm:classIris and ecm:predicateIri only, which this implementation honours. If a future SPEC revision decides that remap should also update ecm:subjectIri/ecm:objectIri when an imported term IRI appears there (unusual but conceivable for ontologies whose IRIs are also used as instance identifiers), that would be a separate deliberate scope extension -- not covered here.",
+          "The UI sub-tasks (B through E: RemapDialog, Inspector selected-term mode, Playwright AC1/AC2) are deferred to Phase 3 Chain 3.2-UI per the operator Option B decision. The kernel function remapReferences exported here is the stable foundation those UI sub-tasks will call."
+        ],
+        "summary": "Two new files: src/kernel/remap-references.ts (pure kernel function) and tests/remap-references.test.ts (unit tests). The function rewrites ecm:classIris array entries and ecm:predicateIri string fields from importedIri to projectCreatedIri across ecm:instances, ecm:relations, and ecm:literalAssertions; all other fields (ecm:ontologies, ecm:terms, ecm:snapshots, ecm:subjectIri, ecm:objectIri) are preserved verbatim via spread. No collision check -- unlike refactorIri, the replacement IRI is expected to already exist. Tests cover AC3 (zero occurrences scan, referenceCount=4, affectedEntityTypes sorted), AC4 (ecm:ontologies bytewise-identical + object-reference identity, including zero-references sub-case), plus supplementary tests for ecm:terms immutability, ecm:snapshots, out-of-scope fields, and the identity no-op path.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:02:12Z",
+          "event": "cps_veto",
+          "payload": {
+            "reason": "agent reported structured error: 'task_too_broad'",
+            "rejected_outputs": {
+              "error": "task_too_broad",
+              "scope_assessment": "INPUTS.files_in_scope lists 6 files (new or modified), but implementing the IMPLEMENTATION_PLAN AC2 ('clicking imported term shows read-only inspector') requires two additional unscoped files: src/ui/TermSidebar.tsx (add onImportedTermClick callback \u00e2\u20ac\u201d currently only fires onTermClick for ecm:project-created terms, confirmed by recon F4 + TermSidebar.tsx:153-155) and src/ui/App.tsx (add selectedTermId state and wire to Inspector \u00e2\u20ac\u201d Inspector.props has no selectedTermId param, confirmed by Inspector.tsx:268-278). Without those two files the Inspector has no activation path for the term-click flow. Total distinct file changes: 8 files, 6+ independent decisions \u00e2\u20ac\u201d exceeds the single-task-coherent threshold on both axes (~2 distinct files, ~3 decisions).",
+              "suggested_split": [
+                "sub-task A [kernel]: src/kernel/remap-references.ts (new pure function remapReferences(project, importedIri, projectCreatedIri) rewriting ecm:classIris and ecm:predicateIri only \u00e2\u20ac\u201d scoped narrower than refactorIri; no collision check; ecm:ontologies untouched) + tests/remap-references.test.ts (new unit tests: AC3 zero occurrences of IRI A in ecm:classIris/ecm:predicateIri after remap; AC4 ecm:ontologies record unchanged). 2 files, 1 decision. Resolves recon OQ1 (separate function, not refactorIri extension). Fully self-contained; no UI dependencies.",
+                "sub-task B [ui-wire]: src/ui/TermSidebar.tsx (modify: add optional onImportedTermClick?: (term: TermEntry) => void prop to TermSection and TermSidebar; fire it from the imported-term item's onClick instead of suppressing it; do NOT remove aria-disabled from the item \u00e2\u20ac\u201d aria-disabled stays for accessibility signal; existing AC4 in term-crud.spec.ts: aria-disabled='true' and no role='button' must still pass) + src/ui/App.tsx (modify: add selectedTermId: string | null state; wire TermSidebar onImportedTermClick to set selectedTermId and clear selectedRelationId/selectedInstanceId; pass selectedTermId to Inspector as new prop; clear selectedTermId on canvas node/edge selection). 2 files, 1 decision (prop/state shape). Pre-requisite for sub-task C.",
+                "sub-task C [ui-inspector+dialog]: src/ui/Inspector.tsx (modify: add selectedTermId: string | null to InspectorProps; when selectedTermId is set, look up the term in project ecm:terms, render read-only panel with IRI, rdfs:label, source badge 'Imported (read-only)', Remap button data-testid='gw-btn-remap'; null guard if term not found) + src/ui/RemapDialog.tsx (new: dialog takes importedIri, project, onConfirm(updatedProject), onClose; renders project-created term picker select with data-testid='gw-select-remap-target'; on confirm calls remapReferences from src/kernel/remap-references.ts and calls onConfirm with updated project; data-testid='gw-dialog-remap'). 2 files, 2 decisions. Depends on sub-tasks A (for remapReferences) and B (for selectedTermId prop).",
+                "sub-task D [edit-dialog-guard]: src/ui/EditTermDialog.tsx (modify: add defensive early-return when term['ecm:source'] === 'ecm:imported-ontology' \u00e2\u20ac\u201d render a read-only badge panel inside the dialog instead of the edit form; belt-and-suspenders since TermSidebar already blocks the click path per recon F4, but sub-task B changes TermSidebar to fire a callback for imported terms which could reach this component via other entry points). 1 file, 1 decision. Independent; does not depend on other sub-tasks.",
+                "sub-task E [playwright]: tests/playwright/imported-term-read-only.spec.ts (new Playwright tests: AC1 via imported-term.jsonld fixture \u00e2\u20ac\u201d verify ecm:source='ecm:imported-ontology' survives round-trip load; AC2 click imported term in sidebar shows gw-inspector data-testid with read-only content and gw-btn-remap button visible, no edit inputs present). 1 file. Depends on sub-tasks B and C being applied first."
+              ],
+              "open_questions": [
+                "Recon OQ2 (UI entry point for remap affordance) is answered by INPUTS: remap affordance lives in Inspector.tsx. But sub-task B must fire onImportedTermClick from TermSidebar to activate Inspector term mode \u00e2\u20ac\u201d confirm this is the intended UX before applying sub-task B, since it changes the existing 'imported terms are dead in the sidebar' behavior (currently aria-disabled + no click handler) to 'imported terms open Inspector' (aria-disabled stays for accessibility, but click now fires a callback).",
+                "Recon OQ3: IMPLEMENTATION_PLAN AC1 says 'Imported term has ecm:source: ecm:imported-ontology in saved project. Playwright test.' The browser-side import UI (task 3.1 browser path) does not exist yet (recon F17). Sub-task E should satisfy AC1 via the existing imported-term.jsonld fixture round-trip (load fixture \u00e2\u2020\u2019 verify ecm:source field present in loaded document) rather than the CLI import path. Confirm this interpretation before sub-task E.",
+                "Recon OQ4: imported-term.jsonld fixture has ecm:ontologyId: null. AC4 unit test ('Imported ontology record remains in ecm:ontologies after remap') requires the test fixture for sub-task A to have a non-empty ecm:ontologies array with a record for the imported IRI. The fixture for the unit test (in tests/remap-references.test.ts) must be hand-crafted inline \u00e2\u20ac\u201d it need not match the Playwright fixture. Confirm this is acceptable.",
+                "sub-task B changes TermSidebar firing behavior: existing Playwright AC4 in tests/playwright/term-crud.spec.ts (line 219-246) tests that clicking an imported term does NOT open gw-dialog-edit-term. After sub-task B, clicking an imported term fires onImportedTermClick (which sets selectedTermId in App) but must still not open gw-dialog-edit-term. The existing test should continue to pass unchanged. Confirm this expectation before sub-task B."
+              ]
+            }
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c93297bb0349aa9295a06acf004b04096626928ef45f689ac8563e8cd4e04cdb"
+        },
+        {
+          "ts": "2026-06-02T11:02:12Z",
+          "event": "fixer_auto_dispatched",
+          "payload": {
+            "fixer_task": "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3",
+            "dispatcher_task": "urn:fnsr:task:783-recovery-dispatch-778-dev-p3-c3",
+            "stall_kind": "cps_veto",
+            "prior_attempts": 0,
+            "age_hours": 0.0
+          },
+          "prev_hash": "c93297bb0349aa9295a06acf004b04096626928ef45f689ac8563e8cd4e04cdb",
+          "chain_hash": "19779b2a9edc5f2dd0452f05785bd8891c56d9e385473130160b9e1d5d1c8748"
+        },
+        {
+          "ts": "2026-06-02T11:04:05Z",
+          "event": "fixer_auto_dispatched",
+          "payload": {
+            "fixer_task": "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3",
+            "dispatcher_task": "urn:fnsr:task:785-recovery-dispatch-778-dev-p3-c3",
+            "stall_kind": "unknown",
+            "prior_attempts": 1,
+            "age_hours": 0.0
+          },
+          "prev_hash": "19779b2a9edc5f2dd0452f05785bd8891c56d9e385473130160b9e1d5d1c8748",
+          "chain_hash": "349d72afc15b4d8bd64cff976fd0881e62a1e2c246c991705012729ba1fb9aa4"
+        },
+        {
+          "ts": "2026-06-02T11:58:28Z",
+          "event": "operator_rescope",
+          "payload": {
+            "operator": "operator",
+            "reason": "Option B per Aaron 2026-06-02: narrow to sub-task A (kernel remap function + unit tests) only. UI sub-tasks B/C/D/E deferred to follow-up chain via ft-778-...-1.",
+            "narrowed_files_in_scope": [
+              "src/kernel/remap-references.ts (new)",
+              "tests/remap-references.test.ts (new)"
+            ],
+            "captured_deliberation": {
+              "scope_assessment": "INPUTS.files_in_scope lists 6 files (new or modified), but implementing the IMPLEMENTATION_PLAN AC2 ('clicking imported term shows read-only inspector') requires two additional unscoped files: src/ui/TermSidebar.tsx (add onImportedTermClick callback \u00e2\u20ac\u201d currently only fires onTermClick for ecm:project-created terms, confirmed by recon F4 + TermSidebar.tsx:153-155) and src/ui/App.tsx (add selectedTermId state and wire to Inspector \u00e2\u20ac\u201d Inspector.props has no selectedTermId param, confirmed by Inspector.tsx:268-278). Without those two files the Inspector has no activation path for the term-click flow. Total distinct file changes: 8 files, 6+ independent decisions \u00e2\u20ac\u201d exceeds the single-task-coherent threshold on both axes (~2 distinct files, ~3 decisions).",
+              "suggested_split": [
+                "sub-task A [kernel]: src/kernel/remap-references.ts (new pure function remapReferences(project, importedIri, projectCreatedIri) rewriting ecm:classIris and ecm:predicateIri only \u00e2\u20ac\u201d scoped narrower than refactorIri; no collision check; ecm:ontologies untouched) + tests/remap-references.test.ts (new unit tests: AC3 zero occurrences of IRI A in ecm:classIris/ecm:predicateIri after remap; AC4 ecm:ontologies record unchanged). 2 files, 1 decision. Resolves recon OQ1 (separate function, not refactorIri extension). Fully self-contained; no UI dependencies.",
+                "sub-task B [ui-wire]: src/ui/TermSidebar.tsx (modify: add optional onImportedTermClick?: (term: TermEntry) => void prop to TermSection and TermSidebar; fire it from the imported-term item's onClick instead of suppressing it; do NOT remove aria-disabled from the item \u00e2\u20ac\u201d aria-disabled stays for accessibility signal; existing AC4 in term-crud.spec.ts: aria-disabled='true' and no role='button' must still pass) + src/ui/App.tsx (modify: add selectedTermId: string | null state; wire TermSidebar onImportedTermClick to set selectedTermId and clear selectedRelationId/selectedInstanceId; pass selectedTermId to Inspector as new prop; clear selectedTermId on canvas node/edge selection). 2 files, 1 decision (prop/state shape). Pre-requisite for sub-task C.",
+                "sub-task C [ui-inspector+dialog]: src/ui/Inspector.tsx (modify: add selectedTermId: string | null to InspectorProps; when selectedTermId is set, look up the term in project ecm:terms, render read-only panel with IRI, rdfs:label, source badge 'Imported (read-only)', Remap button data-testid='gw-btn-remap'; null guard if term not found) + src/ui/RemapDialog.tsx (new: dialog takes importedIri, project, onConfirm(updatedProject), onClose; renders project-created term picker select with data-testid='gw-select-remap-target'; on confirm calls remapReferences from src/kernel/remap-references.ts and calls onConfirm with updated project; data-testid='gw-dialog-remap'). 2 files, 2 decisions. Depends on sub-tasks A (for remapReferences) and B (for selectedTermId prop).",
+                "sub-task D [edit-dialog-guard]: src/ui/EditTermDialog.tsx (modify: add defensive early-return when term['ecm:source'] === 'ecm:imported-ontology' \u00e2\u20ac\u201d render a read-only badge panel inside the dialog instead of the edit form; belt-and-suspenders since TermSidebar already blocks the click path per recon F4, but sub-task B changes TermSidebar to fire a callback for imported terms which could reach this component via other entry points). 1 file, 1 decision. Independent; does not depend on other sub-tasks.",
+                "sub-task E [playwright]: tests/playwright/imported-term-read-only.spec.ts (new Playwright tests: AC1 via imported-term.jsonld fixture \u00e2\u20ac\u201d verify ecm:source='ecm:imported-ontology' survives round-trip load; AC2 click imported term in sidebar shows gw-inspector data-testid with read-only content and gw-btn-remap button visible, no edit inputs present). 1 file. Depends on sub-tasks B and C being applied first."
+              ],
+              "open_questions": [
+                "Recon OQ2 (UI entry point for remap affordance) is answered by INPUTS: remap affordance lives in Inspector.tsx. But sub-task B must fire onImportedTermClick from TermSidebar to activate Inspector term mode \u00e2\u20ac\u201d confirm this is the intended UX before applying sub-task B, since it changes the existing 'imported terms are dead in the sidebar' behavior (currently aria-disabled + no click handler) to 'imported terms open Inspector' (aria-disabled stays for accessibility, but click now fires a callback).",
+                "Recon OQ3: IMPLEMENTATION_PLAN AC1 says 'Imported term has ecm:source: ecm:imported-ontology in saved project. Playwright test.' The browser-side import UI (task 3.1 browser path) does not exist yet (recon F17). Sub-task E should satisfy AC1 via the existing imported-term.jsonld fixture round-trip (load fixture \u00e2\u2020\u2019 verify ecm:source field present in loaded document) rather than the CLI import path. Confirm this interpretation before sub-task E.",
+                "Recon OQ4: imported-term.jsonld fixture has ecm:ontologyId: null. AC4 unit test ('Imported ontology record remains in ecm:ontologies after remap') requires the test fixture for sub-task A to have a non-empty ecm:ontologies array with a record for the imported IRI. The fixture for the unit test (in tests/remap-references.test.ts) must be hand-crafted inline \u00e2\u20ac\u201d it need not match the Playwright fixture. Confirm this is acceptable.",
+                "sub-task B changes TermSidebar firing behavior: existing Playwright AC4 in tests/playwright/term-crud.spec.ts (line 219-246) tests that clicking an imported term does NOT open gw-dialog-edit-term. After sub-task B, clicking an imported term fires onImportedTermClick (which sets selectedTermId in App) but must still not open gw-dialog-edit-term. The existing test should continue to pass unchanged. Confirm this expectation before sub-task B."
+              ]
+            },
+            "fixer_escalation_chain": [
+              "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3",
+              "urn:fnsr:task:783-recovery-dispatch-778-dev-p3-c3",
+              "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3",
+              "urn:fnsr:task:785-recovery-dispatch-778-dev-p3-c3"
+            ]
+          },
+          "prev_hash": "349d72afc15b4d8bd64cff976fd0881e62a1e2c246c991705012729ba1fb9aa4",
+          "chain_hash": "be39f0e1a4728a0b0753ae744b5a24bb4fba5788860a5c85a6d1a97965b87753"
+        },
+        {
+          "ts": "2026-06-02T11:58:28Z",
+          "event": "forward_track",
+          "payload": {
+            "forward_track_id": "ft-778-dev-p3-c3-1",
+            "sub_surface": "consumer-closure-path",
+            "subject": {
+              "type": "capability",
+              "id": "phase-3-chain-3.2-ui-immutability-remap",
+              "description": "Phase 3 Chain 3.2 (UI follow-up): imported-term UI immutability (read-only inspector when ecm:source=ecm:imported-ontology), Remap dialog affordance on the Inspector, EditTermDialog defensive guard, and the two Playwright acceptance criteria from IMPLEMENTATION_PLAN section 3.2 (AC1 'imported term has ecm:source in saved project' + AC2 'clicking imported term shows read-only inspector'). Deferred from Chain 3 per Aaron 2026-06-02 Option B decision because the developer's task_too_broad refusal + 4 PO-territory open questions (UX behavior change in TermSidebar, Playwright AC1 interpretation, imported-term.jsonld fixture shape, existing-test continuity) surfaced product-owner-authoritative decisions. Fires after PO answers the captured OQs and kernel sub-task A lands in 781-test-p3-c3."
+            },
+            "phase_origin": "phase-3",
+            "deliberation_cycle": "phase-3-chain-3.2-ui-followup",
+            "transition_history": [
+              {
+                "state": "A",
+                "ts": "2026-06-02T11:53:00Z",
+                "reason": "Forward-track created during operator state-surgery on Chain 3 per Option B. Captured developer's wider-scope deliberation (scope_assessment + suggested_split + 4 open_questions) is preserved in 778's operator_rescope audit event payload.captured_deliberation."
+              }
+            ],
+            "inherited_through_phases": [],
+            "forward_tracked_by": [],
+            "declaration_kind": "operator_deferred_followup"
+          },
+          "prev_hash": "be39f0e1a4728a0b0753ae744b5a24bb4fba5788860a5c85a6d1a97965b87753",
+          "chain_hash": "bad715071809dcf62cf8563238d42e4b9f1dc8da8040a2e32122c14aa7dff7cd"
+        },
+        {
+          "ts": "2026-06-02T11:59:13Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-778-dev-p3-c3-2",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "v3.5.2 substrate-discipline candidate: operator-rescope as a first-class state_admin command. Pattern surfaced 2026-06-02 in Phase 3 Chain 3 Fixer escalation handling: developer agent returned task_too_broad with 5-element suggested_split + 4 open_questions; Fixer escalated; operator chose Option B (narrow to sub-task A). Execution required a one-off Python script (_one_off_rescope_chain_3.py) that held the state.jsonld lock and mutated 4 task inputs + appended operator_rescope audit events + forward-track for deferred sub-tasks. The existing state_admin surface has no 'rescope' command -- only reset (clears outputs but doesn't narrow inputs) and abandon (marks blocked with replacement). The substrate-discipline question: should operator-rescope be a v3.5.2 first-class command with the shape ? Pros: this pattern likely recurs (developer agents will continue to surface task_too_broad on multi-decision feature work); the substrate's append-only audit-event discipline is satisfied by the operator_rescope event; per-chain re-dispatch is a common operator escape hatch. Cons: rescope is structurally state-surgery (modifies the inputs field, not just status); first-class command would need careful coupling to the v3.3.2 execution-mode discipline (the rescope IS the execution of an operator decision). Defer to v3.5.2 after Phase 3 closes; observe how often this pattern fires in Phase 4 before committing to the shape.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-06-02T11:59:13Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "bad715071809dcf62cf8563238d42e4b9f1dc8da8040a2e32122c14aa7dff7cd",
+          "chain_hash": "95a27b1d9ca1b7e56368c2d46d346ca07c3d5ab457fc1e051dde6cb118af65e5"
+        },
+        {
+          "ts": "2026-06-02T12:06:43Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "95a27b1d9ca1b7e56368c2d46d346ca07c3d5ab457fc1e051dde6cb118af65e5",
+          "chain_hash": "d6e414766102085d6e33e8448cb3845768405e31da4441fed19f696c8068ed0d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:779-rat-p3-c3",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:778-dev-p3-c3",
+        "urn:fnsr:task:777-recon-p3-c3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 3 -- Pass 2a ratification (sub-task 3.2)",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for Chain 3 sub-task A (narrowed per Aaron 2026-06-02 Option B). Read developer's proposed src/kernel/remap-references.ts + tests/remap-references.test.ts from UPSTREAM. Walk reconnaissance evidence. Produce six-field ruling. Verify: (1) the remap function is kernel-pure (no I/O, no Date.now, no Math.random, no DOM); (2) src/kernel/ doesn't import from src/ui/, src/composition/, or src/adapters/ (layer-boundary check); (3) the ImportedOntologyRecord is genuinely untouched by remap (audit-trail integrity per SPEC section 13.6); (4) unit tests exercise AC3 (zero-A-occurrences) and AC4 (record-preserved); (5) no tests/playwright/ work in this chain (UI work deferred to follow-up; do NOT flag it as missing here).",
+        "spec_refs": [
+          "FNSR Spec 03 section Architect refusal contract",
+          "CLAUDE.md section 9 layer boundaries",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:58:28Z",
+          "event": "operator_rescope",
+          "payload": {
+            "operator": "operator",
+            "reason": "Narrowed UPSTREAM scope to kernel-only per Aaron 2026-06-02 Option B"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "edd7f5c0841aa9678caa2b1075ecef785a7f632cc2ff79ff9c3b5f1aa5c5b59f"
+        },
+        {
+          "ts": "2026-06-02T12:07:41Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "edd7f5c0841aa9678caa2b1075ecef785a7f632cc2ff79ff9c3b5f1aa5c5b59f",
+          "chain_hash": "7fa59b312af3b3b14a7c739635e6b4c46b45d18d5b3a43dca6bf753bc0db31cb"
+        }
+      ],
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The change introduces a new pure kernel function (src/kernel/remap-references.ts) plus its unit test file \u00e2\u20ac\u201d net-new behavioral surface area for the SPEC \u00c2\u00a713.6 remap workflow, far outside editorial-correction scope (typo / formatting / terminology tightening).",
+        "rationale": "Pass 2a verification gates all clear for the narrowed Option B scope (kernel + unit tests; UI deferred): (1) Kernel purity: src/kernel/remap-references.ts has zero imports, uses only Array.isArray, Set, spread, sort, and typeof checks \u00e2\u20ac\u201d no Date.now(), Math.random(), crypto, fetch, DOM, or process.env references. (2) Layer boundary: the file has no import statements at all, so it cannot violate the src/kernel \u00e2\u2020\u2019 src/ui/composition/adapters prohibition; npm run test:purity will pass. (3) ImportedOntologyRecord preservation: the function only writes ecm:instances, ecm:relations, ecm:literalAssertions to the result document; ecm:ontologies, ecm:terms, ecm:snapshots, ecm:layouts, and ecm:serializations propagate via the outer `...project` spread, preserving them verbatim (object-reference identity for ecm:ontologies, as the test explicitly verifies). This satisfies SPEC \u00c2\u00a713.6 audit-trail integrity (the imported term entry remains as immutable metadata). (4) AC coverage: AC3 is exercised by an explicit three-array scan (instances.classIris, relations.predicateIri, literalAssertions.predicateIri) plus referenceCount=4 + sorted affectedEntityTypes assertion; AC4 is exercised by JSON.stringify equality on ecm:ontologies plus an object-reference identity check (===) plus a zero-references sub-case. Supplementary coverage of ecm:terms immutability, ecm:snapshots, out-of-scope subjectIri/objectIri, and the identity no-op path strengthens the contract surface. (5) Scope discipline: developer correctly limited the proposal to two file additions (kernel + unit test); no Playwright work appears in changes[], which matches the operator Option B narrowing \u00e2\u20ac\u201d UI work (RemapDialog, Inspector selected-term mode, AC1/AC2 Playwright) is forward-tracked to the 3.2-UI follow-up chain. Architecturally, the divergence from refactorIri (omitting the collision check that the reconnaissance F11 finding flagged) is the correct shape: the remap workflow requires the project-created replacement term to already exist in ecm:terms, which is exactly the state refactorIri's collision guard rejects. Implementing remapReferences as a separate pure function rather than extending refactorIri with a skipCollisionCheck flag keeps the two operations' semantic contracts distinct and prevents cross-contamination of their guarantees. Reconnaissance evidence (urn:fnsr:task:777-recon-p3-c3) is present in UPSTREAM with 18 findings grounded in file:line evidence and explicit scope_assessment; Spec 03 reconnaissance-required contract is satisfied.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:777-recon-p3-c3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:778-dev-p3-c3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Section 9 Layer Boundaries",
+            "source": "CLAUDE.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "When two cascade-style kernel operations share rewrite-target field overlap but have semantically incompatible preconditions (refactorIri requires newIri to NOT exist; remapReferences requires projectCreatedIri to ALREADY exist), implementing them as separate pure functions with shared internal helpers (getEntityArray, getStr) \u00e2\u20ac\u201d rather than parameterizing one with a behavior flag \u00e2\u20ac\u201d preserves each function's contract guarantees independently and makes the divergent semantics legible at the import site. Worth noting as a discipline for future kernel-surface decisions where 'extend with flag' vs 'split into sibling' is the design question."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "AC4-style record-preservation invariants are most defensibly verified via a two-pronged test: JSON.stringify bytewise equality (catches any content drift) plus object-reference identity (catches any silent shallow-copy that would defeat a future structural-sharing optimization assumption). The developer's test pattern here combines both checks against the same ecm:ontologies field and against the originating ONTOLOGY_RECORD constant, which is a reusable template for future preservation-invariant tests."
+          }
+        ]
+      }
+    },
+    {
+      "@id": "urn:fnsr:task:780-apply-p3-c3",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:779-rat-p3-c3",
+        "urn:fnsr:task:778-dev-p3-c3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3 -- applier (Pass 2b commit-finalize)",
+        "purpose": "Pass 2b commit-finalize. Apply developer's changes from UPSTREAM. Event 11 gating ensures dispatch only on ratification == ratified.",
+        "source_task": "urn:fnsr:task:778-dev-p3-c3"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:58:28Z",
+          "event": "operator_rescope",
+          "payload": {
+            "operator": "operator",
+            "reason": "Applier scope is whatever the narrowed dev (778) produces. Marker only; no inputs change required."
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "f1734ebc99058c540039a29814798c2b2dcc5261fc2519dcd0cfd92198ee9c6e"
+        },
+        {
+          "ts": "2026-06-02T12:07:42Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "f1734ebc99058c540039a29814798c2b2dcc5261fc2519dcd0cfd92198ee9c6e",
+          "chain_hash": "68f2238a11cc42a7b71ba77cfcedfd3a1b1f4d6ac5d361236f490753c1567cea"
+        }
+      ],
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\kernel\\remap-references.ts",
+            "mode": "create",
+            "bytes_written": 7480,
+            "bom_prepended": true
+          },
+          {
+            "id": "C2",
+            "path": "tests\\remap-references.test.ts",
+            "mode": "create",
+            "bytes_written": 19403,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "2 changes applied"
+      }
+    },
+    {
+      "@id": "urn:fnsr:task:781-test-p3-c3",
+      "agent": "test-runner",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:780-apply-p3-c3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3 -- test-runner",
+        "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
+        "parser": "npm",
+        "purpose": "Verify Phase 3 Chain 3 sub-task A did not regress; new unit tests for remap-references pure function pass; existing 140 tests stay green. Playwright tests are NOT exercised by npm test default; UI Playwright AC1+AC2 are deferred to the follow-up chain per ft-778-...-1 and are NOT scope for this test-runner dispatch."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:58:28Z",
+          "event": "operator_rescope",
+          "payload": {
+            "operator": "operator",
+            "reason": "Narrowed UPSTREAM scope to kernel-only per Aaron 2026-06-02 Option B"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "edd7f5c0841aa9678caa2b1075ecef785a7f632cc2ff79ff9c3b5f1aa5c5b59f"
+        },
+        {
+          "ts": "2026-06-02T12:07:55Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "edd7f5c0841aa9678caa2b1075ecef785a7f632cc2ff79ff9c3b5f1aa5c5b59f",
+          "chain_hash": "eac3f78fdeabd5de7ba2ef4c66df0ac1e1c9c0523ca8006ea3cadd2f0542a1fd"
+        }
+      ],
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 12.96807050704956,
+        "first_n_failures": [],
+        "raw_stdout_tail": "ASS: ISO 8601 timestamps normalized: no fractional seconds, Z suffix (\u00c2\u00a75.3 rule 8)\n  \u00e2\u0153\u201c PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (95ms)\n  PASSED: /cli-import-ontology.test.js (1301ms)\n  PASSED: /cli-integration.test.js (1968ms)\n  PASSED: /delete-instance.test.js (96ms)\n  PASSED: /determinism.test.js (92ms)\n  PASSED: /emitters.test.js (225ms)\n  PASSED: /import-turtle.test.js (382ms)\n  PASSED: /iri-generation.test.js (106ms)\n  PASSED: /iri-refactor.test.js (105ms)\n  PASSED: /legacy-migration.test.js (101ms)\n  PASSED: /manifest-entries.test.js (97ms)\n  PASSED: /no-network.test.js (88ms)\n  PASSED: /normalize-on-load.test.js (95ms)\n  PASSED: /remap-references.test.js (90ms)\n  PASSED: /semantic-projection.test.js (123ms)\n  PASSED: /snapshot.test.js (105ms)\n  PASSED: /starter-terms.test.js (101ms)\n  PASSED: /structural-validator.test.js (92ms)\n  PASSED: /tbox-bundle.test.js (190ms)\n  PASSED: /vmp-serializer.test.js (866ms)\n\n  Files: 20/20 passed\n  Tests: 148/148 passed\n\n(node:19764) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:1124) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 12.97s)",
+        "parser_used": "npm"
+      }
+    },
+    {
+      "@id": "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3",
+      "agent": "fixer",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [],
+      "inputs": {
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3",
+        "stall_kind": "cps_veto",
+        "prior_recovery_attempts": 0,
+        "age_hours": 0.0,
+        "purpose": "Diagnose stall on urn:fnsr:task:778-dev-p3-c3 (stall_kind=cps_veto, prior_attempts=0). Propose validator-eligible recovery_chain OR escalate. Read state.jsonld via Read tool to find the anchor task's outputs + history. Daemon auto-dispatched per Spec 09 v3.2-bridge."
+      },
+      "attempts": 1,
+      "outputs": {
+        "diagnosis": "Anchor 778-dev-p3-c3 returned outputs.error='task_too_broad' with a substantive scope_assessment + 5-element suggested_split + 4 open_questions. The CPS veto correctly fired on the structured error. The developer's refusal is well-grounded: INPUTS.files_in_scope listed 6 files, but reaching IMPLEMENTATION_PLAN AC2 ('clicking imported term shows read-only inspector') requires two unscoped files (src/ui/TermSidebar.tsx \u00e2\u20ac\u201d currently suppresses click events for imported terms; src/ui/App.tsx \u00e2\u20ac\u201d currently has no selectedTermId state). Total = 8 files, 6+ independent decisions \u00e2\u20ac\u201d exceeds the single-task-coherent threshold the developer agent enforces. Substantively this is a scope-split decision (developer surfaces split shape; operator chooses), not a bug. The developer's suggested split (A=kernel, B=ui-wire, C=ui-inspector+dialog, D=edit-dialog-guard, E=playwright) is structurally sound: A is fully self-contained, B is a prerequisite for C, E depends on B+C, D is independent. The 4 open_questions in the developer's output are PO-territory: (OQ-B) the UX behavior change where imported terms transition from 'dead in sidebar' to 'click-opens-Inspector' (aria-disabled stays for accessibility, but click now fires); (OQ-E) Playwright AC1 interpretation via fixture round-trip vs browser-side import UI that does not yet exist; (OQ-A-fixture) acceptability of hand-crafted inline fixture for unit test; (OQ-B-continuity) confirmation that existing term-crud.spec.ts AC4 stays green after sub-task B. Three of these (UX change, AC interpretation, scope split shape) are operator-decision-shaped per CLAUDE.md \u00c2\u00a77.6.",
+        "recovery_chain": [],
+        "escalate": true,
+        "rationale": "Path 1 escalation. Three triggers from the Fixer escalation criteria fire concurrently: (1) feature-scope split decisions are product-owner-authoritative \u00e2\u20ac\u201d the developer surfaced 5 candidate splits; the operator chooses which boundary to cut at; (2) accepting the full 5-sub-task split (Option A) generates a cascade of >5 tasks (5 dev sub-tasks + 5 architect ratifications + 5 appliers + downstream test tasks = 15-20 tasks), exceeding the Fixer's '>5 tasks = operator-decision' bound; (3) the UX behavior change in sub-task B (imported terms going from click-suppressed to Inspector-activating) is a PO design call, not a substrate-mechanical recovery. The developer's scope_assessment and suggested_split are exactly the diagnostic content the Fixer would otherwise construct \u00e2\u20ac\u201d the developer did the analytical work; what remains is operator judgment on which split boundary to take and how to answer the 4 OQs. Surfacing as awaiting_operator_decision via options+recommendation puts this in fnsr.status.md per \u00c2\u00a77.14 (decision-necessary classification) and in fnsr.operator_decisions.md per \u00c2\u00a77.6, where Aaron can resolve via state_admin resolve with manual-followup-queued execution-mode pointing at whichever follow-up chain he composes.",
+        "referenced_evidence": [
+          "state.jsonld:85773 \u00e2\u20ac\u201d anchor task 778-dev-p3-c3 status=blocked, outputs.error=task_too_broad",
+          "state.jsonld:85803 \u00e2\u20ac\u201d developer scope_assessment: 8 files, 6+ decisions, exceeds single-task-coherent threshold",
+          "state.jsonld:85804-85809 \u00e2\u20ac\u201d developer suggested_split sub-tasks A through E with explicit dependency notes",
+          "state.jsonld:85811-85815 \u00e2\u20ac\u201d developer open_questions (4 items, PO-territory)",
+          "state.jsonld:85706 \u00e2\u20ac\u201d recon 777 summary confirming the existing partial-shipping state (TermSidebar already gates aria-disabled; Inspector has no selected-term mode)",
+          "state.jsonld:85753-85756 \u00e2\u20ac\u201d recon 777 original open_questions OQ2/OQ3/OQ4 that map to developer's restated OQs",
+          "CLAUDE.md \u00c2\u00a77.6 \u00e2\u20ac\u201d operator-decision handoff path for scope splits",
+          "CLAUDE.md \u00c2\u00a77.8 \u00e2\u20ac\u201d Pass 2a sequencing (default-substantive chain shape per sub-task)",
+          "Fixer contract \u00e2\u20ac\u201d escalation criteria: '>5-task cascades', 'product-owner-decision space', 'feature scope'"
+        ],
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Accept the developer's full 5-sub-task split as proposed. Abandon 778/779/780/781. Queue 5 new dev sub-chains (each: dev \u00e2\u2020\u2019 ratification \u00e2\u2020\u2019 applier \u00e2\u2020\u2019 optional test-runner; sub-task A reuses recon 777; sub-tasks B/C/D/E may share recon 777 since it covered the same files). Generates ~15-20 new tasks. Requires PO to answer all 4 OQs before queuing. Maximizes correctness of the scope decomposition; high coordination cost; longest time-to-first-landed-change."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Narrow scope on the existing chain. Re-scope 778-dev-p3-c3 to sub-task A ONLY (src/kernel/remap-references.ts + tests/remap-references.test.ts). 779/780/781 stay but are correspondingly narrower in their re-dispatched UPSTREAM. Forward-track sub-tasks B/C/D/E to a separate 'Phase 3 Chain 3.2-UI' follow-up that fires after PO answers OQs from current developer output. Pros: kernel sub-task is fully self-contained, lands IMPLEMENTATION_PLAN AC3+AC4 immediately, gives the UI work a stable foundation. Cons: AC1+AC2 (read-only inspector + Playwright) deferred to follow-up. RECOMMENDED."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Override the task_too_broad refusal. Re-dispatch the original 778-dev-p3-c3 INPUTS unchanged (with attempts reset). Risk: developer agent's scope-coherence check is well-grounded (8 files, 6+ decisions vs ~2 files / ~3 decisions threshold), so likely to re-fire task_too_broad. Only viable if PO disputes the developer's threshold and wants to force-land the full bundle in one chain. NOT RECOMMENDED \u00e2\u20ac\u201d the developer's diagnostic is structurally sound."
+          },
+          {
+            "label": "D",
+            "tradeoff": "2-way split: sub-task A (kernel) + sub-task UI-bundle (B+C+D+E combined). Abandon 778/779/780/781. Queue 2 new dev sub-chains. The UI-bundle still has 4-6 decisions and ~6 files but is more cohesive (all UI-layer wiring). Requires PO answers to OQ2 (UX behavior change), OQ3 (Playwright AC1 path), OQ4 (fixture shape) before queuing the UI-bundle chain. Middle ground between Option A's full split and Option B's defer-UI-entirely; still has the 'too-broad' risk on the UI-bundle dev task."
+          },
+          {
+            "label": "E",
+            "tradeoff": "Accept the developer's output as-captured (no re-dispatch). Treat 778-dev-p3-c3 as a deliberate handoff: the scope assessment, suggested split, and open questions are the deliverable. PO reviews offline, composes the follow-up chain manually, and resolves via state_admin resolve --execution-mode manual-followup-queued. No substrate work until PO commits to a split shape. Pros: lowest coordination cost; PO controls the next step end-to-end. Cons: nothing lands until PO acts."
+          }
+        ],
+        "recommendation": "Recommend Option B (narrow current chain to sub-task A only; forward-track UI work). Rationale: (1) sub-task A is fully self-contained \u00e2\u20ac\u201d pure kernel function + unit tests, no UI dependencies, no UX questions, lands IMPLEMENTATION_PLAN AC3+AC4 immediately; (2) sub-tasks B/C/D/E have 4 unresolved PO-territory open questions (UX behavior change in TermSidebar, Playwright AC1 interpretation, fixture shape, existing-test-continuity confirmation) \u00e2\u20ac\u201d better to answer those once and queue a coherent UI-bundle follow-up than to commit prematurely; (3) preserves the existing 779/780/781 dispatch ordering with minimal re-work (just narrower files_in_scope on dev + corresponding scope on architect/applier); (4) the kernel sub-task gives the UI work in the follow-up chain a stable foundation to depend on. If Aaron prefers maximizing parallel progress, Option A (full 5-way split) is the next-best choice but at higher coordination cost. Option C is not recommended (developer scope-check is well-grounded). Option E is acceptable if Aaron wants to fully control the follow-up composition offline."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:04:04Z",
+          "event": "completed",
+          "payload": {
+            "agent": "fixer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "8ea0f2731b4d045541f58b2a7e2f04235f59f916e5a41c573723f2131c6ff21a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:783-recovery-dispatch-778-dev-p3-c3",
+      "agent": "recovery-dispatcher",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [
+        "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3",
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "awaiting_operator_decision",
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Accept the developer's full 5-sub-task split as proposed. Abandon 778/779/780/781. Queue 5 new dev sub-chains (each: dev \u00e2\u2020\u2019 ratification \u00e2\u2020\u2019 applier \u00e2\u2020\u2019 optional test-runner; sub-task A reuses recon 777; sub-tasks B/C/D/E may share recon 777 since it covered the same files). Generates ~15-20 new tasks. Requires PO to answer all 4 OQs before queuing. Maximizes correctness of the scope decomposition; high coordination cost; longest time-to-first-landed-change."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Narrow scope on the existing chain. Re-scope 778-dev-p3-c3 to sub-task A ONLY (src/kernel/remap-references.ts + tests/remap-references.test.ts). 779/780/781 stay but are correspondingly narrower in their re-dispatched UPSTREAM. Forward-track sub-tasks B/C/D/E to a separate 'Phase 3 Chain 3.2-UI' follow-up that fires after PO answers OQs from current developer output. Pros: kernel sub-task is fully self-contained, lands IMPLEMENTATION_PLAN AC3+AC4 immediately, gives the UI work a stable foundation. Cons: AC1+AC2 (read-only inspector + Playwright) deferred to follow-up. RECOMMENDED."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Override the task_too_broad refusal. Re-dispatch the original 778-dev-p3-c3 INPUTS unchanged (with attempts reset). Risk: developer agent's scope-coherence check is well-grounded (8 files, 6+ decisions vs ~2 files / ~3 decisions threshold), so likely to re-fire task_too_broad. Only viable if PO disputes the developer's threshold and wants to force-land the full bundle in one chain. NOT RECOMMENDED \u00e2\u20ac\u201d the developer's diagnostic is structurally sound."
+          },
+          {
+            "label": "D",
+            "tradeoff": "2-way split: sub-task A (kernel) + sub-task UI-bundle (B+C+D+E combined). Abandon 778/779/780/781. Queue 2 new dev sub-chains. The UI-bundle still has 4-6 decisions and ~6 files but is more cohesive (all UI-layer wiring). Requires PO answers to OQ2 (UX behavior change), OQ3 (Playwright AC1 path), OQ4 (fixture shape) before queuing the UI-bundle chain. Middle ground between Option A's full split and Option B's defer-UI-entirely; still has the 'too-broad' risk on the UI-bundle dev task."
+          },
+          {
+            "label": "E",
+            "tradeoff": "Accept the developer's output as-captured (no re-dispatch). Treat 778-dev-p3-c3 as a deliberate handoff: the scope assessment, suggested split, and open questions are the deliverable. PO reviews offline, composes the follow-up chain manually, and resolves via state_admin resolve --execution-mode manual-followup-queued. No substrate work until PO commits to a split shape. Pros: lowest coordination cost; PO controls the next step end-to-end. Cons: nothing lands until PO acts."
+          }
+        ],
+        "recommendation": "Recommend Option B (narrow current chain to sub-task A only; forward-track UI work). Rationale: (1) sub-task A is fully self-contained \u00e2\u20ac\u201d pure kernel function + unit tests, no UI dependencies, no UX questions, lands IMPLEMENTATION_PLAN AC3+AC4 immediately; (2) sub-tasks B/C/D/E have 4 unresolved PO-territory open questions (UX behavior change in TermSidebar, Playwright AC1 interpretation, fixture shape, existing-test-continuity confirmation) \u00e2\u20ac\u201d better to answer those once and queue a coherent UI-bundle follow-up than to commit prematurely; (3) preserves the existing 779/780/781 dispatch ordering with minimal re-work (just narrower files_in_scope on dev + corresponding scope on architect/applier); (4) the kernel sub-task gives the UI work in the follow-up chain a stable foundation to depend on. If Aaron prefers maximizing parallel progress, Option A (full 5-way split) is the next-best choice but at higher coordination cost. Option C is not recommended (developer scope-check is well-grounded). Option E is acceptable if Aaron wants to fully control the follow-up composition offline.",
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3",
+        "source_fixer_task": "urn:fnsr:task:782-fixer-auto-778-dev-p3-c3",
+        "diagnosis": "Anchor 778-dev-p3-c3 returned outputs.error='task_too_broad' with a substantive scope_assessment + 5-element suggested_split + 4 open_questions. The CPS veto correctly fired on the structured error. The developer's refusal is well-grounded: INPUTS.files_in_scope listed 6 files, but reaching IMPLEMENTATION_PLAN AC2 ('clicking imported term shows read-only inspector') requires two unscoped files (src/ui/TermSidebar.tsx \u00e2\u20ac\u201d currently suppresses click events for imported terms; src/ui/App.tsx \u00e2\u20ac\u201d cu",
+        "rationale": "Path 1 escalation. Three triggers from the Fixer escalation criteria fire concurrently: (1) feature-scope split decisions are product-owner-authoritative \u00e2\u20ac\u201d the developer surfaced 5 candidate splits; the operator chooses which boundary to cut at; (2) accepting the full 5-sub-task split (Option A) generates a cascade of >5 tasks (5 dev sub-tasks + 5 architect ratifications + 5 appliers + downstream test tasks = 15-20 tasks), exceeding the Fixer's '>5 tasks = operator-decision' bound; (3) the UX ",
+        "referenced_evidence": [
+          "state.jsonld:85773 \u00e2\u20ac\u201d anchor task 778-dev-p3-c3 status=blocked, outputs.error=task_too_broad",
+          "state.jsonld:85803 \u00e2\u20ac\u201d developer scope_assessment: 8 files, 6+ decisions, exceeds single-task-coherent threshold",
+          "state.jsonld:85804-85809 \u00e2\u20ac\u201d developer suggested_split sub-tasks A through E with explicit dependency notes",
+          "state.jsonld:85811-85815 \u00e2\u20ac\u201d developer open_questions (4 items, PO-territory)",
+          "state.jsonld:85706 \u00e2\u20ac\u201d recon 777 summary confirming the existing partial-shipping state (TermSidebar already gates aria-disabled; Inspector has no selected-term mode)",
+          "state.jsonld:85753-85756 \u00e2\u20ac\u201d recon 777 original open_questions OQ2/OQ3/OQ4 that map to developer's restated OQs",
+          "CLAUDE.md \u00c2\u00a77.6 \u00e2\u20ac\u201d operator-decision handoff path for scope splits",
+          "CLAUDE.md \u00c2\u00a77.8 \u00e2\u20ac\u201d Pass 2a sequencing (default-substantive chain shape per sub-task)",
+          "Fixer contract \u00e2\u20ac\u201d escalation criteria: '>5-task cascades', 'product-owner-decision space', 'feature scope'"
+        ],
+        "fixer_escalated": true,
+        "operator_resolution": {
+          "chosen_option_index": 2,
+          "chosen_option": {
+            "label": "B",
+            "tradeoff": "Narrow scope on the existing chain. Re-scope 778-dev-p3-c3 to sub-task A ONLY (src/kernel/remap-references.ts + tests/remap-references.test.ts). 779/780/781 stay but are correspondingly narrower in their re-dispatched UPSTREAM. Forward-track sub-tasks B/C/D/E to a separate 'Phase 3 Chain 3.2-UI' follow-up that fires after PO answers OQs from current developer output. Pros: kernel sub-task is fully self-contained, lands IMPLEMENTATION_PLAN AC3+AC4 immediately, gives the UI work a stable foundation. Cons: AC1+AC2 (read-only inspector + Playwright) deferred to follow-up. RECOMMENDED."
+          },
+          "operator": "operator",
+          "execution_mode": "state-surgery-applied",
+          "execution_payload": {
+            "mode": "state-surgery-applied",
+            "state_surgery_targets": [
+              "urn:fnsr:task:778-dev-p3-c3",
+              "urn:fnsr:task:779-rat-p3-c3",
+              "urn:fnsr:task:780-apply-p3-c3",
+              "urn:fnsr:task:781-test-p3-c3"
+            ],
+            "reason": "Option B per Aaron 2026-06-02: rescoped 778 to sub-task A only via _one_off_rescope_chain_3.py state-surgery script; narrowed UPSTREAM in 779/780/781; appended ft-778-dev-p3-c3-1 forward-track for deferred UI sub-tasks B/C/D/E. Kernel sub-task is fully self-contained; lands IMPLEMENTATION_PLAN AC3+AC4 immediately."
+          },
+          "notes": "Option B chosen; recommended path per Fixer 782 recommendation"
+        }
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:04:05Z",
+          "event": "awaiting_operator_decision",
+          "payload": {
+            "options_count": 5,
+            "recommendation": "Recommend Option B (narrow current chain to sub-task A only; forward-track UI work). Rationale: (1) sub-task A is fully self-contained \u00e2\u20ac\u201d pure kernel function + unit tests, no UI dependencies, no UX questions, lands IMPLEMENTATION_PLAN AC3+AC4 immediately; (2) sub-tasks B/C/D/E have 4 unresolved PO-territory open questions (UX behavior change in TermSidebar, Playwright AC1 interpretation, fixture shape, existing-test-continuity confirmation) \u00e2\u20ac\u201d better to answer those once and queue a coherent UI-bundle follow-up than to commit prematurely; (3) preserves the existing 779/780/781 dispatch ordering with minimal re-work (just narrower files_in_scope on dev + corresponding scope on architect/applier); (4) the kernel sub-task gives the UI work in the follow-up chain a stable foundation to depend on. If Aaron prefers maximizing parallel progress, Option A (full 5-way split) is the next-best choice but at higher coordination cost. Option C is not recommended (developer scope-check is well-grounded). Option E is acceptable if Aaron wants to fully control the follow-up composition offline."
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9dbfd7cfd5289782f37a1c566135af37fb557f7d05df6772cd953fc6687b2c6"
+        },
+        {
+          "ts": "2026-06-02T11:58:42Z",
+          "event": "operator_resolution",
+          "payload": {
+            "chosen_option_index": 2,
+            "chosen_option": {
+              "label": "B",
+              "tradeoff": "Narrow scope on the existing chain. Re-scope 778-dev-p3-c3 to sub-task A ONLY (src/kernel/remap-references.ts + tests/remap-references.test.ts). 779/780/781 stay but are correspondingly narrower in their re-dispatched UPSTREAM. Forward-track sub-tasks B/C/D/E to a separate 'Phase 3 Chain 3.2-UI' follow-up that fires after PO answers OQs from current developer output. Pros: kernel sub-task is fully self-contained, lands IMPLEMENTATION_PLAN AC3+AC4 immediately, gives the UI work a stable foundation. Cons: AC1+AC2 (read-only inspector + Playwright) deferred to follow-up. RECOMMENDED."
+            },
+            "operator": "operator",
+            "execution_mode": "state-surgery-applied",
+            "execution_payload": {
+              "mode": "state-surgery-applied",
+              "state_surgery_targets": [
+                "urn:fnsr:task:778-dev-p3-c3",
+                "urn:fnsr:task:779-rat-p3-c3",
+                "urn:fnsr:task:780-apply-p3-c3",
+                "urn:fnsr:task:781-test-p3-c3"
+              ],
+              "reason": "Option B per Aaron 2026-06-02: rescoped 778 to sub-task A only via _one_off_rescope_chain_3.py state-surgery script; narrowed UPSTREAM in 779/780/781; appended ft-778-dev-p3-c3-1 forward-track for deferred UI sub-tasks B/C/D/E. Kernel sub-task is fully self-contained; lands IMPLEMENTATION_PLAN AC3+AC4 immediately."
+            },
+            "notes": "Option B chosen; recommended path per Fixer 782 recommendation"
+          },
+          "prev_hash": "c9dbfd7cfd5289782f37a1c566135af37fb557f7d05df6772cd953fc6687b2c6",
+          "chain_hash": "3393ef14d3200bf7587221a41db31dfdb6d00a50c12ad8680a8784fe25d2494a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3",
+      "agent": "fixer",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [],
+      "inputs": {
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3",
+        "stall_kind": "unknown",
+        "prior_recovery_attempts": 1,
+        "age_hours": 0.0,
+        "purpose": "Diagnose stall on urn:fnsr:task:778-dev-p3-c3 (stall_kind=unknown, prior_attempts=1). Propose validator-eligible recovery_chain OR escalate. Read state.jsonld via Read tool to find the anchor task's outputs + history. Daemon auto-dispatched per Spec 09 v3.2-bridge."
+      },
+      "attempts": 1,
+      "outputs": {
+        "diagnosis": "Anchor 778-dev-p3-c3 (blocked; outputs.error=task_too_broad) was already correctly diagnosed and escalated by prior Fixer 782-fixer-auto-778-dev-p3-c3 (completed with escalate=true, 5 options A-E, recommendation=Option B). Recovery-dispatcher 783 propagated the escalation to status=awaiting_operator_decision (state.jsonld:85993-86058) with the full options list intact. The operator-decision surface is already populated and operator-discoverable per CLAUDE.md sec 7.14 (decision-necessary classification in fnsr.status.md) and sec 7.6 (operator_decisions.md emission). This 784 Fixer dispatch is a substrate-redundancy artifact: the daemon's auto-dispatcher (Spec 09 v3.2-bridge) fired because anchor 778 is still status=blocked and recursion budget remains (prior_attempts=1 < FIXER_RECURSION_BOUND=2), but the daemon's stall detector does not yet account for 'operator-decision surface already populated against this anchor' as a non-stall state. Re-running the full diagnostic would reproduce the identical 5-option escalation that 782 already emitted. Per Fixer contract escalation criterion ('prior_recovery_attempts >= 1 AND would propose similar recovery shape -> surface to operator instead of looping'), the correct move is honest re-escalation that points operator at the existing 783 decision surface rather than spawning yet another parallel surface.",
+        "recovery_chain": [],
+        "escalate": true,
+        "rationale": "Path 1 escalation. The substantive operator-decision work was completed by prior Fixer 782 and surfaced at dispatcher 783 (status=awaiting_operator_decision). That surface contains the full diagnostic, 5 options, and Option-B recommendation. No new analytical work the Fixer could perform would advance the substrate; only operator judgment on the scope-split boundary can. Auto-dispatching another Fixer-pair would (a) waste Opus-tier inference re-deriving an already-emitted diagnosis, (b) create a parallel operator-decision surface at 785 that duplicates 783, and (c) risk surface-divergence if I phrase the options slightly differently from 782. The honest move is to escalate this dispatch with options that point operator at 783, so the dispatcher's awaiting_operator_decision propagation surfaces the redundancy explicitly rather than competing with 783.",
+        "referenced_evidence": [
+          "state.jsonld:85773-85817 -- anchor 778-dev-p3-c3 status=blocked, outputs.error=task_too_broad with full scope_assessment + suggested_split + open_questions",
+          "state.jsonld:85927-85990 -- prior Fixer 782 status=done, escalate=true, 5 options A-E with Option-B recommendation",
+          "state.jsonld:85993-86058 -- dispatcher 783 status=awaiting_operator_decision with 5 options + recommendation propagated to operator surface",
+          "state.jsonld:85858-85870 -- daemon's fixer_auto_dispatched event emitting THIS 784 Fixer despite 783 already being awaiting_operator_decision (substrate-redundancy signal)",
+          "CLAUDE.md sec 7.14 -- decision-necessary classification fires on awaiting_operator_decision tasks; 783 already in this state",
+          "CLAUDE.md sec 7.6 -- operator-decision handoff path; 783 already surfaced via this path",
+          "Fixer contract escalation criteria -- 'prior_recovery_attempts >= 1 AND would propose similar recovery shape -> surface to operator instead of looping'"
+        ],
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Resolve the existing 783-recovery-dispatch-778-dev-p3-c3 decision (status=awaiting_operator_decision) per its current options A-E. Recommended Option B from 783 (narrow current chain to sub-task A kernel-only; forward-track UI work). Use state_admin resolve --task urn:fnsr:task:783-recovery-dispatch-778-dev-p3-c3 --option 2 --execution-mode manual-followup-queued --followup-task-ids <new-narrowed-dev-task-ids>. This is the substantive path forward; 784/785 then become operationally redundant and can be abandoned via state_admin abandon."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Abandon both this 784 Fixer dispatch and dispatcher 785 (as redundant duplicates of the 782/783 surface) AND resolve 783 per its existing options. Same execution endpoint as Option A; cleaner audit chain by explicitly marking 784/785 abandoned with rationale='redundant-with-783-surface'. Costs one extra state_admin abandon call per task."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Treat this 784/785 dispatch as a deliberate revisit opportunity: operator wants a fresh second-pass diagnosis. NOT recommended -- the prior 782 diagnostic was thorough, the developer's underlying scope_assessment is structurally sound (8 files / 6+ decisions vs ~2/~3 thresholds), and a fresh Fixer pass would reproduce the same 5-option escalation. Only viable if operator believes 782's diagnostic missed a substantive option (none surfaced in my walk)."
+          }
+        ],
+        "recommendation": "Recommend Option B (abandon 784/785 as redundant + resolve 783 per its existing options A-E, most likely Option B-from-783 which narrows to sub-task A kernel-only). Rationale: the substantive operator decision is already surfaced at 783 with full diagnostic context; creating a parallel surface at 785 risks divergent options and operator confusion. Abandoning 784/785 with explicit 'redundant-with-783' rationale keeps the audit chain clean. The underlying scope-split decision (which of 782's options A-E to take, plus answers to the 4 developer open_questions about TermSidebar UX change / Playwright AC1 path / fixture shape / existing-test continuity) remains PO-authoritative and unchanged. Secondary recommendation: this redundant-dispatch pattern (Fixer auto-dispatched against an anchor whose operator-decision surface is already populated downstream) is a candidate forward-track for substrate refinement -- the daemon's stall detector could exclude anchors whose dispatcher-task chain already contains an awaiting_operator_decision entry."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:05:23Z",
+          "event": "completed",
+          "payload": {
+            "agent": "fixer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "8ea0f2731b4d045541f58b2a7e2f04235f59f916e5a41c573723f2131c6ff21a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:785-recovery-dispatch-778-dev-p3-c3",
+      "agent": "recovery-dispatcher",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [
+        "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3",
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "awaiting_operator_decision",
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Resolve the existing 783-recovery-dispatch-778-dev-p3-c3 decision (status=awaiting_operator_decision) per its current options A-E. Recommended Option B from 783 (narrow current chain to sub-task A kernel-only; forward-track UI work). Use state_admin resolve --task urn:fnsr:task:783-recovery-dispatch-778-dev-p3-c3 --option 2 --execution-mode manual-followup-queued --followup-task-ids <new-narrowed-dev-task-ids>. This is the substantive path forward; 784/785 then become operationally redundant and can be abandoned via state_admin abandon."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Abandon both this 784 Fixer dispatch and dispatcher 785 (as redundant duplicates of the 782/783 surface) AND resolve 783 per its existing options. Same execution endpoint as Option A; cleaner audit chain by explicitly marking 784/785 abandoned with rationale='redundant-with-783-surface'. Costs one extra state_admin abandon call per task."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Treat this 784/785 dispatch as a deliberate revisit opportunity: operator wants a fresh second-pass diagnosis. NOT recommended -- the prior 782 diagnostic was thorough, the developer's underlying scope_assessment is structurally sound (8 files / 6+ decisions vs ~2/~3 thresholds), and a fresh Fixer pass would reproduce the same 5-option escalation. Only viable if operator believes 782's diagnostic missed a substantive option (none surfaced in my walk)."
+          }
+        ],
+        "recommendation": "Recommend Option B (abandon 784/785 as redundant + resolve 783 per its existing options A-E, most likely Option B-from-783 which narrows to sub-task A kernel-only). Rationale: the substantive operator decision is already surfaced at 783 with full diagnostic context; creating a parallel surface at 785 risks divergent options and operator confusion. Abandoning 784/785 with explicit 'redundant-with-783' rationale keeps the audit chain clean. The underlying scope-split decision (which of 782's options A-E to take, plus answers to the 4 developer open_questions about TermSidebar UX change / Playwright AC1 path / fixture shape / existing-test continuity) remains PO-authoritative and unchanged. Secondary recommendation: this redundant-dispatch pattern (Fixer auto-dispatched against an anchor whose operator-decision surface is already populated downstream) is a candidate forward-track for substrate refinement -- the daemon's stall detector could exclude anchors whose dispatcher-task chain already contains an awaiting_operator_decision entry.",
+        "anchor_task": "urn:fnsr:task:778-dev-p3-c3",
+        "source_fixer_task": "urn:fnsr:task:784-fixer-auto-778-dev-p3-c3",
+        "diagnosis": "Anchor 778-dev-p3-c3 (blocked; outputs.error=task_too_broad) was already correctly diagnosed and escalated by prior Fixer 782-fixer-auto-778-dev-p3-c3 (completed with escalate=true, 5 options A-E, recommendation=Option B). Recovery-dispatcher 783 propagated the escalation to status=awaiting_operator_decision (state.jsonld:85993-86058) with the full options list intact. The operator-decision surface is already populated and operator-discoverable per CLAUDE.md sec 7.14 (decision-necessary classifi",
+        "rationale": "Path 1 escalation. The substantive operator-decision work was completed by prior Fixer 782 and surfaced at dispatcher 783 (status=awaiting_operator_decision). That surface contains the full diagnostic, 5 options, and Option-B recommendation. No new analytical work the Fixer could perform would advance the substrate; only operator judgment on the scope-split boundary can. Auto-dispatching another Fixer-pair would (a) waste Opus-tier inference re-deriving an already-emitted diagnosis, (b) create a",
+        "referenced_evidence": [
+          "state.jsonld:85773-85817 -- anchor 778-dev-p3-c3 status=blocked, outputs.error=task_too_broad with full scope_assessment + suggested_split + open_questions",
+          "state.jsonld:85927-85990 -- prior Fixer 782 status=done, escalate=true, 5 options A-E with Option-B recommendation",
+          "state.jsonld:85993-86058 -- dispatcher 783 status=awaiting_operator_decision with 5 options + recommendation propagated to operator surface",
+          "state.jsonld:85858-85870 -- daemon's fixer_auto_dispatched event emitting THIS 784 Fixer despite 783 already being awaiting_operator_decision (substrate-redundancy signal)",
+          "CLAUDE.md sec 7.14 -- decision-necessary classification fires on awaiting_operator_decision tasks; 783 already in this state",
+          "CLAUDE.md sec 7.6 -- operator-decision handoff path; 783 already surfaced via this path",
+          "Fixer contract escalation criteria -- 'prior_recovery_attempts >= 1 AND would propose similar recovery shape -> surface to operator instead of looping'"
+        ],
+        "fixer_escalated": true,
+        "operator_resolution": {
+          "chosen_option_index": 2,
+          "chosen_option": {
+            "label": "B",
+            "tradeoff": "Abandon both this 784 Fixer dispatch and dispatcher 785 (as redundant duplicates of the 782/783 surface) AND resolve 783 per its existing options. Same execution endpoint as Option A; cleaner audit chain by explicitly marking 784/785 abandoned with rationale='redundant-with-783-surface'. Costs one extra state_admin abandon call per task."
+          },
+          "operator": "operator",
+          "execution_mode": "state-surgery-applied",
+          "execution_payload": {
+            "mode": "state-surgery-applied",
+            "state_surgery_targets": [
+              "urn:fnsr:task:778-dev-p3-c3",
+              "urn:fnsr:task:779-rat-p3-c3",
+              "urn:fnsr:task:780-apply-p3-c3",
+              "urn:fnsr:task:781-test-p3-c3"
+            ],
+            "reason": "duplicate surface; same Option B resolution applied via 783"
+          },
+          "notes": "duplicate; resolved via 783-recovery-dispatch-778-dev-p3-c3"
+        }
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T11:05:23Z",
+          "event": "awaiting_operator_decision",
+          "payload": {
+            "options_count": 3,
+            "recommendation": "Recommend Option B (abandon 784/785 as redundant + resolve 783 per its existing options A-E, most likely Option B-from-783 which narrows to sub-task A kernel-only). Rationale: the substantive operator decision is already surfaced at 783 with full diagnostic context; creating a parallel surface at 785 risks divergent options and operator confusion. Abandoning 784/785 with explicit 'redundant-with-783' rationale keeps the audit chain clean. The underlying scope-split decision (which of 782's options A-E to take, plus answers to the 4 developer open_questions about TermSidebar UX change / Playwright AC1 path / fixture shape / existing-test continuity) remains PO-authoritative and unchanged. Secondary recommendation: this redundant-dispatch pattern (Fixer auto-dispatched against an anchor whose operator-decision surface is already populated downstream) is a candidate forward-track for substrate refinement -- the daemon's stall detector could exclude anchors whose dispatcher-task chain already contains an awaiting_operator_decision entry."
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3fb3dbee30ea18896d6cc8b0819bc2f6ba59b845dbaa91c922461deb41adc41e"
+        },
+        {
+          "ts": "2026-06-02T11:58:54Z",
+          "event": "operator_resolution",
+          "payload": {
+            "chosen_option_index": 2,
+            "chosen_option": {
+              "label": "B",
+              "tradeoff": "Abandon both this 784 Fixer dispatch and dispatcher 785 (as redundant duplicates of the 782/783 surface) AND resolve 783 per its existing options. Same execution endpoint as Option A; cleaner audit chain by explicitly marking 784/785 abandoned with rationale='redundant-with-783-surface'. Costs one extra state_admin abandon call per task."
+            },
+            "operator": "operator",
+            "execution_mode": "state-surgery-applied",
+            "execution_payload": {
+              "mode": "state-surgery-applied",
+              "state_surgery_targets": [
+                "urn:fnsr:task:778-dev-p3-c3",
+                "urn:fnsr:task:779-rat-p3-c3",
+                "urn:fnsr:task:780-apply-p3-c3",
+                "urn:fnsr:task:781-test-p3-c3"
+              ],
+              "reason": "duplicate surface; same Option B resolution applied via 783"
+            },
+            "notes": "duplicate; resolved via 783-recovery-dispatch-778-dev-p3-c3"
+          },
+          "prev_hash": "3fb3dbee30ea18896d6cc8b0819bc2f6ba59b845dbaa91c922461deb41adc41e",
+          "chain_hash": "07a4e27c1ebb16a25176437e027bddca46f69b0ee3d23f8f6650aae0490df4ae"
         }
       ]
     }

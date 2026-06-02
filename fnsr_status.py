@@ -51,6 +51,7 @@ STATE_DECISION_NECESSARY = "decision-necessary"
 STATE_READY_FOR_REVIEW = "ready-for-review"
 STATE_READY_FOR_RELEASE = "ready-for-release"
 STATE_WORKING = "working"
+STATE_CHAIN_COMPLETE = "chain-complete"
 STATE_IDLE = "idle"
 
 CLASSIFICATION_STATES = (
@@ -58,6 +59,7 @@ CLASSIFICATION_STATES = (
     STATE_READY_FOR_REVIEW,
     STATE_READY_FOR_RELEASE,
     STATE_WORKING,
+    STATE_CHAIN_COMPLETE,
     STATE_IDLE,
 )
 
@@ -229,6 +231,43 @@ def classify(state: dict[str, Any]) -> dict[str, Any]:
             "transition_ts": evt.get("ts"),
         }
 
+    # v3.5.2: chain-complete state. Phase is in implementing (or planned)
+    # AND no work is in flight AND a done task exists with a history
+    # timestamp newer than the phase's most recent transition. The
+    # operationally-meaningful signal: "a chain landed AFTER the latest
+    # PLO transition for this phase" — i.e., something just finished
+    # and the operator hasn't yet emitted the next state. Surfaces an
+    # actionable next-command (commit + phase demo-released) instead
+    # of falling through to the generic idle message.
+    impl_phases = {
+        p: v for p, v in phase_states.items()
+        if v.get("state") in ("implementing", "planned")
+    }
+    if impl_phases:
+        phase_id, plo_evt = max(
+            impl_phases.items(), key=lambda x: x[1].get("ts", "")
+        )
+        plo_ts = plo_evt.get("ts", "")
+        latest_done_task: Optional[str] = None
+        latest_done_ts = ""
+        for t in state.get("tasks", []) or []:
+            if t.get("status") != "done":
+                continue
+            for h in t.get("history", []) or []:
+                ts = h.get("ts", "")
+                if ts > plo_ts and ts > latest_done_ts:
+                    latest_done_ts = ts
+                    latest_done_task = t.get("@id")
+        if latest_done_task:
+            return {
+                "state": STATE_CHAIN_COMPLETE,
+                "phase_id": phase_id,
+                "phase_state": plo_evt.get("state"),
+                "latest_done_task": latest_done_task,
+                "latest_done_ts": latest_done_ts,
+                "phase_transition_ts": plo_ts,
+            }
+
     return {"state": STATE_IDLE}
 
 
@@ -333,6 +372,58 @@ def render_markdown(
             f"**{rd} dispatchable** task(s) in the ready queue. "
             "No operator action required; the daemon will continue "
             "autonomously.",
+            "",
+        ]
+
+    elif state == STATE_CHAIN_COMPLETE:
+        phase = classification.get("phase_id") or "?"
+        plo = classification.get("phase_state") or "?"
+        task_id = classification.get("latest_done_task") or ""
+        ts = classification.get("latest_done_ts") or ""
+        body = [
+            "## State: Chain Complete (Ready for Review-Emission)",
+            "",
+            f"**A chain just completed on `{phase}`** (PLO state: "
+            f"`{plo}`). Last task done: `{task_id}` at {ts}. "
+            "No further work is queued and no decisions are pending. "
+            "Next step is operator-authoritative: commit the disk "
+            "state, then surface the chain for PO review via "
+            "`phase demo-released`.",
+            "",
+            "### Suggested next actions",
+            "",
+            "1. **Review and commit disk state:**",
+            "",
+            "   ```bash",
+            "   git status",
+            "   git add <changed-files>",
+            "   git commit -m \"Phase N Chain M: <subject>\"",
+            "   ```",
+            "",
+            "2. **Emit `demo-released` to trigger v3.5.0 demo-doc "
+            "auto-generation:**",
+            "",
+            "   ```bash",
+            f"   python state_admin.py phase demo-released {phase} \\",
+            f"       --anchor-task {task_id} \\",
+            "       --build-ref <commit-sha-from-step-1> \\",
+            "       --regenerate-demo-doc \\",
+            "       --demo-doc-descriptor <short-name>",
+            "   ```",
+            "",
+            "After step 2, the substrate auto-queues the 4-task "
+            "demo-doc chain (`reconnaissance` → `demo-doc-author` → "
+            "`architect` → `applier`). When the applier lands the new "
+            "doc, this file reclassifies to `ready-for-review` with "
+            "the demo doc linked verbatim.",
+            "",
+            "If the chain is NOT yet ready for review (e.g., scope "
+            "rework needed, or this is one of several chains in the "
+            "phase), use:",
+            "",
+            "- `state_admin append-tasks` to queue the next chain in "
+            "the phase, or",
+            "- `state_admin reset <task-id>` to retry a specific task",
             "",
         ]
 
