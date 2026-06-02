@@ -24,6 +24,11 @@ import { Parser, Quad } from "n3";
 import { createHash } from "node:crypto";
 import { generateIri } from "../iri/index.js";
 
+// Node-side imports node:crypto directly; browser builds use the Vite
+// resolve.alias (vite.config.ts) to redirect to src/_browser-shims/
+// node-crypto.ts. Browser callers inject digestHexFn so this code
+// never runs at runtime in browser. Hotfix per 2026-06-02 Pages fail.
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------

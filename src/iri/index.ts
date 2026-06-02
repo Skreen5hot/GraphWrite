@@ -17,6 +17,12 @@
  * Layer boundary: MUST NOT import from src/adapters/ or src/composition/.
  */
 
+// Node-side imports node:crypto directly. Browser builds use a Vite
+// resolve.alias (vite.config.ts) to redirect node:crypto to
+// src/_browser-shims/node-crypto.ts which throws on call (never
+// invoked at runtime because browser callers inject uuidFn /
+// digestHexFn). The shim satisfies rollup's static-export resolution.
+// Hotfix per Pages deploy failure on 2026-06-02.
 import { createHash, randomUUID as nodeRandomUUID } from "node:crypto";
 
 // ---------------------------------------------------------------------------
@@ -114,7 +120,8 @@ function generateUuidV4(): string {
  * SPEC section 9.3 does not specify the UUIDv5 namespace UUID. See
  * open_questions in the task 1.6 developer chain for the ratification track.
  */
-const UUID_V5_NAMESPACE = Buffer.from([
+// Uint8Array (browser + Node compatible; Buffer extends Uint8Array in Node)
+const UUID_V5_NAMESPACE = new Uint8Array([
   0x6b, 0xa7, 0xb8, 0x11,
   0x9d, 0xad, 0x11, 0xd1,
   0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8,
@@ -129,9 +136,13 @@ const UUID_V5_NAMESPACE = Buffer.from([
  *               `${seed}|${entityContext}`.
  */
 function generateUuidV5(name: string): string {
+  // TextEncoder is browser + Node compatible (Node >= 11). Avoids
+  // Buffer.from(name, "utf8") which requires the Node Buffer global
+  // (not guaranteed in browser builds with Vite externalization).
+  const nameBytes = new TextEncoder().encode(name);
   const hash = createHash("sha1")
     .update(UUID_V5_NAMESPACE)
-    .update(Buffer.from(name, "utf8"))
+    .update(nameBytes)
     .digest();
   // Set version 5 bits (0101xxxx) in octet 6 per RFC 4122 section 4.3.
   hash[6] = (hash[6] & 0x0f) | 0x50;
