@@ -91,6 +91,8 @@ export function App() {
   const [migrationBannerText, setMigrationBannerText] = useState<string | null>(null);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  // selectedTermId: IRI of the imported term selected in TermSidebar (FR-U010; sub-task C).
+  const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
   const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
@@ -368,6 +370,11 @@ export function App() {
           <TermSidebar
             project={project}
             onTermsChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
+            onImportedTermClick={(term) => {
+              setSelectedTermId(term.id);
+              setSelectedRelationId(null);
+              setSelectedInstanceId(null);
+            }}
           />
         </aside>
 
@@ -375,8 +382,8 @@ export function App() {
           <CanvasView
             project={project}
             onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
-            onEdgeSelect={(id) => { setSelectedRelationId(id); setSelectedInstanceId(null); }}
-            onNodeSelect={(id) => { setSelectedInstanceId(id); setSelectedRelationId(null); }}
+            onEdgeSelect={(id) => { setSelectedRelationId(id); setSelectedInstanceId(null); setSelectedTermId(null); }}
+            onNodeSelect={(id) => { setSelectedInstanceId(id); setSelectedRelationId(null); setSelectedTermId(null); }}
           />
         </main>
 
@@ -384,6 +391,7 @@ export function App() {
           <Inspector
             selectedRelationId={selectedRelationId}
             selectedInstanceId={selectedInstanceId}
+            selectedTermId={selectedTermId}
             project={project}
             onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}
           />

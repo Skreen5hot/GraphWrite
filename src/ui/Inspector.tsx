@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { Dialog } from "./Dialog.js";
+import { RemapDialog } from "./RemapDialog.js";
 import { deleteInstance } from "../kernel/delete-instance.js";
 import { AddLiteralDialog } from "./AddLiteralDialog.js";
 import { AddAnnotationDialog } from "./AddAnnotationDialog.js";
@@ -268,6 +269,12 @@ function getOwlClassOptions(project: Record<string, unknown>): OwlClassOption[] 
 interface InspectorProps {
   selectedRelationId: string | null;
   selectedInstanceId: string | null;
+  /**
+   * When non-null, Inspector renders a read-only term-metadata view instead
+   * of the relation or instance panel. Term mode takes priority when set.
+   * FR-U010; IMPL PLAN section 3.2 AC2.
+   */
+  selectedTermId: string | null;
   project: Record<string, unknown> | null;
   /**
    * Called with the updated project document on relation or literal mutation.
@@ -288,6 +295,7 @@ interface InspectorProps {
 export function Inspector({
   selectedRelationId,
   selectedInstanceId,
+  selectedTermId,
   project,
   onProjectChange,
 }: InspectorProps) {
@@ -295,6 +303,127 @@ export function Inspector({
   const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);
   const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);
   const [selectedAddClassIri, setSelectedAddClassIri] = useState<string>("");
+  // remapOpen is declared unconditionally (React hook ordering); only set/read in term mode.
+  const [remapOpen, setRemapOpen] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Term mode (FR-U010; IMPL PLAN section 3.2 AC2) -- takes priority when set.
+  // Renders read-only term metadata + imported badge + Remap affordance button.
+  // ---------------------------------------------------------------------------
+  if (selectedTermId !== null && project !== null) {
+    const allTerms = Array.isArray(project["ecm:terms"])
+      ? (project["ecm:terms"] as unknown[])
+      : [];
+    const termEntry =
+      allTerms.find(
+        (t): t is Record<string, unknown> =>
+          typeof t === "object" &&
+          t !== null &&
+          (t as Record<string, unknown>)["id"] === selectedTermId,
+      ) ?? null;
+    const isImportedTerm =
+      termEntry !== null && termEntry["ecm:source"] === "ecm:imported-ontology";
+    const rawLabel = termEntry !== null ? resolveTermLabel(termEntry["rdfs:label"]) : "";
+    const displayTermLabel = rawLabel.length > 0 ? rawLabel : iriTail(selectedTermId);
+    const termType =
+      termEntry !== null && typeof termEntry["type"] === "string"
+        ? (termEntry["type"] as string)
+        : "";
+    const termComment =
+      termEntry !== null && typeof termEntry["rdfs:comment"] === "string"
+        ? (termEntry["rdfs:comment"] as string)
+        : null;
+    const projectCreatedTerms = allTerms.filter(
+      (t): t is Record<string, unknown> =>
+        typeof t === "object" &&
+        t !== null &&
+        (t as Record<string, unknown>)["ecm:source"] === "ecm:project-created",
+    );
+
+    return (
+      <>
+        <div data-testid="gw-inspector-imported-term">
+          <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Term</p>
+          {isImportedTerm && (
+            <span
+              className="gw-badge gw-badge--imported"
+              aria-label="ecm:imported-ontology"
+              style={{ marginBottom: "0.5rem", display: "inline-block" }}
+              data-testid="gw-inspector-term-imported-badge"
+            >
+              imported
+            </span>
+          )}
+          <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+            Label
+          </p>
+          <p
+            style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}
+            data-testid="gw-inspector-term-label"
+          >
+            {displayTermLabel}
+          </p>
+          <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+            IRI
+          </p>
+          <p
+            style={{ fontSize: "0.8rem", wordBreak: "break-all", marginBottom: "0.75rem" }}
+            data-testid="gw-inspector-term-iri"
+          >
+            {selectedTermId}
+          </p>
+          {termType.length > 0 && (
+            <>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+                Type
+              </p>
+              <p
+                style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}
+                data-testid="gw-inspector-term-type"
+              >
+                {termType}
+              </p>
+            </>
+          )}
+          {termComment !== null && (
+            <>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+                Comment
+              </p>
+              <p
+                style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}
+                data-testid="gw-inspector-term-comment"
+              >
+                {termComment}
+              </p>
+            </>
+          )}
+          {isImportedTerm && (
+            <button
+              type="button"
+              data-testid="gw-btn-remap"
+              onClick={() => { setRemapOpen(true); }}
+              style={{ marginTop: "0.5rem", width: "100%" }}
+            >
+              Remap References
+            </button>
+          )}
+        </div>
+        {remapOpen && termEntry !== null && (
+          <RemapDialog
+            importedTerm={termEntry}
+            projectCreatedTerms={projectCreatedTerms}
+            project={project}
+            onConfirm={(updated) => {
+              if (onProjectChange !== undefined) onProjectChange(updated);
+              setRemapOpen(false);
+            }}
+            onClose={() => { setRemapOpen(false); }}
+          />
+        )}
+      </>
+    );
+  }
 
   if ((selectedRelationId === null && selectedInstanceId === null) || project === null) {
     return (

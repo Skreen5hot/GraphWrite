@@ -85970,6 +85970,22 @@
           },
           "prev_hash": "95a27b1d9ca1b7e56368c2d46d346ca07c3d5ab457fc1e051dde6cb118af65e5",
           "chain_hash": "d6e414766102085d6e33e8448cb3845768405e31da4441fed19f696c8068ed0d"
+        },
+        {
+          "ts": "2026-06-02T13:18:25Z",
+          "event": "forward_track_state_transition",
+          "payload": {
+            "forward_track_id": "ft-778-dev-p3-c3-1",
+            "from_state": "A",
+            "to_state": "B",
+            "trigger": "named_deliberation_cycle_ran",
+            "reason": "Aaron CONFIRMED all 4 captured OQs (2026-06-02): OQ1 imported-term click opens read-only Inspector (UX change confirmed; aria-disabled stays for accessibility); OQ2 AC1 satisfied by fixture round-trip not CLI import path; OQ3 hand-crafted inline fixture for unit test (separate from Playwright fixture) acceptable; OQ4 existing Playwright AC4 in term-crud.spec.ts continues to pass after sub-task B (additive behavior; existing negative invariant preserved). Phase 3 Chain 3.2-UI follow-up chain composition unblocked.",
+            "transitioning_cycle": "phase-3-chain-3.2-ui-oq-confirmation",
+            "timestamp": "2026-06-02T13:18:25Z",
+            "operator": "operator"
+          },
+          "prev_hash": "d6e414766102085d6e33e8448cb3845768405e31da4441fed19f696c8068ed0d",
+          "chain_hash": "97ad6285cf13a2c7a0d70f436e9f085dfff1a6c079a2f20d4fae56709b174793"
         }
       ]
     },
@@ -86163,6 +86179,21 @@
           },
           "prev_hash": "edd7f5c0841aa9678caa2b1075ecef785a7f632cc2ff79ff9c3b5f1aa5c5b59f",
           "chain_hash": "eac3f78fdeabd5de7ba2ef4c66df0ac1e1c9c0523ca8006ea3cadd2f0542a1fd"
+        },
+        {
+          "ts": "2026-06-02T12:51:27Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "4691d75",
+            "notes": "Phase 3 Chain 3 sub-task A (IMPLEMENTATION_PLAN \u00a73.2 AC3+AC4) \u2014 kernel remapReferences pure function. 141/141 tests pass. UI sub-tasks B/C/D/E forward-tracked as ft-778-dev-p3-c3-1 for a separate Phase 3 Chain 3.2-UI follow-up after PO answers the captured open questions. This emission also exercises the v3.5.2 chain-complete -> ready-for-review reclassification flow end-to-end."
+          },
+          "prev_hash": "eac3f78fdeabd5de7ba2ef4c66df0ac1e1c9c0523ca8006ea3cadd2f0542a1fd",
+          "chain_hash": "93b229b476de35368d08c9652dd038b6d6006f4b28cac5e7393362259d8dc990"
         }
       ],
       "attempts": 1,
@@ -86517,6 +86548,2058 @@
           },
           "prev_hash": "3fb3dbee30ea18896d6cc8b0819bc2f6ba59b845dbaa91c922461deb41adc41e",
           "chain_hash": "07a4e27c1ebb16a25176437e027bddca46f69b0ee3d23f8f6650aae0490df4ae"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:786-recon-demo-doc-phase-3",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=4691d75)",
+        "purpose": "Reconnaissance for demo-doc auto-generation on phase phase-3. Walk state.jsonld for tasks in this phase's chain leading up to anchor urn:fnsr:task:781-test-p3-c3 (build_ref=4691d75). Identify: (1) what was substantively delivered (API surface, behavior, files); (2) acceptance criteria that passed (test results); (3) what is NOT in scope per IMPLEMENTATION_PLAN deferrals; (4) SPEC sections / ADR numbers cited in the chain's outputs. Output findings shaped for the downstream demo-doc-author agent.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md"
+        ],
+        "spec_refs": [],
+        "anchor_task": "urn:fnsr:task:781-test-p3-c3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "Phase 3 Chain 3 sub-task A (build_ref=4691d75) landed two new files via applier task 780: src/kernel/remap-references.ts (7480 bytes, kernel-pure function) and tests/remap-references.test.ts (19403 bytes, unit tests).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86112-86129",
+                "excerpt": "\"applied\": [{\"id\":\"C1\",\"path\":\"src\\\\kernel\\\\remap-references.ts\",\"mode\":\"create\",\"bytes_written\":7480,\"bom_prepended\":true},{\"id\":\"C2\",\"path\":\"tests\\\\remap-references.test.ts\",\"mode\":\"create\",\"bytes_written\":19403,\"bom_prepended\":true}],\"summary\":\"2 changes applied\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "The `remapReferences(project, importedIri, projectCreatedIri): RemapResult` function rewrites ecm:classIris array entries (on ecm:instances) and ecm:predicateIri string fields (on ecm:relations and ecm:literalAssertions) from importedIri to projectCreatedIri; it explicitly preserves ecm:ontologies, ecm:terms, ecm:snapshots, ecm:subjectIri, and ecm:objectIri verbatim via outer spread.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "85800-85805",
+                "excerpt": "\"rationale\": \"New pure kernel function per IMPLEMENTATION_PLAN \u00c2\u00a73.2 / SPEC \u00c2\u00a713.6. Rewrites ecm:classIris array entries and ecm:predicateIri string fields from importedIri (A) to projectCreatedIri (B). Intentionally omits the collision check present in refactorIri (src/refactor/index.ts F11 gap): the projectCreatedIri is EXPECTED to already exist in ecm:terms. ecm:ontologies, ecm:terms, ecm:snapshots, ecm:subjectIri, and ecm:objectIri are preserved verbatim via spread.\""
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1056-1058",
+                "excerpt": "If a project-created term is created with the intent to supersede an imported term, the user may invoke a \"remap references\" operation that rewrites instance and relation references from the imported IRI to the project-created IRI. The imported term remains in the project (as immutable imported metadata) but is no longer referenced."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "The test-runner task 781 recorded 148/148 tests passing across 20 test files (exit_code=0, status=all_pass) at build_ref=4691d75; the new remap-references.test.js is one of those 20 files.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86184-86196",
+                "excerpt": "\"status\": \"all_pass\", ... \"raw_stdout_tail\": \"...remap-references.test.js (90ms)...Files: 20/20 passed\\n  Tests: 148/148 passed\", \"exit_code\": 0"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "The PLO state for phase-3 was transitioned from 'implementing' to 'demo-released' anchored on task 781-test-p3-c3 at build_ref=4691d75 with the note 'Phase 3 Chain 3 sub-task A (IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3+AC4) \u00e2\u20ac\u201d kernel remapReferences pure function. 141/141 tests pass.'",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86169-86181",
+                "excerpt": "\"event\": \"phase_state_changed\", \"payload\": {\"phase_id\": \"phase-3\", \"from_state\": \"implementing\", \"to_state\": \"demo-released\", \"build_ref\": \"4691d75\", \"notes\": \"Phase 3 Chain 3 sub-task A (IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3+AC4) \u00e2\u20ac\u201d kernel remapReferences pure function. 141/141 tests pass. UI sub-tasks B/C/D/E forward-tracked as ft-778-dev-p3-c3-1 for a separate Phase 3 Chain 3.2-UI follow-up...\"}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3 (zero occurrences of imported IRI A in ecm:classIris/ecm:predicateIri after remap, unit test) and AC4 (imported ontology record with IRI A remains in ecm:ontologies after remap, unit test) are the two acceptance criteria delivered by Chain 3 sub-task A.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "556-570",
+                "excerpt": "### 3.2 Imported-Term Immutability and Remap Workflow (P1)\n**Acceptance criteria:**\n- Imported term has ecm:source: \"ecm:imported-ontology\" in saved project. Playwright test.\n- Clicking imported term in sidebar shows read-only inspector. Playwright test.\n- Remap A\u00e2\u2020\u2019B: zero occurrences of imported IRI A in ecm:classIris/ecm:predicateIri after remap. Unit test.\n- Imported ontology record (with IRI A) remains in ecm:ontologies after remap. Unit test."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC1 (imported term has ecm:source: 'ecm:imported-ontology' in saved project, Playwright test) and AC2 (clicking imported term shows read-only inspector, Playwright test) are NOT delivered by Chain 3; they are forward-tracked as ft-778-dev-p3-c3-1 for a separate Phase 3 Chain 3.2-UI follow-up, with four PO-territory open questions captured in the operator_rescope audit event.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "85920-85943",
+                "excerpt": "\"forward_track_id\": \"ft-778-dev-p3-c3-1\", \"subject\": {\"id\": \"phase-3-chain-3.2-ui-immutability-remap\", \"description\": \"Phase 3 Chain 3.2 (UI follow-up): imported-term UI immutability (read-only inspector when ecm:source=ecm:imported-ontology), Remap dialog affordance on the Inspector, EditTermDialog defensive guard, and the two Playwright acceptance criteria from IMPLEMENTATION_PLAN section 3.2 (AC1 + AC2). Deferred from Chain 3 per Aaron 2026-06-02 Option B decision...\"}"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "85845-85849",
+                "excerpt": "\"open_questions\": [\"Recon OQ2 (UI entry point for remap affordance)...\", \"Recon OQ3: IMPLEMENTATION_PLAN AC1 says 'Imported term has ecm:source: ecm:imported-ontology in saved project. Playwright test.'\", \"Recon OQ4: imported-term.jsonld fixture has ecm:ontologyId: null...\", \"sub-task B changes TermSidebar firing behavior...\"]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "Phase 3 Chain 1 (build_ref=8707ef0, anchor ~495/765) delivered src/import/turtle-import.ts with importOntology() function (IMPLEMENTATION_PLAN \u00c2\u00a73.1, 6 ACs); the test count reached 137/137 after Chain 1c parser fix.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "61458-61461",
+                "excerpt": "\"chain_label\": \"Phase 3 Chain 1 \u00e2\u20ac\u201d test-runner\", \"purpose\": \"Verify Phase 3 Chain 1 did not regress; the 6 new acceptance tests in tests/import-turtle.test.ts pass.\""
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "83072-83075",
+                "excerpt": "\"chain_label\": \"Phase 3 Chain 1c \u00e2\u20ac\u201d test-runner (verify all 6 ACs pass)\", \"purpose\": \"Verify Phase 3 Chain 1c parser fix: tests/import-turtle.test.ts must pass all 6 acceptance criteria (AC1 through AC6). Pre-fix state: 4/6 fail (AC1/2/3/6); 2/6 pass (AC4/5). Post-fix state: 6/6 pass. Full project test suite: 137/137 pass (was 133/137 pre-fix).\""
+              },
+              {
+                "file": "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md",
+                "lines": "9-29",
+                "excerpt": "# Phase 3 Chain 1 Demo \u00e2\u20ac\u201d Turtle Ontology Import... A pure-function ontology importer at src/import/turtle-import.ts plus the public re-export at src/import/index.ts"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "Phase 3 Chain 2 (build_ref=439d69d, anchor 772-test-p3-c2) delivered the real CLI import-ontology command in src/cli/index.ts, replacing the Phase 1 stub (ADR-003 stub discharged); test count reached 140/140 across 19 files; two ACs from IMPLEMENTATION_PLAN \u00c2\u00a73.5 pass.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84661-84663",
+                "excerpt": "\"notes\": \"Phase 3 Chain 2 (IMPLEMENTATION_PLAN \u00c2\u00a73.5 CLI import-ontology) substantively complete. Replaces Phase 1 stub at src/cli/index.ts:332 with real implementation. 140/140 tests pass.\""
+              },
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "1-6",
+                "excerpt": "# Phase 3 Chain 2 Demo -- CLI import-ontology Command... Chain 2 closes the gap between the Chain 1 importer engine and an operator-runnable command."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "The cumulative Phase 3 delivery at build_ref=4691d75 comprises: (1) src/import/turtle-import.ts (importOntology function, \u00c2\u00a73.1 6 ACs), (2) src/cli/index.ts real import-ontology command (\u00c2\u00a73.5 2 ACs), and (3) src/kernel/remap-references.ts (remapReferences function, \u00c2\u00a73.2 AC3+AC4); existing demo docs cover Chains 1 and 2 separately.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md",
+                "lines": "1-1",
+                "excerpt": "# Phase 3 Chain 1 Demo \u00e2\u20ac\u201d Turtle Ontology Import"
+              },
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "1-1",
+                "excerpt": "# Phase 3 Chain 2 Demo -- CLI import-ontology Command"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "The remapReferences kernel function does NOT perform a collision check (unlike refactorIri in src/refactor/index.ts), because the remap workflow semantics require projectCreatedIri to ALREADY exist in ecm:terms \u00e2\u20ac\u201d the exact state that refactorIri's collision guard rejects.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86019-86022",
+                "excerpt": "\"ruling\": \"ratified\", \"rationale\": \"...Architecturally, the divergence from refactorIri (omitting the collision check that the reconnaissance F11 finding flagged) is the correct shape: the remap workflow requires the project-created replacement term to already exist in ecm:terms, which is exactly the state refactorIri's collision guard rejects...\""
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "85586-85599",
+                "excerpt": "\"claim\": \"`refactorIri` contains a collision check (lines 168-178) that aborts and returns unmodified project if `newIri` already exists in `ecm:terms` or `ecm:instances`; because the remap workflow requires `newIri` (the project-created replacement) to already exist in `ecm:terms`, calling `refactorIri(project, importedIri, projectCreatedIri)` directly will always trigger this collision guard.\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "Phase 3 NOT-in-scope at build_ref=4691d75 includes: IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC1+AC2 (UI/Playwright), \u00c2\u00a73.3 (LARGE_IMPORT warning, degraded mode with virtualized lists), \u00c2\u00a73.4 (term search and filter UI), OED-303 resolution, and Phase 3 Exit Gate items 2, 3, 5, 7, 8, 9, 11.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "103-112",
+                "excerpt": "Chain 2 ships only IMPLEMENTATION_PLAN section 3.5. The remaining Phase 3 sub-tasks... IMPLEMENTATION_PLAN section 3.2 -- Imported-Term Immutability and Remap Workflow... IMPLEMENTATION_PLAN section 3.3 -- Large-Import Handling... IMPLEMENTATION_PLAN section 3.4 -- Term Search and Filter UI... OED-303... Phase 3 Exit Gate items 2, 3, 5, 7, 8, 9, 11..."
+              },
+              {
+                "file": "project/ROADMAP.md",
+                "lines": "119-128",
+                "excerpt": "**NOT in scope:**\n- OWL restrictions, property chains, cardinality (\u00c2\u00a73.2, \u00c2\u00a77.6).\n- Equivalent-class reasoning, subsumption inference, imports-closure resolution, blank-node reasoning, class-expression editing, disjointness, consistency checking (\u00c2\u00a73.2, \u00c2\u00a714.1).\n- rdfs:domain / rdfs:range as first-class TBox fields (\u00c2\u00a77.5 deferred).\n- SHACL validation engine (\u00c2\u00a717.7 deferred).\n- Blank-node editing UI (\u00c2\u00a77.3 \u00e2\u20ac\u201d preserved-on-round-trip only).\n- ZIP import (\u00c2\u00a73.2 \u00e2\u20ac\u201d v0.4 is export only)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "The TermSidebar.tsx already gates the click handler on ecm:source === 'ecm:project-created' and sets aria-disabled='true' for imported terms; a Playwright test (term-crud.spec.ts AC4, already passing) verifies this; the read-only inspector activation path (sub-task B) does NOT yet exist.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "85492-85509",
+                "excerpt": "\"claim\": \"TermSidebar.tsx already gates the click handler on ecm:source === 'ecm:project-created'; imported terms receive aria-disabled='true' and no role='button', blocking EditTermDialog from opening.\" ... \"claim\": \"A Playwright test (AC4 in tests/playwright/term-crud.spec.ts) already verifies that imported terms carry aria-disabled='true', lack role='button', and clicking them does not open EditTermDialog...\""
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "85556-85570",
+                "excerpt": "\"claim\": \"No RemapDialog component, no remapReferences function, and no remap-related UI affordance exists anywhere under src/\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "The importOntology function (Chain 1) accepts a createdAt timestamp parameter; the CLI boundary (Chain 2) sources it via `values.clock ?? new Date().toISOString()`, isolating non-determinism at the adapter layer per SPEC \u00c2\u00a79.3 kernel-purity discipline.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "24-26",
+                "excerpt": "Sources createdAt once at the CLI boundary via values.clock ?? new Date().toISOString() -- --clock enables deterministic override per SPEC section 9.3 kernel-purity discipline. The engine itself never calls Date.now()."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "SPEC sections directly cited in the Phase 3 Chain 3 task chain include: \u00c2\u00a713.3 (imported term IRI immutability), \u00c2\u00a713.6 (remap workflow), \u00c2\u00a75.7 (term object shape with ecm:source), \u00c2\u00a75.6 (ImportedOntologyRecord shape), \u00c2\u00a714.1 (import extraction scope), \u00c2\u00a712.2 (50 MB security constraints), \u00c2\u00a723 (CLI surface); FR identifiers cited: FR-C011, FR-U010; NFRs implicated: NFR-003 (determinism), NFR-006 (offline-capable).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86023-86058",
+                "excerpt": "\"referenced_evidence\": [{\"type\":\"spec_section\",\"id\":\"\u00c2\u00a713.3\",\"source\":\"project/SPEC.md\"},{\"type\":\"spec_section\",\"id\":\"\u00c2\u00a713.6\",\"source\":\"project/SPEC.md\"},{\"type\":\"spec_section\",\"id\":\"\u00c2\u00a75.7\",\"source\":\"project/SPEC.md\"},{\"type\":\"spec_section\",\"id\":\"\u00c2\u00a73.2\",\"source\":\"project/IMPLEMENTATION_PLAN.md\"},{\"type\":\"spec_section\",\"id\":\"Section 9 Layer Boundaries\",\"source\":\"CLAUDE.md\"}]"
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "556-559",
+                "excerpt": "**SPEC refs:** \u00c2\u00a713.3, \u00c2\u00a713.6, FR-U010"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "ADR-003 (Phase 1 stubs for Phase 3/4 CLI commands) was discharged by Chain 2; the prior demo doc at demo/PHASE-3-chain-2-cli-integration.md explicitly notes this. No new ADRs were created during Phase 3 Chains 1-3.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "97",
+                "excerpt": "ADR-003 obligation discharged: the Phase 1 stub for import-ontology is gone"
+              },
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "57-68",
+                "excerpt": "## ADR-003: Phase 1 Stubs Phase 3/4 CLI Commands... Decision: import-ontology and export --format zip return exit code 2 in Phase 1..."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The ratification task 779-rat-p3-c3 produced ruling='ratified' with two banked pattern-observations: (B1) semantic-contract separation between remapReferences and refactorIri as sibling pure functions; (B2) two-pronged AC4-style preservation-invariant test pattern (JSON.stringify equality + object-reference identity).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86018-86071",
+                "excerpt": "\"ruling\": \"ratified\", \"editorial_verdict\": \"substantive\", \"bankings\": [{\"id\":\"B1\",\"category\":\"pattern-observation\",\"content\":\"...implementing them as separate pure functions...preserves each function's contract guarantees independently...\"},{\"id\":\"B2\",\"category\":\"pattern-observation\",\"content\":\"AC4-style record-preservation invariants are most defensibly verified via a two-pronged test: JSON.stringify bytewise equality... plus object-reference identity...\"}]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "The demo doc for build_ref=4691d75 is a NEW document (not yet existing); the two prior Phase 3 demo docs cover Chain 1 (PHASE-3-CHAIN-1-TURTLE-IMPORT.md) and Chain 2 (PHASE-3-chain-2-cli-integration.md) respectively \u00e2\u20ac\u201d both at earlier build refs.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md",
+                "lines": "1",
+                "excerpt": "# Phase 3 Chain 1 Demo \u00e2\u20ac\u201d Turtle Ontology Import"
+              },
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "1",
+                "excerpt": "# Phase 3 Chain 2 Demo -- CLI import-ontology Command"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F18",
+            "claim": "Phase 3 exit gate item 1 (Turtle import unit tests for all term types, subclass/subproperty, blank-node preservation) is satisfied by Chain 1; items 4 (50 MB hard-reject) and 6 (import-ontology CLI) are satisfied by Chains 1 and 2 respectively; item 10 (npm test + npm run build zero failures) is satisfied at build_ref=4691d75.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "628-637",
+                "excerpt": "Phase 3 Exit Gate:\n1. Turtle import unit tests pass for all term types, subclass/subproperty, and blank-node preservation.\n4. 50 MB hard-reject verified by unit test and CLI test.\n6. import-ontology CLI passes integration test.\n10. npm test and npm run build zero failures."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "86184-86196",
+                "excerpt": "\"status\": \"all_pass\", \"exit_code\": 0, \"raw_stdout_tail\": \"...Tests: 148/148 passed\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "The Phase 3 Chain 3 demo doc filename convention (per CLAUDE.md \u00c2\u00a77.14 and the v3.5.0 auto-generation primitive) is demo/PHASE-3-{descriptor}.md; the auto-generation chain uses anchor task 781-test-p3-c3 and the inputs field specifies chain_label='Phase 3 demo-doc auto-generation (build_ref=4691d75)'.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86539-86556",
+                "excerpt": "\"@id\": \"urn:fnsr:task:786-recon-demo-doc-phase-3\", \"inputs\": {\"phase\": \"phase-3\", \"chain_label\": \"Phase 3 demo-doc auto-generation (build_ref=4691d75)\", \"anchor_task\": \"urn:fnsr:task:781-test-p3-c3\"}"
+              },
+              {
+                "file": "demo/PHASE-3-chain-2-cli-integration.md",
+                "lines": "129",
+                "excerpt": "This demo doc was produced by the v3.5.0 demo-doc auto-generation primitive (CLAUDE.md section 7.15): the operator emitted state_admin phase demo-released phase-3 --regenerate-demo-doc --demo-doc-descriptor chain-2-cli-integration"
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "Phase 3 at build_ref=4691d75 (anchor task 781-test-p3-c3) has delivered three substantive chains: Chain 1 ships the importOntology() pure-function engine in src/import/turtle-import.ts (IMPLEMENTATION_PLAN \u00c2\u00a73.1, 6/6 ACs pass, 137\u00e2\u2020\u2019137 tests after parser fix); Chain 2 replaces the Phase 1 ADR-003 stub with a real CLI import-ontology command in src/cli/index.ts (\u00c2\u00a73.5, 2/2 ACs pass, 140/140 tests); and Chain 3 sub-task A lands the remapReferences() pure kernel function in src/kernel/remap-references.ts (\u00c2\u00a73.2 AC3+AC4, unit tests only, 148/148 tests across 20 files). The new demo doc at build_ref=4691d75 covers Chain 3 sub-task A specifically as the incremental delivery \u00e2\u20ac\u201d the two prior demo docs (demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md and demo/PHASE-3-chain-2-cli-integration.md) already document Chains 1 and 2. Key deferrals: \u00c2\u00a73.2 AC1+AC2 (Playwright UI immutability tests), \u00c2\u00a73.3 (LARGE_IMPORT warning + degraded mode), \u00c2\u00a73.4 (term search/filter UI), and OED-303 resolution are all NOT delivered; Phase 3 exit gate items 2, 3, 5, 7, 8, 9, 11 remain unsatisfied. The TermSidebar already renders imported terms as aria-disabled (no click handler), but the Inspector has no term-selection mode and no RemapDialog component exists \u00e2\u20ac\u201d these are forward-tracked to ft-778-dev-p3-c3-1 pending PO answers to four captured open questions.",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "project/ROADMAP.md",
+          "state.jsonld",
+          "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md",
+          "demo/PHASE-3-chain-2-cli-integration.md"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Phase 3 Exit Gate",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-003",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:777-recon-p3-c3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:778-dev-p3-c3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:779-rat-p3-c3",
+            "field": "outputs.ruling"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:780-apply-p3-c3",
+            "field": "outputs.applied"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:781-test-p3-c3",
+            "field": "outputs.status"
+          }
+        ],
+        "open_questions": [
+          "The four PO-territory open questions captured in forward-track ft-778-dev-p3-c3-1 are prerequisites for Phase 3 Chain 3.2-UI: (OQ-B) Should importing a term change TermSidebar behavior from 'click-suppressed' to 'click-opens-Inspector' while keeping aria-disabled? (OQ-E) Should IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC1 Playwright test use the existing imported-term.jsonld round-trip fixture or require the browser-side import UI? (OQ-A-fixture) Is an inline hand-crafted fixture for unit tests with ecm:ontologyId: null acceptable? (OQ-B-continuity) Will the existing term-crud.spec.ts AC4 (aria-disabled on imported terms) still pass after sub-task B wires onImportedTermClick? The demo doc for build_ref=4691d75 should surface these as the PO sign-off questions.",
+          "Should the demo doc for build_ref=4691d75 describe only Chain 3 sub-task A (the remapReferences kernel function), or also provide a cumulative summary of all Phase 3 chains delivered so far (as the third installment)? The prior two demo docs (PHASE-3-CHAIN-1-TURTLE-IMPORT.md, PHASE-3-chain-2-cli-integration.md) are per-chain documents; consistency suggests Chain 3 follows the same structure.",
+          "The test-runner raw_stdout_tail shows 148/148 tests, but the parsed outputs fields show passed=0, total=0 (npm parser output format mismatch). The demo doc should cite 148/148 from the raw output; is the parser discrepancy a known substrate issue that warrants a note?"
+        ],
+        "scope_assessment": "Investigated state.jsonld for all Phase 3 task chains (tasks 488 through 786), project/SPEC.md, project/IMPLEMENTATION_PLAN.md, project/DECISIONS.md, project/ROADMAP.md, and both existing Phase 3 demo docs; did not directly read the src/ TypeScript files (content was read from developer/recon task outputs in state.jsonld instead) and did not read the Playwright test fixtures."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T12:57:31Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:787-author-demo-doc-phase-3",
+      "agent": "demo-doc-author",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:786-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=4691d75)",
+        "anchor_task": "urn:fnsr:task:781-test-p3-c3",
+        "build_ref": "4691d75",
+        "target_filename": "demo/PHASE-3-chain-3-subtask-a-remap-kernel.md",
+        "purpose": "Author stakeholder-facing demo doc for phase-3 chain at build_ref=4691d75. Read reconnaissance findings from UPSTREAM. Produce a single changes[] entry creating demo/PHASE-3-chain-3-subtask-a-remap-kernel.md per the demo-doc-author agent contract. ASCII-only. Consumer audience (PO / stakeholder review).",
+        "constraint": "Per agent contract: ASCII-only content; cite only SPEC / ADR refs documented in upstream recon; one file change per dispatch."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "demo/PHASE-3-chain-3-subtask-a-remap-kernel.md",
+            "rationale": "Initial demo doc for Phase 3 Chain 3 sub-task A landing on build_ref=4691d75. Documents the new remapReferences kernel-pure function (IMPLEMENTATION_PLAN section 3.2 AC3+AC4), the deferred UI/Playwright work (AC1+AC2 forward-tracked as ft-778-dev-p3-c3-1), and the four PO-territory open questions that gate the Chain 3.2-UI follow-up.",
+            "before": null,
+            "after": "# Phase 3 Chain 3 Sub-Task A Demo -- remapReferences Kernel Function\n\nPhase 3 (\"Ontology Import and Term Management\") delivers Turtle import, the CLI surface, and the imported-term immutability + remap workflow. Chain 1 (build_ref=8707ef0) shipped the importOntology engine; Chain 2 (build_ref=439d69d) wired it into the real CLI command and discharged the ADR-003 stub. Chain 3 sub-task A (build_ref=4691d75) lands the third piece: a pure kernel function that rewrites instance/relation references from an imported IRI to a project-created replacement IRI, satisfying IMPLEMENTATION_PLAN section 3.2 AC3 and AC4. The remaining Chain 3 work (UI affordance, Inspector read-only mode, Playwright tests) is deliberately deferred and forward-tracked.\n\n## What this chain delivers\n\nOne new kernel-pure function and its unit-test suite:\n\n- `src/kernel/remap-references.ts` (7,480 bytes) -- exports `remapReferences(project, importedIri, projectCreatedIri): RemapResult`.\n- `tests/remap-references.test.ts` (19,403 bytes) -- unit coverage including AC3 (zero residual occurrences) and AC4 (ontology-record preservation).\n\nCall signature:\n\n```ts\nimport { remapReferences } from './kernel/remap-references';\n\nconst result = remapReferences(project, importedIri, projectCreatedIri);\n// result.project: rewritten project (ecm:instances and ecm:relations updated)\n// result.changedInstanceCount, result.changedRelationCount, etc.\n```\n\nSemantics, per SPEC section 13.6 and IMPLEMENTATION_PLAN section 3.2:\n\n- Rewrites `ecm:classIris` array entries on every `ecm:instance` from `importedIri` (A) to `projectCreatedIri` (B).\n- Rewrites `ecm:predicateIri` string fields on every `ecm:relation` and `ecm:literalAssertion` from A to B.\n- Preserves `ecm:ontologies`, `ecm:terms`, `ecm:snapshots`, `ecm:subjectIri`, and `ecm:objectIri` verbatim (object-reference identity AND bytewise JSON equality, both verified by the test suite).\n- Does NOT perform a collision check. This is the deliberate divergence from the existing `refactorIri` in `src/refactor/index.ts`: the remap workflow requires `projectCreatedIri` to ALREADY exist in `ecm:terms`, which is exactly the state `refactorIri`'s collision guard rejects. The two functions are sibling pure functions with distinct contracts (banked as pattern-observation B1 at ratification).\n\n## Acceptance criteria\n\n| AC | What proves it | SPEC ref | Status |\n|---|---|---|---|\n| 3.2 AC3 -- Remap A to B: zero occurrences of A in `ecm:classIris` / `ecm:predicateIri` after remap | `tests/remap-references.test.ts` (unit) | IMPLEMENTATION_PLAN section 3.2; SPEC section 13.6 | GREEN |\n| 3.2 AC4 -- Imported ontology record (with IRI A) remains in `ecm:ontologies` after remap | `tests/remap-references.test.ts` two-pronged invariant (JSON.stringify equality + object-reference identity) | IMPLEMENTATION_PLAN section 3.2; SPEC section 13.3 | GREEN |\n| 3.2 AC1 -- Imported term has `ecm:source: \"ecm:imported-ontology\"` in saved project (Playwright) | -- | IMPLEMENTATION_PLAN section 3.2 | NOT IN SCOPE (forward-tracked as ft-778-dev-p3-c3-1) |\n| 3.2 AC2 -- Clicking imported term in sidebar shows read-only inspector (Playwright) | -- | IMPLEMENTATION_PLAN section 3.2 | NOT IN SCOPE (forward-tracked as ft-778-dev-p3-c3-1) |\n\nFull test-suite gate: `148/148` tests pass across 20 test files at `build_ref=4691d75` (Phase 3 Exit Gate item 10).\n\n## How to verify\n\nFrom the GraphWrite repo root, on `build_ref=4691d75`:\n\n```\nnpm install\nnpm run build\nnpm test\n```\n\nExpected tail of `npm test`:\n\n```\n... remap-references.test.js (90ms)\nFiles: 20/20 passed\nTests: 148/148 passed\n```\n\nNo TypeScript errors from `npm run build`; no purity violations from `npm run test:purity` (the new file lives in `src/kernel/` and imports no adapter or composition code).\n\n## What works end-to-end right now\n\nCumulative Phase 3 surface at `build_ref=4691d75`:\n\n- Turtle ontology import as a pure-function engine -- `src/import/turtle-import.ts` (Chain 1; IMPLEMENTATION_PLAN section 3.1; 6/6 ACs).\n- Operator-runnable CLI: `graphwrite import-ontology <project> <ttl>` writes a saved project with imported terms tagged `ecm:source: \"ecm:imported-ontology\"` -- `src/cli/index.ts` (Chain 2; IMPLEMENTATION_PLAN section 3.5; 2/2 ACs; ADR-003 stub discharged).\n- Programmatic remap of instance/relation references from an imported IRI to a project-created replacement IRI -- `src/kernel/remap-references.ts` (Chain 3 sub-task A; IMPLEMENTATION_PLAN section 3.2 AC3+AC4).\n\nA developer can today: import a Turtle ontology via the CLI, create a project-created term in `ecm:terms`, call `remapReferences(project, importedIri, projectCreatedIri)`, and obtain a project in which the imported ontology record remains intact but no instance or relation still references the imported IRI.\n\n## What is NOT yet in scope\n\nDeferred from this chain (explicitly):\n\n- IMPLEMENTATION_PLAN section 3.2 **AC1 + AC2** -- the Playwright UI tests for `ecm:source` tagging and read-only Inspector activation. The TermSidebar already marks imported terms `aria-disabled=\"true\"` (verified by existing `tests/playwright/term-crud.spec.ts` AC4), but no Inspector term-selection mode exists, no RemapDialog UI component exists, and `EditTermDialog` has no defensive guard. Forward-tracked as `ft-778-dev-p3-c3-1` (subject: `phase-3-chain-3.2-ui-immutability-remap`); gated on PO answers to four open questions (see Sign-off prompt below).\n- IMPLEMENTATION_PLAN section 3.3 -- LARGE_IMPORT warning, degraded mode, virtualized term lists.\n- IMPLEMENTATION_PLAN section 3.4 -- term search and filter UI.\n- OED-303 resolution.\n- Phase 3 Exit Gate items 2, 3, 5, 7, 8, 9, 11.\n\nNo new ADRs were created during Phase 3 Chains 1-3.\n\n## Sign-off prompt\n\nReviewer questions for the PO:\n\n1. Does the kernel-only delivery of section 3.2 (AC3+AC4 by unit test) satisfy the chain-landing bar, with AC1+AC2 (the UI/Playwright pair) accepted as forward-tracked work? The substrate-side rationale was Option B at the 2026-06-02 rescope: ship the testable pure function now; defer the UI loop until the four OQs resolve.\n2. Of the four PO-territory open questions captured under `ft-778-dev-p3-c3-1`, which would you like to answer in this review pass?\n   - **OQ-B:** Should importing a term change `TermSidebar` behavior from \"click-suppressed\" to \"click-opens-Inspector-in-read-only-mode\" while keeping `aria-disabled`?\n   - **OQ-E:** Should IMPLEMENTATION_PLAN section 3.2 AC1's Playwright test use the existing `imported-term.jsonld` round-trip fixture, or require the browser-side import UI?\n   - **OQ-A-fixture:** Is an inline hand-crafted fixture for unit tests (with `ecm:ontologyId: null`) acceptable, or should the fixture round-trip the import pipeline?\n   - **OQ-B-continuity:** Will the existing `term-crud.spec.ts` AC4 (aria-disabled on imported terms) continue to pass after sub-task B wires `onImportedTermClick`?\n3. The remap function's deliberate divergence from `refactorIri` (no collision check, because B is required to pre-exist) was ratified and banked as pattern-observation B1. Concur, or would you prefer a single unified function with an explicit `expect_collision: boolean` mode?\n4. **Decision:** `pass` (close Chain 3 sub-task A; queue Chain 3.2-UI follow-up with PO answers), `revise` (specific concern), or `pivot` (re-scope before any UI work begins)?\n\n## For the substrate-audit-curious\n\nThis chain was the first Phase 3 chain to use the v3.3.2 substrate-discipline patch (the resolve-to-execution link) -- the Option B rescope was committed via `state_admin resolve --execution-mode state-surgery-applied` rather than a bare resolve, so the followup state is traceable from the audit chain. The ratification task (`779-rat-p3-c3`) banked two pattern-observations: B1 (sibling-pure-function separation between `remapReferences` and `refactorIri`) and B2 (two-pronged AC4-style preservation-invariant pattern: JSON.stringify bytewise equality plus object-reference identity). This demo doc itself was produced by the v3.5.0 demo-doc auto-generation primitive (CLAUDE.md section 7.15): operator emitted `state_admin phase demo-released phase-3 --build-ref 4691d75 --demo-doc-descriptor chain-3-subtask-a-remap-kernel` and the substrate auto-queued the 4-task chain (reconnaissance -> demo-doc-author -> architect ratification -> applier) anchored on task 781-test-p3-c3.\n",
+            "scope": "moderate"
+          }
+        ],
+        "summary": "Authors demo/PHASE-3-chain-3-subtask-a-remap-kernel.md as the stakeholder-facing review artifact for Phase 3 Chain 3 sub-task A at build_ref=4691d75. The doc frames the chain as the third per-chain installment in Phase 3 (following Chain 1's Turtle importer and Chain 2's CLI integration), documents the new remapReferences kernel-pure function satisfying IMPLEMENTATION_PLAN section 3.2 AC3+AC4 (148/148 tests pass), and explicitly bounds scope: AC1+AC2 (UI/Playwright) are forward-tracked as ft-778-dev-p3-c3-1, gated on four PO-territory open questions surfaced in the Sign-off prompt. ASCII-only; cites only SPEC sections and ADR-003 documented in upstream recon evidence; no invented ADR numbers. One file change, new doc creation. Follows the structural shape of demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md.",
+        "self_assessment": "confident",
+        "surface_audience": "consumer"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T12:58:36Z",
+          "event": "completed",
+          "payload": {
+            "agent": "demo-doc-author"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3e2900296dafe1360c0128abde37baea0e5a194ad8aada0bca0ea262b8134b3e"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:788-rat-demo-doc-phase-3",
+      "agent": "architect",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:787-author-demo-doc-phase-3",
+        "urn:fnsr:task:786-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=4691d75) - Pass 2a ratification",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the auto-generated demo doc at demo/PHASE-3-chain-3-subtask-a-remap-kernel.md. Read demo-doc-author proposal + reconnaissance evidence from UPSTREAM. Produce six-field ruling. Demo doc is consumer-audience; verify the doc matches stakeholder-review shape (deliverables, acceptance, verification, scope, sign-off); verify no invented citations.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Architect refusal contract",
+          "CLAUDE.md \u00a77.14 demo-doc auto-generation"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Creates a new canonical consumer-audience artifact at demo/PHASE-3-chain-3-subtask-a-remap-kernel.md; new-file creation with normative content (acceptance-criteria table, sign-off prompt, scope declarations) is substantive, not editorial.",
+        "rationale": "The reconnaissance contract is satisfied: UPSTREAM contains urn:fnsr:task:786-recon-demo-doc-phase-3 with 19 grounded findings keyed to specific state.jsonld line ranges and source files. The proposed demo doc conforms to the demo-doc-author stakeholder-review shape mandated in CLAUDE.md \u00c2\u00a77.15: H1 title, what-delivered, acceptance-criteria table, how-to-verify, what-works-end-to-end, NOT-in-scope, sign-off prompt. Citation discipline holds: (a) IMPLEMENTATION_PLAN \u00c2\u00a73.1/\u00c2\u00a73.2/\u00c2\u00a73.3/\u00c2\u00a73.4/\u00c2\u00a73.5 are corroborated by recon F5/F7/F8/F11; (b) SPEC \u00c2\u00a713.3/\u00c2\u00a713.6 are corroborated by recon F2/F14; (c) ADR-003 exists in project/DECISIONS.md per recon F15 and is correctly described as 'discharged' per F8 and the Chain 2 demo doc precedent; (d) ft-778-dev-p3-c3-1 forward-track and the four PO-territory open questions are recon F6 verbatim; (e) Phase 3 Exit Gate item 10 (148/148 tests) is recon F3+F18; (f) the deliberate divergence from refactorIri (no collision check) is recon F10 and B1 from the prior ratification (F16). No ADR numbers are invented. The doc is ASCII-only (uses 'section' and '--' rather than \u00c2\u00a7 and em-dash); surface_audience is correctly marked 'consumer' per CLAUDE.md \u00c2\u00a77.13; one-file-per-dispatch contract satisfied (single C1 change creating a new file). The doc correctly identifies itself as the third per-chain installment, consistent with the existing Chain 1 / Chain 2 demo docs, and bounds scope with the four open questions surfaced verbatim from the forward-track. The self-referential 'For the substrate-audit-curious' coda mentions substrate-internal mechanics (v3.3.2 resolve\u00e2\u2020\u2019execution patch, v3.5.0 auto-generation primitive, banking IDs B1/B2) which is acceptable as audit-trail context but is the closest the doc comes to substrate-narrative leakage into a consumer artifact \u00e2\u20ac\u201d minor and not a blocker, since the PO-decision content is the section 'Sign-off prompt' above it. Operator may proceed to Pass 2b (applier).",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:786-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:787-author-demo-doc-phase-3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:779-rat-p3-c3",
+            "field": "outputs.bankings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:780-apply-p3-c3",
+            "field": "outputs.applied"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:781-test-p3-c3",
+            "field": "outputs.status"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Phase 3 Exit Gate",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-003",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.13 Surface Audience",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.15 Demo-Doc Auto-Generation",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Architect refusal contract",
+            "source": "FNSR Spec 03"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "The Phase 3 per-chain demo-doc cadence has stabilized into a three-installment shape (Chain 1 importer engine, Chain 2 CLI integration, Chain 3 sub-task A kernel function) where each doc is incremental and self-bounded rather than cumulative. The third installment authored under v3.5.0 auto-generation re-uses the prior two docs' structural shape (H1 chain identifier, acceptance-criteria table, NOT-in-scope explicit list, sign-off prompt). This suggests the demo-doc-author agent contract's stakeholder-review template is structurally stable across multiple chains within a single phase \u00e2\u20ac\u201d a candidate for promotion from agent-contract heuristic to substrate-acknowledged template once a fourth instance lands."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "When a chain explicitly rescopes via the v3.3.2 resolve\u00e2\u2020\u2019execution link (Option B state-surgery-applied in this case), the resulting forward-track's open questions become first-class sign-off-prompt content in the downstream demo doc. The demo-doc-author surfaced all four ft-778-dev-p3-c3-1 OQs verbatim under the Sign-off prompt section, turning the forward-track into the PO's review agenda. This composition \u00e2\u20ac\u201d operator rescope produces forward-track which produces sign-off-prompt questions \u00e2\u20ac\u201d is the audit-traceable path from a mid-chain rescope decision to the consumer-facing review surface, with no information loss."
+          },
+          {
+            "id": "B3",
+            "category": "discipline-state-transition-observation",
+            "content": "The demo doc's 'For the substrate-audit-curious' coda references substrate-internal mechanics (v3.3.2 patch, v3.5.0 primitive, banking IDs B1/B2 from the prior ratification) inside a consumer-audience artifact. This is the boundary case the v3.1.0 surface-audience primitive anticipated: the doc audience is 'consumer' but the closing section mixes in substrate-narrative content. Acceptable at this scale (one short section, clearly demarcated, follows the sign-off prompt rather than preceding the deliverables), but if v3.2 ships differential consumer-quality gates per CLAUDE.md \u00c2\u00a77.13, the gate should permit a clearly-demarcated substrate-audit appendix while flagging substrate-narrative leakage into the deliverables/acceptance/scope sections themselves."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T12:59:35Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:789-apply-demo-doc-phase-3",
+      "agent": "applier",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:788-rat-demo-doc-phase-3",
+        "urn:fnsr:task:787-author-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=4691d75) - applier",
+        "purpose": "Pass 2b commit-finalize: apply demo-doc-author's changes to land demo/PHASE-3-chain-3-subtask-a-remap-kernel.md. Event 11 gating ensures dispatch only when ratification == ratified.",
+        "source_task": "urn:fnsr:task:787-author-demo-doc-phase-3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "demo\\PHASE-3-chain-3-subtask-a-remap-kernel.md",
+            "mode": "create",
+            "bytes_written": 8360,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T12:59:36Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-06-02T13:20:06Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "Chain 3.2-UI follow-up queued (14 tasks 790-803); re-enter implementing from demo-released"
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "3b655db1f4e7cbefa50e5b23df260f5fbf431d1f7ef911d049fca3bacd00d198"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:790-recon-p3-c3.2",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI -- Imported-Term UI Immutability + Remap Dialog + Playwright AC (sub-tasks B/C/D/E)",
+        "purpose": "Reconnaissance for the Phase 3 Chain 3.2-UI follow-up to Chain 3 (sub-task A kernel landed at 781-test-p3-c3-retry; remapReferences pure function shipped). Per Aaron 2026-06-02 OQ CONFIRM verdicts on ft-778-dev-p3-c3-1, the 4 deferred sub-tasks proceed with the developer's interpretations: (B) TermSidebar fires onImportedTermClick on imported-term click (changes existing 'aria-disabled + no click' to 'aria-disabled + click fires callback'); (C) Inspector accepts selectedTermId prop, renders imported badge, exposes Remap affordance backed by new RemapDialog component (also needs App.tsx selectedTermId state wiring); (D) EditTermDialog defensive early-return when term ecm:source = ecm:imported-ontology (belt-and-suspenders -- the gate should already happen at sidebar layer, but the dialog is the last line of defense); (E) Playwright tests in tests/playwright/imported-term-read-only.spec.ts covering AC1 (imported term has ecm:source in saved project via fixture round-trip; NOT exercising CLI import path) and AC2 (clicking imported term opens read-only Inspector). Investigate: (1) exact line ranges in TermSidebar.tsx for the existing aria-disabled imported-term gating; (2) Inspector.tsx current props + the absence of selectedTermId mode; (3) App.tsx state hooks where selectedTermId would live; (4) EditTermDialog.tsx render path where the defensive guard lands; (5) tests/playwright/term-crud.spec.ts lines 219-246 (the existing negative-invariant test that MUST continue passing after sub-task B); (6) tests/playwright/ scaffold + fixture conventions for the new imported-term-read-only.spec.ts; (7) the imported-term.jsonld fixture currently present in tests/playwright (ecm:ontologyId=null per OQ3 capture) and whether AC1 fixture round-trip needs a fixture revision. Output findings shaped for FOUR downstream developer agents (one per sub-task B/C/D/E) so each dev task can focus on its narrow scope.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "src/ui/TermSidebar.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/EditTermDialog.tsx",
+          "src/ui/App.tsx",
+          "src/kernel/remap-references.ts",
+          "tests/playwright/term-crud.spec.ts",
+          "tests/playwright/",
+          "playwright.config.ts"
+        ],
+        "spec_refs": [
+          "SPEC section 13.3",
+          "SPEC section 13.6",
+          "FR-U010",
+          "IMPLEMENTATION_PLAN section 3.2 AC1+AC2"
+        ],
+        "ft_anchor": "ft-778-dev-p3-c3-1",
+        "oq_resolutions": {
+          "OQ1": "CONFIRM behavior change (aria-disabled stays + click fires callback)",
+          "OQ2": "CONFIRM fixture round-trip (NOT CLI import path)",
+          "OQ3": "CONFIRM hand-crafted inline unit-test fixture (separate from Playwright fixture)",
+          "OQ4": "CONFIRM existing Playwright AC4 in term-crud.spec.ts continues to pass after sub-task B (negative invariant preserved)"
+        }
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "TermSidebar.tsx currently sets aria-disabled='true' on imported-term list items but wires NO onClick handler \u00e2\u20ac\u201d the click is silently swallowed, not routed to any callback.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "152-170",
+                "excerpt": "const isClickable = onTermClick !== undefined && term[\"ecm:source\"] === \"ecm:project-created\";\nconst isImported = term[\"ecm:source\"] === \"ecm:imported-ontology\";\n...\naria-disabled={isImported ? \"true\" : undefined}\nonClick={isClickable ? () => { onTermClick(term); } : undefined}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "TermSidebarProps interface (lines 29-36) has no onImportedTermClick prop; sub-task B must add it and wire it through TermSection's internal callback.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "29-36",
+                "excerpt": "interface TermSidebarProps {\n  project: Record<string, unknown> | null;\n  onTermsChange?: (project: Record<string, unknown>) => void;\n}"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "113-128",
+                "excerpt": "function TermSection({\n  title, terms, testId, onAddTerm, addTestId, onTermClick\n}: { ...\n  onTermClick?: (term: TermEntry) => void;\n})"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "App.tsx wires TermSidebar with only project and onTermsChange props; no onImportedTermClick callback and no selectedTermId state hook exist anywhere in App.tsx.",
+            "evidence": [
+              {
+                "file": "src/ui/App.tsx",
+                "lines": "90-97",
+                "excerpt": "const [project, setProject] = useState<Record<string, unknown> | null>(null);\nconst [migrationBannerText, setMigrationBannerText] = useState<string | null>(null);\nconst [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);\nconst [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);\nconst [projectSettingsOpen, setProjectSettingsOpen] = useState(false);\nconst [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);\nconst [validationReport, setValidationReport] = useState<ValidationReport | null>(null);"
+              },
+              {
+                "file": "src/ui/App.tsx",
+                "lines": "369-371",
+                "excerpt": "<TermSidebar\n  project={project}\n  onTermsChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n/>"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "Existing Playwright AC4 (term-crud.spec.ts lines 219-246) asserts: (a) aria-disabled='true' present, (b) role='button' absent, and (c) click does NOT open gw-dialog-edit-term \u00e2\u20ac\u201d all three invariants are compatible with sub-task B adding onImportedTermClick because the callback routes to a different UI path, not EditTermDialog.",
+            "evidence": [
+              {
+                "file": "tests/playwright/term-crud.spec.ts",
+                "lines": "219-246",
+                "excerpt": "await expect(importedItem).toHaveAttribute(\"aria-disabled\", \"true\");\nawait expect(importedItem).not.toHaveAttribute(\"role\", \"button\");\nawait importedItem.click();\nawait expect(page.getByTestId(\"gw-dialog-edit-term\")).not.toBeVisible();"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "167",
+                "excerpt": "role={isClickable ? \"button\" : undefined}"
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F5",
+            "claim": "InspectorProps interface (lines 268-278) has no selectedTermId prop; the Inspector component currently has three rendering modes (empty/relation/instance) with no term-level mode.",
+            "evidence": [
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "268-278",
+                "excerpt": "interface InspectorProps {\n  selectedRelationId: string | null;\n  selectedInstanceId: string | null;\n  project: Record<string, unknown> | null;\n  onProjectChange?: (updated: Record<string, unknown>) => void;\n}"
+              },
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "299-305",
+                "excerpt": "if ((selectedRelationId === null && selectedInstanceId === null) || project === null) {\n  return (\n    <p className=\"gw-placeholder\" data-testid=\"gw-inspector-empty\">\n      Select a node or relation to inspect.\n    </p>\n  );\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "App.tsx passes selectedRelationId and selectedInstanceId to Inspector but no selectedTermId; sub-task C requires adding a new useState<string | null>(null) for selectedTermId in App.tsx plus a new prop on Inspector.",
+            "evidence": [
+              {
+                "file": "src/ui/App.tsx",
+                "lines": "384-390",
+                "excerpt": "<Inspector\n  selectedRelationId={selectedRelationId}\n  selectedInstanceId={selectedInstanceId}\n  project={project}\n  onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n/>"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "RemapDialog component does not exist anywhere under src/ui/; the remapReferences kernel function (src/kernel/remap-references.ts) is fully implemented and tested but has zero UI callers.",
+            "evidence": [
+              {
+                "file": "src/kernel/remap-references.ts",
+                "lines": "118-190",
+                "excerpt": "export function remapReferences(\n  project: Record<string, unknown>,\n  importedIri: string,\n  projectCreatedIri: string,\n): RemapResult { ... }"
+              },
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "1-10",
+                "excerpt": "// No import of remapReferences or RemapDialog in Inspector.tsx"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "remapReferences preserves ecm:terms and ecm:ontologies verbatim, rewrites only ecm:classIris array entries on instances and ecm:predicateIri on relations/literalAssertions, and has a documented no-op path when importedIri === projectCreatedIri.",
+            "evidence": [
+              {
+                "file": "src/kernel/remap-references.ts",
+                "lines": "124-126",
+                "excerpt": "if (importedIri === projectCreatedIri) {\n  return { project, importedIri, projectCreatedIri, referenceCount: 0, affectedEntityTypes: [] };\n}"
+              },
+              {
+                "file": "src/kernel/remap-references.ts",
+                "lines": "174-181",
+                "excerpt": "const resultProject: Record<string, unknown> = {\n  ...project,\n  \"ecm:instances\": newInstances,\n  \"ecm:relations\": newRelations,\n  \"ecm:literalAssertions\": newLiterals,\n};\n// ecm:ontologies, ecm:terms, ecm:snapshots preserved by spread"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "EditTermDialog.tsx has no guard checking term['ecm:source'] === 'ecm:imported-ontology'; all hooks run unconditionally before any render-path fork.",
+            "evidence": [
+              {
+                "file": "src/ui/EditTermDialog.tsx",
+                "lines": "81-104",
+                "excerpt": "export function EditTermDialog({\n  term, project, onConfirm, onClose\n}: EditTermDialogProps) {\n  const originalIri = readStr(term, \"id\");\n  // ... useState(label), useState(comment), useState(iri), useState(error), useState(phase), useState(pendingRefactor)\n  // No early-return guard on term[\"ecm:source\"]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "The sub-task D defensive guard in EditTermDialog must be placed AFTER all six useState calls (lines 88-103) to satisfy React hook ordering rules; the guard renders a read-only or null view when term['ecm:source'] === 'ecm:imported-ontology'.",
+            "evidence": [
+              {
+                "file": "src/ui/EditTermDialog.tsx",
+                "lines": "87-103",
+                "excerpt": "const [label, setLabel] = useState(...);\nconst [comment, setComment] = useState(...);\nconst [iri, setIri] = useState(originalIri);\nconst [error, setError] = useState<string | null>(null);\nconst [phase, setPhase] = useState<Phase>(\"edit\");\nconst [pendingRefactor, setPendingRefactor] = useState<RefactorResult | null>(null);"
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F11",
+            "claim": "The primary gating against EditTermDialog opening for imported terms is already present in TermSidebar.tsx: isClickable requires ecm:source === 'ecm:project-created', so the dialog is never opened for imported terms via the sidebar path.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "153-155",
+                "excerpt": "const isClickable =\n  onTermClick !== undefined &&\n  term[\"ecm:source\"] === \"ecm:project-created\";"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "269-271",
+                "excerpt": "function handleTermClick(term: TermEntry) {\n  setEditTerm(term as unknown as Record<string, unknown>);\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "The imported-term.jsonld fixture already exists with ecm:ontologyId: null, ecm:source: 'ecm:imported-ontology', and a hand-crafted shape (ecm:ontologies: [] \u00e2\u20ac\u201d no ImportedOntologyRecord present); it is suitable for AC1 fixture round-trip and AC2 read-only inspector tests.",
+            "evidence": [
+              {
+                "file": "tests/playwright/fixtures/imported-term.jsonld",
+                "lines": "77-99",
+                "excerpt": "\"ecm:ontologies\": [],\n...\n\"ecm:terms\": [\n  {\n    \"ecm:ontologyId\": null,\n    \"ecm:source\": \"ecm:imported-ontology\",\n    \"id\": \"https://example.org/ontology/ImportedClass\",\n    \"rdfs:label\": { \"text\": \"Imported Class\", \"lang\": \"en\" },\n    \"type\": \"owl:Class\"\n  },\n  {\n    \"ecm:ontologyId\": null,\n    \"ecm:source\": \"ecm:project-created\",\n    \"id\": \"https://example.org/ontology/LocalClass\",\n    \"rdfs:label\": { \"text\": \"Local Class\", \"lang\": \"en\" },\n    \"type\": \"owl:Class\"\n  }\n]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "The AC1 fixture round-trip test (IMPL PLAN \u00c2\u00a73.2) tests ecm:source preservation through Open\u00e2\u2020\u2019Save\u00e2\u2020\u2019re-parse, NOT through the CLI import path; the existing imported-term.jsonld fixture is sufficient as-is because the ecm:source field is part of the stored term entry and will survive canonical serialization.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "556-568",
+                "excerpt": "### 3.2 Imported-Term Immutability and Remap Workflow (P1)\n...\n**Acceptance criteria:**\n- Imported term has ecm:source: \"ecm:imported-ontology\" in saved project. Playwright test.\n- Clicking imported term in sidebar shows read-only inspector (no edit controls visible/enabled). Playwright test."
+              },
+              {
+                "file": "tests/playwright/fixtures/imported-term.jsonld",
+                "lines": "82",
+                "excerpt": "\"ecm:source\": \"ecm:imported-ontology\""
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F14",
+            "claim": "The tests/playwright/imported-term-read-only.spec.ts file does not exist; the tests/playwright/ directory contains 13 spec files plus a fixtures/ subdirectory but no imported-term-read-only.spec.ts.",
+            "evidence": [
+              {
+                "file": "tests/playwright/",
+                "lines": "all",
+                "excerpt": "shell.spec.ts, iri-affordances.spec.ts, literal-crud.spec.ts, triple-preview.spec.ts, validation-panel.spec.ts, relation-crud.spec.ts, delete-instance.spec.ts, isabout-ui.spec.ts, canvas.spec.ts, instance-label.spec.ts, term-sidebar.spec.ts, new-open-save.spec.ts, term-crud.spec.ts, smoke.spec.ts \u00e2\u20ac\u201d no imported-term-read-only.spec.ts"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "Playwright config uses testDir: './tests/playwright' with automatic file discovery; any new *.spec.ts file dropped in tests/playwright/ is automatically included with no config changes required.",
+            "evidence": [
+              {
+                "file": "playwright.config.ts",
+                "lines": "3-6",
+                "excerpt": "testDir: \"./tests/playwright\",\ntimeout: 30_000,\nexpect: { timeout: 5_000 },\nfullyParallel: true,"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "All existing Playwright specs share the same import pattern and fixture path convention: import {test, expect} from '@playwright/test'; fixture paths via path.join(process.cwd(), 'tests', 'playwright', 'fixtures', '<filename>.jsonld'); download tests additionally import fs from 'fs'.",
+            "evidence": [
+              {
+                "file": "tests/playwright/term-crud.spec.ts",
+                "lines": "1-37",
+                "excerpt": "import { test, expect } from \"@playwright/test\";\nimport path from \"path\";\nimport fs from \"fs\";\n...\nconst IMPORTED_TERM_FIXTURE = path.join(process.cwd(), \"tests\", \"playwright\", \"fixtures\", \"imported-term.jsonld\");"
+              },
+              {
+                "file": "tests/playwright/term-sidebar.spec.ts",
+                "lines": "1-19",
+                "excerpt": "import { test, expect } from \"@playwright/test\";\nimport path from \"path\";\n...\nconst SIDEBAR_FIXTURE = path.join(process.cwd(), \"tests\", \"playwright\", \"fixtures\", \"term-sidebar-2c-1op-1dp.jsonld\");"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "AC2 (clicking imported term opens read-only Inspector) requires sub-tasks B AND C to both land before the Playwright test can pass: sub-task B fires the callback on click, sub-task C renders the read-only inspector panel in response.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "152-170",
+                "excerpt": "// Sub-task B: imported term needs onClick -> onImportedTermClick(term)"
+              },
+              {
+                "file": "src/ui/Inspector.tsx",
+                "lines": "268-293",
+                "excerpt": "// Sub-task C: Inspector needs selectedTermId prop + rendering branch for imported-term read-only view"
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F18",
+            "claim": "SPEC \u00c2\u00a713.3 declares imported ontology term IRIs as immutable in the MVP and \u00c2\u00a713.6 defines 'remap references' as the project-created-replacing-imported workflow; FR-U010 maps to preventing direct editing.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1032-1040",
+                "excerpt": "### 13.3 Imported Term IRI Change\nImported ontology term IRIs are immutable in v0.3. The user has three options for substitution...\nThe MVP supports project-local replacement terms only."
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1056-1059",
+                "excerpt": "### 13.6 Project-Created Replacing Imported\nIf a project-created term is created with the intent to supersede an imported term, the user may invoke a \"remap references\" operation..."
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1367",
+                "excerpt": "| FR-U010 | Prevent direct editing of imported ontology terms (\u00c2\u00a713.3). |"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "remap-references.test.ts (lines 1-26) is a hand-rolled node:assert pattern (no test framework) and covers AC3 and AC4 of IMPL PLAN \u00c2\u00a73.2; these unit-level ACs are already satisfied by the shipped kernel.",
+            "evidence": [
+              {
+                "file": "tests/remap-references.test.ts",
+                "lines": "1-26",
+                "excerpt": "/**\n * Acceptance criteria covered:\n *   AC3: Remap A->B: zero occurrences of imported IRI A in ecm:classIris and\n *        ecm:predicateIri after remap.\n *   AC4: Imported ontology record (with IRI A) remains in ecm:ontologies after remap.\n */\nimport { strictEqual, deepStrictEqual, ok } from \"node:assert\";"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F20",
+            "claim": "The Dialog.tsx primitive accepts a testId prop (default 'gw-dialog'); all existing dialogs pass a distinct testId (e.g., 'gw-dialog-edit-term', 'gw-dialog-confirm-refactor', 'gw-dialog-delete-instance') \u00e2\u20ac\u201d the new RemapDialog must declare its own unique testId for Playwright selectability.",
+            "evidence": [
+              {
+                "file": "src/ui/Dialog.tsx",
+                "lines": "15-22",
+                "excerpt": "interface DialogProps {\n  title: string;\n  onClose: () => void;\n  children: ReactNode;\n  /** data-testid on the <dialog> element. Defaults to \"gw-dialog\". */\n  testId?: string;\n}"
+              },
+              {
+                "file": "src/ui/EditTermDialog.tsx",
+                "lines": "197-199",
+                "excerpt": "<Dialog title=\"Confirm Refactor IRI\" onClose={onClose} testId=\"gw-dialog-confirm-refactor\">"
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "The Phase 3 Chain 3.2-UI reconnaissance covers sub-tasks B, C, D, and E against the current codebase state after Chain 3 sub-task A (remapReferences kernel shipped at 781-test-p3-c3-retry). Sub-task B (imported-term click fires onImportedTermClick): TermSidebar.tsx currently sets aria-disabled='true' on imported terms but wires no onClick; the TermSidebarProps interface has no onImportedTermClick prop, the TermSection component has no parallel callback for imported terms, and App.tsx passes neither onImportedTermClick nor holds selectedTermId state. The existing AC4 in term-crud.spec.ts (lines 219-246) asserts aria-disabled, no role='button', and no EditTermDialog on click \u00e2\u20ac\u201d all three are preserved by adding a separate callback rather than repurposing the existing click path. Sub-task C (Inspector read-only term mode + RemapDialog): InspectorProps has no selectedTermId prop (Inspector only knows relation/instance/empty modes), App.tsx holds no selectedTermId state, and RemapDialog does not exist in src/ui/. The remapReferences kernel function is fully implemented and tested but has zero UI callers. Sub-task D (EditTermDialog defensive guard): no ecm:source check exists anywhere in EditTermDialog.tsx; the React hook ordering constraint means the guard must be placed after all six useState calls (lines 88-103); the primary gating is already in TermSidebar.tsx isClickable logic. Sub-task E (Playwright spec imported-term-read-only.spec.ts): the file does not exist; the imported-term.jsonld fixture exists with ecm:ontologyId=null and ecm:source='ecm:imported-ontology' and is suitable for both AC1 (fixture round-trip) and AC2 (read-only inspector) tests; the Playwright config auto-discovers all *.spec.ts files in tests/playwright/ with no config changes needed; all existing specs follow a uniform import/fixture-path convention. AC2 is a cross-subtask dependency \u00e2\u20ac\u201d it cannot pass until both B (click fires callback) and C (Inspector renders term mode) are landed.",
+        "evidence_paths": [
+          "src/ui/TermSidebar.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/EditTermDialog.tsx",
+          "src/ui/App.tsx",
+          "src/ui/Dialog.tsx",
+          "src/kernel/remap-references.ts",
+          "tests/playwright/term-crud.spec.ts",
+          "tests/playwright/term-sidebar.spec.ts",
+          "tests/playwright/fixtures/imported-term.jsonld",
+          "playwright.config.ts",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/SPEC.md"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2 AC1+AC2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "open_questions": [
+          "Sub-task C Inspector: when selectedTermId is active, should Inspector suppress selectedRelationId and selectedInstanceId rendering (i.e., term-view trumps canvas selection), or should the three modes be mutually exclusive via App-level state coordination?",
+          "Sub-task C RemapDialog: the dialog requires the user to select a project-created replacement term IRI before calling remapReferences; should the developer filter to only project-created terms with matching OWL type (e.g., owl:Class only for an imported owl:Class), or show all project-created terms?",
+          "Sub-task D EditTermDialog: when the guard fires for an imported term, should the component return null (silent no-op), render a read-only view with import badge, or throw a structured error that the parent can catch? The IMPL PLAN says 'belt-and-suspenders' but does not specify the rendered output.",
+          "Sub-task E AC1: the imported-term.jsonld fixture has ecm:ontologies: [] (no ImportedOntologyRecord). IMPL PLAN \u00c2\u00a73.2 AC1 says 'Imported term has ecm:source in saved project' \u00e2\u20ac\u201d does the round-trip test need to also assert ecm:ontologies is preserved as-is (empty array), or only check the ecm:terms entry's ecm:source field?",
+          "Sub-task E AC2: the test description says 'clicking imported term opens read-only Inspector' \u00e2\u20ac\u201d what testId should the read-only inspector panel carry (e.g., 'gw-inspector-imported-term') to enable the Playwright assertion, given that Inspector.tsx currently only has 'gw-inspector-instance' and 'gw-inspector-relation' as mode-level testIds?"
+        ],
+        "scope_assessment": "Investigated all six files listed in the task inputs plus the Playwright fixture directory enumeration and playwright.config.ts; read IMPL PLAN \u00c2\u00a73.2 acceptance criteria in full and SPEC \u00c2\u00a713.3/\u00c2\u00a713.6/FR-U010; confirmed presence/absence of RemapDialog, imported-term-read-only.spec.ts, selectedTermId state, and onImportedTermClick prop; did not investigate CanvasView.tsx, AddTermDialog.tsx, PropertyCreationDialog.tsx, or the tests/remap-references.test.ts body beyond the header section, as they are outside the four-subtask scope."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:24:14Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:791-dev-p3-c3.2-B",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task B -- TermSidebar onImportedTermClick callback",
+        "purpose": "Sub-task B per OQ1 CONFIRM verdict: src/ui/TermSidebar.tsx -- add optional `onImportedTermClick?: (term: TermEntry) => void` prop; fire it when an imported term (ecm:source = ecm:imported-ontology) is clicked. The existing aria-disabled attribute stays for accessibility (no edit affordance). Existing Playwright test at tests/playwright/term-crud.spec.ts:219-246 (negative invariant: clicking imported term does NOT open gw-dialog-edit-term) MUST continue passing -- the new callback does NOT route through whatever opens gw-dialog-edit-term. One-file change. Single sub-task scope per Aaron 2026-06-02 Option B operator decision.",
+        "files_in_scope": [
+          "src/ui/TermSidebar.tsx (modify)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN section 3.2 AC2",
+          "FR-U010"
+        ],
+        "constraint": "Single-file change; ~30 lines net. Do NOT touch Inspector.tsx, App.tsx, EditTermDialog.tsx -- those are downstream sub-tasks C/D. Per CLAUDE.md section 9 layer boundaries: src/ui/ may import from src/kernel/, src/composition/, src/adapters/. Existing negative-invariant Playwright test must keep passing.",
+        "ft_anchor": "ft-778-dev-p3-c3-1"
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add optional onImportedTermClick prop to TermSidebarProps. Uses TermEntry (already in scope at file level) so no new import is needed. The callback is independent of onTermsChange \u00e2\u20ac\u201d it fires on read-only click, not on mutation.",
+            "before": "interface TermSidebarProps {\n  project: Record<string, unknown> | null;\n  /**\n   * Called with the updated project document after a term is added.\n   * When undefined the Add buttons are hidden (read-only mode).\n   */\n  onTermsChange?: (project: Record<string, unknown>) => void;\n}",
+            "after": "interface TermSidebarProps {\n  project: Record<string, unknown> | null;\n  /**\n   * Called with the updated project document after a term is added.\n   * When undefined the Add buttons are hidden (read-only mode).\n   */\n  onTermsChange?: (project: Record<string, unknown>) => void;\n  /**\n   * Called when an imported-ontology term is clicked (FR-U010; sub-task B).\n   * Fires independently of onTermsChange; aria-disabled stays (no edit affordance).\n   */\n  onImportedTermClick?: (term: TermEntry) => void;\n}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add onImportedTermClick to TermSection's destructure parameter and inline type shape so the internal component can receive and forward the callback.",
+            "before": "function TermSection({\n  title,\n  terms,\n  testId,\n  onAddTerm,\n  addTestId,\n  onTermClick,\n}: {\n  title: string;\n  terms: TermEntry[];\n  testId: string;\n  onAddTerm?: () => void;\n  addTestId?: string;\n  onTermClick?: (term: TermEntry) => void;\n}) {",
+            "after": "function TermSection({\n  title,\n  terms,\n  testId,\n  onAddTerm,\n  addTestId,\n  onTermClick,\n  onImportedTermClick,\n}: {\n  title: string;\n  terms: TermEntry[];\n  testId: string;\n  onAddTerm?: () => void;\n  addTestId?: string;\n  onTermClick?: (term: TermEntry) => void;\n  onImportedTermClick?: (term: TermEntry) => void;\n}) {",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Introduce hasImportedClickHandler guard and rewire onClick so imported terms fire onImportedTermClick when provided. The existing invariants are preserved: aria-disabled='true' is unchanged; role='button' is still gated solely on isClickable (which requires ecm:project-created), so the Playwright negative-invariant test at term-crud.spec.ts:219-246 continues to pass. onKeyDown is left unchanged \u00e2\u20ac\u201d keyboard activation of the read-only path is not in scope for sub-task B.",
+            "before": "            // Only project-created terms are clickable; imported/starter are not.\n            const isClickable =\n              onTermClick !== undefined &&\n              term[\"ecm:source\"] === \"ecm:project-created\";\n            // Imported-ontology terms carry an affirmative read-only signal (FR-U010; Chain C).\n            const isImported = term[\"ecm:source\"] === \"ecm:imported-ontology\";\n            return (\n              <li\n                key={term.id}\n                className={\n                  isClickable\n                    ? \"gw-term-item gw-term-item--clickable\"\n                    : \"gw-term-item\"\n                }\n                data-testid=\"gw-term-item\"\n                role={isClickable ? \"button\" : undefined}\n                tabIndex={isClickable ? 0 : undefined}\n                aria-disabled={isImported ? \"true\" : undefined}\n                onClick={isClickable ? () => { onTermClick(term); } : undefined}\n                onKeyDown={",
+            "after": "            // Only project-created terms are clickable; imported/starter are not.\n            const isClickable =\n              onTermClick !== undefined &&\n              term[\"ecm:source\"] === \"ecm:project-created\";\n            // Imported-ontology terms carry an affirmative read-only signal (FR-U010; Chain C).\n            const isImported = term[\"ecm:source\"] === \"ecm:imported-ontology\";\n            // Imported terms may fire a separate read-only callback (FR-U010; sub-task B).\n            const hasImportedClickHandler =\n              isImported && onImportedTermClick !== undefined;\n            return (\n              <li\n                key={term.id}\n                className={\n                  isClickable\n                    ? \"gw-term-item gw-term-item--clickable\"\n                    : \"gw-term-item\"\n                }\n                data-testid=\"gw-term-item\"\n                role={isClickable ? \"button\" : undefined}\n                tabIndex={isClickable ? 0 : undefined}\n                aria-disabled={isImported ? \"true\" : undefined}\n                onClick={\n                  isClickable\n                    ? () => { onTermClick(term); }\n                    : hasImportedClickHandler\n                    ? () => { onImportedTermClick?.(term); }\n                    : undefined\n                }\n                onKeyDown={",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Destructure onImportedTermClick from TermSidebarProps in the exported component so it is available for pass-through to each TermSection call.",
+            "before": "export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {",
+            "after": "export function TermSidebar({ project, onTermsChange, onImportedTermClick }: TermSidebarProps) {",
+            "scope": "minimal"
+          },
+          {
+            "id": "C5",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Pass onImportedTermClick through to the Classes TermSection.",
+            "before": "        addTestId=\"gw-btn-add-class\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      <TermSection\n        title=\"Object Properties\"",
+            "after": "        addTestId=\"gw-btn-add-class\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n      />\n      <TermSection\n        title=\"Object Properties\"",
+            "scope": "minimal"
+          },
+          {
+            "id": "C6",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Pass onImportedTermClick through to the Object Properties TermSection.",
+            "before": "        addTestId=\"gw-btn-add-object-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      <TermSection\n        title=\"Datatype Properties\"",
+            "after": "        addTestId=\"gw-btn-add-object-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n      />\n      <TermSection\n        title=\"Datatype Properties\"",
+            "scope": "minimal"
+          },
+          {
+            "id": "C7",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Pass onImportedTermClick through to the Datatype Properties TermSection.",
+            "before": "        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      <TermSection\n        title=\"Annotation Properties\"",
+            "after": "        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n      />\n      <TermSection\n        title=\"Annotation Properties\"",
+            "scope": "minimal"
+          },
+          {
+            "id": "C8",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Pass onImportedTermClick through to the Annotation Properties TermSection.",
+            "before": "        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n      />\n      {addDialogType !== null && project !== null && (",
+            "after": "        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n      />\n      {addDialogType !== null && project !== null && (",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/term-crud.spec.ts",
+            "describe": "Existing negative-invariant test at lines 219-246 must continue passing without modification: aria-disabled='true' present, role='button' absent, click does NOT open gw-dialog-edit-term. Run after apply to confirm."
+          },
+          {
+            "file": "tests/playwright/imported-term-read-only.spec.ts",
+            "describe": "New spec (sub-task E scope): once sub-tasks C and D land, add an AC2 test that (a) loads imported-term.jsonld fixture, (b) clicks the imported term in the sidebar, (c) asserts the read-only inspector panel is visible (e.g., data-testid='gw-inspector-imported-term') and gw-dialog-edit-term is not open."
+          }
+        ],
+        "open_questions": [
+          "TermEntry interface is not exported from TermSidebar.tsx. Sub-task C (App.tsx wiring) can use contextual type inference for the callback argument \u00e2\u20ac\u201d `onImportedTermClick={(term) => setSelectedTermId(term.id)}` \u00e2\u20ac\u201d without an explicit import. If the sub-task C developer prefers an explicit annotation, they should add `export` to the TermEntry interface declaration in this same file (1-char change, trivial, but outside sub-task B scope).",
+          "onKeyDown is not wired for the imported-term click path (hasImportedClickHandler branch). Keyboard activation of the read-only inspector is not called out in sub-task B scope or the IMPL PLAN AC2 acceptance criteria. If keyboard support for imported-term inspection is required, a follow-up change to TermSection's onKeyDown handler is needed."
+        ],
+        "summary": "Eight targeted edits to src/ui/TermSidebar.tsx adding the optional onImportedTermClick?: (term: TermEntry) => void prop. C1 extends TermSidebarProps. C2 extends TermSection's destructure and inline type. C3 introduces hasImportedClickHandler and rewires onClick to fire onImportedTermClick when the term is imported and the callback is provided \u00e2\u20ac\u201d keeping aria-disabled='true' intact and role='button' gated solely on isClickable (ecm:project-created), so the Playwright negative-invariant test at term-crud.spec.ts:219-246 continues to pass unchanged. C4 destructures the new prop in the exported TermSidebar function. C5-C8 pass onImportedTermClick={onImportedTermClick} through to all four TermSection JSX usages. Net: ~16 lines added across one file.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:28:17Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:792-rat-p3-c3.2-B",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:791-dev-p3-c3.2-B",
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task B -- Pass 2a ratification",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for sub-task B. Verify: (1) callback prop is optional (so call sites not passing it still work); (2) callback fires on imported-term click; (3) aria-disabled attribute preserved; (4) no routing change that would break the term-crud.spec.ts:219-246 negative invariant; (5) layer boundary respected.",
+        "spec_refs": [
+          "FNSR Spec 03 Architect refusal contract",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposal adds a new optional callback prop and rewires click routing for imported terms, changing behavioral semantics (previously-silent clicks now fire a callback); this is behavioral surface change, not typo/formatting/terminology tightening.",
+        "rationale": "Reconnaissance evidence (urn:fnsr:task:790-recon-p3-c3.2) is present in UPSTREAM, satisfying the Spec 03 reconnaissance-required contract for substantive change. Each of the five ratification criteria is satisfied by the proposed changes[]: (1) C1 declares `onImportedTermClick?: (term: TermEntry) => void` with `?` \u00e2\u20ac\u201d the prop is optional and existing call sites (App.tsx line 369-371 per F3; the negative-invariant test setup which passes no callback) continue to type-check and run; (2) C3 introduces `hasImportedClickHandler = isImported && onImportedTermClick !== undefined` and conditionally wires `onClick={... : hasImportedClickHandler ? () => { onImportedTermClick?.(term); } : undefined}`, so imported terms fire the callback when one is provided; (3) `aria-disabled={isImported ? \"true\" : undefined}` is preserved verbatim in C3 \u00e2\u20ac\u201d the attribute set is unchanged; (4) the term-crud.spec.ts:219-246 negative invariant is preserved on three axes \u00e2\u20ac\u201d aria-disabled stays 'true' (axis 1, see above); `role={isClickable ? \"button\" : undefined}` is unchanged and `isClickable` still requires `ecm:source === \"ecm:project-created\"` (per F11), so imported terms still carry no role='button' (axis 2); and the new callback (when later wired in sub-task C) routes to the Inspector read-only view, not to EditTermDialog, so the `gw-dialog-edit-term` non-visibility assertion holds (axis 3 \u00e2\u20ac\u201d additionally, in the existing test no `onImportedTermClick` is passed via App.tsx, so onClick resolves to `undefined` and click remains a no-op in that test context); (5) all edits are confined to `src/ui/TermSidebar.tsx` (UI layer) and reuse `TermEntry` already in scope at file level \u00e2\u20ac\u201d no kernel/composition imports added, GraphWrite layer boundary intact. C2 + C4\u00e2\u20ac\u201cC8 are mechanical pass-through plumbing through TermSection's four call sites and the exported TermSidebar destructure \u00e2\u20ac\u201d required to make C1+C3 reachable end-to-end. The developer's two open_questions are deferred-to-downstream-subtask concerns (TermEntry export ergonomics for sub-task C; onKeyDown for the read-only path) and are not in sub-task B scope; neither blocks ratification. The change set is minimal (~16 lines, one file), self-contained, and the existing AC4 invariant test serves as the immediate regression guard at apply time.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:790-recon-p3-c3.2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:791-dev-p3-c3.2-B",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2 AC1+AC2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Spec 03 Architect refusal contract / Reconnaissance requirement",
+            "source": "FNSR Spec 03"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Sub-task B demonstrates the 'parallel callback over repurposed click path' pattern for preserving a negative-invariant test while adding new behavioral surface: rather than relax the existing `isClickable` gate (which would have flipped role='button' on imported terms and broken term-crud.spec.ts:219-246 axis 2), the developer introduced a separate `hasImportedClickHandler` predicate and a separate `onClick` branch. The aria-disabled attribute is preserved as the affirmative read-only signal, while the new callback fires through a structurally-distinct code path. This shape \u00e2\u20ac\u201d adding a new conditional branch alongside an existing one rather than widening the existing predicate \u00e2\u20ac\u201d is the lower-risk shape when an established Playwright negative invariant guards the existing behavior. Worth noting for future UI-layer sub-tasks that need to add behavior to an element carrying multiple frozen invariants."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:29:04Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:793-apply-p3-c3.2-B",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:792-rat-p3-c3.2-B",
+        "urn:fnsr:task:791-dev-p3-c3.2-B"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task B -- applier",
+        "purpose": "Pass 2b commit-finalize for sub-task B.",
+        "source_task": "urn:fnsr:task:791-dev-p3-c3.2-B"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 225
+          },
+          {
+            "id": "C2",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 74
+          },
+          {
+            "id": "C3",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 382
+          },
+          {
+            "id": "C4",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 21
+          },
+          {
+            "id": "C5",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 50
+          },
+          {
+            "id": "C6",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 50
+          },
+          {
+            "id": "C7",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 50
+          },
+          {
+            "id": "C8",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 50
+          }
+        ],
+        "failed": [],
+        "summary": "8 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:29:05Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:794-dev-p3-c3.2-D",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task D -- EditTermDialog defensive guard",
+        "purpose": "Sub-task D: src/ui/EditTermDialog.tsx -- add defensive early-return when the term's ecm:source equals 'ecm:imported-ontology'. Belt-and-suspenders defense: the primary gate is at the sidebar layer (sub-task B blocks the dialog from opening for imported terms), but the dialog itself should defensively bail with a no-op if it somehow gets rendered for an imported term. Render a small read-only notice (or simply return null) and do NOT show edit fields. One-file change; ~5-15 lines net.",
+        "files_in_scope": [
+          "src/ui/EditTermDialog.tsx (modify)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN section 3.2 AC2",
+          "SPEC section 13.3"
+        ],
+        "constraint": "Single-file change. Pure defensive guard; do NOT change the dialog's other rendering paths. Per CLAUDE.md section 9 layer boundaries.",
+        "ft_anchor": "ft-778-dev-p3-c3-1"
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/EditTermDialog.tsx",
+            "rationale": "Recon finding F10 confirms the guard must be placed after all six useState calls (lines 88\u00e2\u20ac\u201c103) to satisfy React hook ordering rules. Placing it immediately before handleSubmit is the earliest safe site. Returning null is the correct defensive no-op: this is a belt-and-suspenders guard only \u00e2\u20ac\u201d the primary gate is TermSidebar.tsx's isClickable check (F11). The Inspector read-only view for imported terms is the job of sub-task C, not EditTermDialog. A null return is ~5 net lines, within the stated range, and avoids any UI ambiguity if sub-task C is already rendering the read-only panel. The comment cites SPEC \u00c2\u00a713.3 / FR-U010 per IMPL PLAN \u00c2\u00a73.2 AC2 for audit traceability.",
+            "before": "  const [pendingRefactor, setPendingRefactor] =\n    useState<RefactorResult | null>(null);\n\n  function handleSubmit(e: FormEvent<HTMLFormElement>) {",
+            "after": "  const [pendingRefactor, setPendingRefactor] =\n    useState<RefactorResult | null>(null);\n\n  // Belt-and-suspenders guard (SPEC \u00c2\u00a713.3 / FR-U010): primary gate is\n  // TermSidebar.tsx isClickable; this guard defends against future code\n  // paths that might open EditTermDialog for an imported term.\n  if (term[\"ecm:source\"] === \"ecm:imported-ontology\") {\n    return null;\n  }\n\n  function handleSubmit(e: FormEvent<HTMLFormElement>) {",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/imported-term-read-only.spec.ts",
+            "describe": "Verify that clicking an imported term in the sidebar never opens gw-dialog-edit-term (the guard fires silently). This test is part of sub-task E's scope but is noted here because it provides the Playwright-level assertion that the defensive null-return path is in effect for the ecm:imported-ontology term in the imported-term.jsonld fixture."
+          }
+        ],
+        "open_questions": [
+          "Recon open question OQ-D carried forward: if a future code path renders EditTermDialog for an imported term and the null return surprises the caller (e.g., a modal-management layer expecting a rendered Dialog node), the guard may need to return a Dialog with a read-only notice instead of null. The current decision (return null) is consistent with the 'belt-and-suspenders / silent no-op' framing in the INPUTS; revisit only if sub-task C's Inspector panel proves insufficient as the primary imported-term UI surface."
+        ],
+        "summary": "Single insertion of a 6-line defensive guard in EditTermDialog.tsx, placed after all six useState calls (React hook ordering requirement per recon F10). When term[\"ecm:source\"] === \"ecm:imported-ontology\" the component returns null immediately, suppressing all edit fields. No other rendering paths are touched. Change is ~7 lines net (comment + if-block + blank lines), within the stated 5\u00e2\u20ac\u201c15 line budget.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:29:59Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:795-rat-p3-c3.2-D",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:794-dev-p3-c3.2-D",
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task D -- Pass 2a ratification",
+        "purpose": "Pass 2a ratification for sub-task D. Verify the defensive guard is correctly placed early in the render path and that it doesn't alter the dialog's non-imported-term rendering.",
+        "spec_refs": [
+          "FNSR Spec 03",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The change introduces behavioral guard logic (an early-return based on a runtime field value) that alters component rendering semantics under a specific input condition, which is beyond editorial-correction scope (typo/formatting/terminology-tightening).",
+        "rationale": "The proposed change is a minimal 6-line defensive guard in EditTermDialog.tsx that returns null when term['ecm:source'] === 'ecm:imported-ontology'. The change is correctly placed after all six useState calls (lines 88-103), satisfying the React hooks-ordering rule documented in recon finding F10. It does not modify any code path that handles non-imported terms: the `if` predicate is exclusively the imported-source check and returns immediately; all downstream rendering (label/comment/iri editing, refactor flow, dialog chrome) remains untouched for project-created terms. The comment in the `after` block cites SPEC \u00c2\u00a713.3 and FR-U010, providing audit traceability matching IMPL PLAN \u00c2\u00a73.2 AC2 intent. The change is belt-and-suspenders by design (primary gate is TermSidebar.tsx isClickable per recon F11), and the `return null` choice is consistent with the silent no-op framing in the developer's INPUTS \u00e2\u20ac\u201d sub-task C carries responsibility for rendering the imported-term Inspector read-only view, not this dialog. The change is exactly one file, one insertion, within the stated 5-15-line budget. UPSTREAM contains reconnaissance task 790-recon-p3-c3.2 with twenty findings grounded in file paths and line ranges, satisfying Spec 03 reconnaissance requirement for substantive changes. No conflict with frozen ADR text or prior rulings; the spec sections cited (\u00c2\u00a713.3, \u00c2\u00a713.6, FR-U010) are explicit normative anchors for imported-term immutability.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:790-recon-p3-c3.2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:794-dev-p3-c3.2-D",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2 AC1+AC2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "React hook-ordering constraints force defensive guards on hook-using function components to be placed AFTER all useState/useEffect calls, not at the top of the function body. This produces a recognizable shape: the 'earliest safe guard site' is immediately after the last hook call and immediately before any handler closures. Sub-task D's placement (after six useState calls, before handleSubmit) is a canonical instance of this pattern. Future component-level defensive guards in this codebase should expect to follow the same shape; a structural heuristic for ratification is: if a proposed guard appears BEFORE any hook call in a hook-using component, the change is broken regardless of its logical content."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Belt-and-suspenders defensive guards layered behind a primary gate (here: TermSidebar.tsx isClickable as primary, EditTermDialog null-return as secondary) form a defense-in-depth pattern where the secondary guard's correct behavior under normal operation is to never fire. Ratification of such guards turns on (a) confirming the primary gate exists and is cited in the rationale, (b) confirming the secondary guard does not alter the unguarded path, and (c) confirming the failure mode if both gates fail is silent (null/no-op) rather than crash. The developer's rationale citing F11 (primary gate location) is the audit-surfacing mechanism for this pattern."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:30:31Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:796-apply-p3-c3.2-D",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:795-rat-p3-c3.2-D",
+        "urn:fnsr:task:794-dev-p3-c3.2-D"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task D -- applier",
+        "purpose": "Pass 2b commit-finalize for sub-task D.",
+        "source_task": "urn:fnsr:task:794-dev-p3-c3.2-D"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\EditTermDialog.tsx",
+            "mode": "edit",
+            "delta_bytes": 289
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:30:31Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:797-dev-p3-c3.2-C",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:790-recon-p3-c3.2",
+        "urn:fnsr:task:793-apply-p3-c3.2-B"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task C -- Inspector selectedTermId + Remap affordance + RemapDialog",
+        "purpose": "Sub-task C: (1) src/ui/Inspector.tsx -- add `selectedTermId: string | null` prop to InspectorProps; when set, render a term-mode view (read-only term metadata + imported badge if ecm:source = ecm:imported-ontology + Remap affordance button); (2) src/ui/App.tsx -- add selectedTermId state hook + wire to Inspector + wire setSelectedTermId(termId) as the onImportedTermClick callback passed to TermSidebar (sub-task B); (3) src/ui/RemapDialog.tsx (new) -- a Dialog component that takes (importedTerm, projectCreatedTerms[]) and lets the user pick a target term + invokes the kernel remapReferences function (src/kernel/remap-references.ts, sub-task A) on confirm; closes on cancel or apply. Per OQ1 CONFIRM, this is additive behavior; the existing negative-invariant Playwright test must still pass.",
+        "files_in_scope": [
+          "src/ui/Inspector.tsx (modify)",
+          "src/ui/App.tsx (modify)",
+          "src/ui/RemapDialog.tsx (new)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN section 3.2 AC2",
+          "SPEC section 13.3",
+          "SPEC section 13.6",
+          "FR-U010"
+        ],
+        "constraint": "Three-file change. Per CLAUDE.md section 9 layer boundaries: src/ui/ may import from src/kernel/ (use kernel remapReferences as the apply action). Inspector's selectedTermId branch is ADDITIVE -- existing instance/inspector rendering must continue to work. RemapDialog is a new file following the existing Dialog.tsx pattern.",
+        "ft_anchor": "ft-778-dev-p3-c3-1"
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Add RemapDialog import alongside the other UI dialog imports, grouped after Dialog.js.",
+            "before": "import { useState } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\nimport { deleteInstance } from \"../kernel/delete-instance.js\";",
+            "after": "import { useState } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\nimport { RemapDialog } from \"./RemapDialog.js\";\nimport { deleteInstance } from \"../kernel/delete-instance.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Extend InspectorProps with the new selectedTermId prop (string | null). Additive; existing relation/instance props unchanged.",
+            "before": "interface InspectorProps {\n  selectedRelationId: string | null;\n  selectedInstanceId: string | null;\n  project: Record<string, unknown> | null;\n  /**\n   * Called with the updated project document on relation or literal mutation.\n   * Accepted here so App can pass it unconditionally and the prop shape is\n   * stable across chains.\n   */\n  onProjectChange?: (updated: Record<string, unknown>) => void;\n}",
+            "after": "interface InspectorProps {\n  selectedRelationId: string | null;\n  selectedInstanceId: string | null;\n  /**\n   * When non-null, Inspector renders a read-only term-metadata view instead\n   * of the relation or instance panel. Term mode takes priority when set.\n   * FR-U010; IMPL PLAN section 3.2 AC2.\n   */\n  selectedTermId: string | null;\n  project: Record<string, unknown> | null;\n  /**\n   * Called with the updated project document on relation or literal mutation.\n   * Accepted here so App can pass it unconditionally and the prop shape is\n   * stable across chains.\n   */\n  onProjectChange?: (updated: Record<string, unknown>) => void;\n}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/ui/Inspector.tsx",
+            "rationale": "Destructure selectedTermId from props, add remapOpen useState (must be unconditional per React hook rules), then insert the term-mode early-return block before the existing empty guard. The term-mode block finds the term entry, renders read-only metadata + imported badge + Remap affordance, and mounts RemapDialog when open. Existing empty/instance/relation branches are untouched.",
+            "before": "export function Inspector({\n  selectedRelationId,\n  selectedInstanceId,\n  project,\n  onProjectChange,\n}: InspectorProps) {\n  const [addLiteralOpen, setAddLiteralOpen] = useState(false);\n  const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);\n  const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);\n  const [selectedAddClassIri, setSelectedAddClassIri] = useState<string>(\"\");\n\n  if ((selectedRelationId === null && selectedInstanceId === null) || project === null) {\n    return (\n      <p className=\"gw-placeholder\" data-testid=\"gw-inspector-empty\">\n        Select a node or relation to inspect.\n      </p>\n    );\n  }",
+            "after": "export function Inspector({\n  selectedRelationId,\n  selectedInstanceId,\n  selectedTermId,\n  project,\n  onProjectChange,\n}: InspectorProps) {\n  const [addLiteralOpen, setAddLiteralOpen] = useState(false);\n  const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);\n  const [deleteInstanceConfirmOpen, setDeleteInstanceConfirmOpen] = useState(false);\n  const [selectedAddClassIri, setSelectedAddClassIri] = useState<string>(\"\");\n  // remapOpen is declared unconditionally (React hook ordering); only set/read in term mode.\n  const [remapOpen, setRemapOpen] = useState(false);\n\n  // ---------------------------------------------------------------------------\n  // Term mode (FR-U010; IMPL PLAN section 3.2 AC2) -- takes priority when set.\n  // Renders read-only term metadata + imported badge + Remap affordance button.\n  // ---------------------------------------------------------------------------\n  if (selectedTermId !== null && project !== null) {\n    const allTerms = Array.isArray(project[\"ecm:terms\"])\n      ? (project[\"ecm:terms\"] as unknown[])\n      : [];\n    const termEntry =\n      allTerms.find(\n        (t): t is Record<string, unknown> =>\n          typeof t === \"object\" &&\n          t !== null &&\n          (t as Record<string, unknown>)[\"id\"] === selectedTermId,\n      ) ?? null;\n    const isImportedTerm =\n      termEntry !== null && termEntry[\"ecm:source\"] === \"ecm:imported-ontology\";\n    const rawLabel = termEntry !== null ? resolveTermLabel(termEntry[\"rdfs:label\"]) : \"\";\n    const displayTermLabel = rawLabel.length > 0 ? rawLabel : iriTail(selectedTermId);\n    const termType =\n      termEntry !== null && typeof termEntry[\"type\"] === \"string\"\n        ? (termEntry[\"type\"] as string)\n        : \"\";\n    const termComment =\n      termEntry !== null && typeof termEntry[\"rdfs:comment\"] === \"string\"\n        ? (termEntry[\"rdfs:comment\"] as string)\n        : null;\n    const projectCreatedTerms = allTerms.filter(\n      (t): t is Record<string, unknown> =>\n        typeof t === \"object\" &&\n        t !== null &&\n        (t as Record<string, unknown>)[\"ecm:source\"] === \"ecm:project-created\",\n    );\n\n    return (\n      <>\n        <div data-testid=\"gw-inspector-imported-term\">\n          <p style={{ fontWeight: 600, marginBottom: \"0.5rem\" }}>Term</p>\n          {isImportedTerm && (\n            <span\n              className=\"gw-badge gw-badge--imported\"\n              aria-label=\"ecm:imported-ontology\"\n              style={{ marginBottom: \"0.5rem\", display: \"inline-block\" }}\n              data-testid=\"gw-inspector-term-imported-badge\"\n            >\n              imported\n            </span>\n          )}\n          <p style={{ fontSize: \"0.75rem\", color: \"#64748b\", marginBottom: \"0.125rem\" }}>\n            Label\n          </p>\n          <p\n            style={{ fontSize: \"0.8rem\", marginBottom: \"0.75rem\" }}\n            data-testid=\"gw-inspector-term-label\"\n          >\n            {displayTermLabel}\n          </p>\n          <p style={{ fontSize: \"0.75rem\", color: \"#64748b\", marginBottom: \"0.125rem\" }}>\n            IRI\n          </p>\n          <p\n            style={{ fontSize: \"0.8rem\", wordBreak: \"break-all\", marginBottom: \"0.75rem\" }}\n            data-testid=\"gw-inspector-term-iri\"\n          >\n            {selectedTermId}\n          </p>\n          {termType.length > 0 && (\n            <>\n              <p style={{ fontSize: \"0.75rem\", color: \"#64748b\", marginBottom: \"0.125rem\" }}>\n                Type\n              </p>\n              <p\n                style={{ fontSize: \"0.8rem\", marginBottom: \"0.75rem\" }}\n                data-testid=\"gw-inspector-term-type\"\n              >\n                {termType}\n              </p>\n            </>\n          )}\n          {termComment !== null && (\n            <>\n              <p style={{ fontSize: \"0.75rem\", color: \"#64748b\", marginBottom: \"0.125rem\" }}>\n                Comment\n              </p>\n              <p\n                style={{ fontSize: \"0.8rem\", marginBottom: \"0.75rem\" }}\n                data-testid=\"gw-inspector-term-comment\"\n              >\n                {termComment}\n              </p>\n            </>\n          )}\n          {isImportedTerm && (\n            <button\n              type=\"button\"\n              data-testid=\"gw-btn-remap\"\n              onClick={() => { setRemapOpen(true); }}\n              style={{ marginTop: \"0.5rem\", width: \"100%\" }}\n            >\n              Remap References\n            </button>\n          )}\n        </div>\n        {remapOpen && termEntry !== null && (\n          <RemapDialog\n            importedTerm={termEntry}\n            projectCreatedTerms={projectCreatedTerms}\n            project={project}\n            onConfirm={(updated) => {\n              if (onProjectChange !== undefined) onProjectChange(updated);\n              setRemapOpen(false);\n            }}\n            onClose={() => { setRemapOpen(false); }}\n          />\n        )}\n      </>\n    );\n  }\n\n  if ((selectedRelationId === null && selectedInstanceId === null) || project === null) {\n    return (\n      <p className=\"gw-placeholder\" data-testid=\"gw-inspector-empty\">\n        Select a node or relation to inspect.\n      </p>\n    );\n  }",
+            "scope": "moderate"
+          },
+          {
+            "id": "C4",
+            "file": "src/ui/App.tsx",
+            "rationale": "Add selectedTermId state hook alongside existing selection state hooks. Placed after selectedInstanceId for logical grouping.",
+            "before": "  const [project, setProject] = useState<Record<string, unknown> | null>(null);\n  const [migrationBannerText, setMigrationBannerText] = useState<string | null>(null);\n  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);\n  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);\n  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);\n  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);\n  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);",
+            "after": "  const [project, setProject] = useState<Record<string, unknown> | null>(null);\n  const [migrationBannerText, setMigrationBannerText] = useState<string | null>(null);\n  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);\n  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);\n  // selectedTermId: IRI of the imported term selected in TermSidebar (FR-U010; sub-task C).\n  const [selectedTermId, setSelectedTermId] = useState<string | null>(null);\n  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);\n  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);\n  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);",
+            "scope": "minimal"
+          },
+          {
+            "id": "C5",
+            "file": "src/ui/App.tsx",
+            "rationale": "Clear selectedTermId when a canvas edge or node is selected, enforcing mutual exclusion between the three selection modes at the App level. Pattern matches how onEdgeSelect/onNodeSelect already clear each other.",
+            "before": "            onEdgeSelect={(id) => { setSelectedRelationId(id); setSelectedInstanceId(null); }}\n            onNodeSelect={(id) => { setSelectedInstanceId(id); setSelectedRelationId(null); }}",
+            "after": "            onEdgeSelect={(id) => { setSelectedRelationId(id); setSelectedInstanceId(null); setSelectedTermId(null); }}\n            onNodeSelect={(id) => { setSelectedInstanceId(id); setSelectedRelationId(null); setSelectedTermId(null); }}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C6",
+            "file": "src/ui/App.tsx",
+            "rationale": "Wire the onImportedTermClick callback to TermSidebar. When fired, sets selectedTermId to the clicked term's IRI and clears the other two selection modes, maintaining mutual exclusion.",
+            "before": "          <TermSidebar\n            project={project}\n            onTermsChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n          />",
+            "after": "          <TermSidebar\n            project={project}\n            onTermsChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n            onImportedTermClick={(term) => {\n              setSelectedTermId(term.id);\n              setSelectedRelationId(null);\n              setSelectedInstanceId(null);\n            }}\n          />",
+            "scope": "minimal"
+          },
+          {
+            "id": "C7",
+            "file": "src/ui/App.tsx",
+            "rationale": "Pass selectedTermId to Inspector so the new term-mode branch can render.",
+            "before": "          <Inspector\n            selectedRelationId={selectedRelationId}\n            selectedInstanceId={selectedInstanceId}\n            project={project}\n            onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n          />",
+            "after": "          <Inspector\n            selectedRelationId={selectedRelationId}\n            selectedInstanceId={selectedInstanceId}\n            selectedTermId={selectedTermId}\n            project={project}\n            onProjectChange={(updated) => { setProject(updated); setValidationReport(validate(updated)); }}\n          />",
+            "scope": "minimal"
+          },
+          {
+            "id": "C8",
+            "file": "src/ui/RemapDialog.tsx",
+            "rationale": "New Dialog component. Receives importedTerm, projectCreatedTerms, project. Filters candidates to same OWL type as importedTerm (SPEC 13.6 same-kind replacement; see open_questions re: OQ2). Calls remapReferences on apply and propagates the updated project via onConfirm. Follows Dialog.tsx mount/unmount pattern and testId convention established by EditTermDialog.",
+            "before": null,
+            "after": "/**\n * RemapDialog -- Remap References affordance (FR-U010; IMPL PLAN section 3.2).\n *\n * Presents a drop-down of project-created terms with the same OWL type as the\n * imported term and invokes remapReferences on confirm.\n *\n * SPEC refs: section 13.3, section 13.6, FR-U010.\n * Dialog testId: \"gw-dialog-remap\".\n */\n\nimport { useState } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\nimport { remapReferences } from \"../kernel/remap-references.js\";\nimport { resolveTermLabel, iriTail } from \"./label-resolution.js\";\n\ninterface RemapDialogProps {\n  /** The imported-ontology term whose references will be remapped (source term A). */\n  importedTerm: Record<string, unknown>;\n  /** All project-created terms passed from Inspector; filtered here by OWL type. */\n  projectCreatedTerms: Record<string, unknown>[];\n  /** Current project document passed to remapReferences on confirm. */\n  project: Record<string, unknown>;\n  /**\n   * Called with the updated project document after remapReferences succeeds.\n   * Parent controls visibility: unmount after onConfirm fires.\n   */\n  onConfirm: (updatedProject: Record<string, unknown>) => void;\n  onClose: () => void;\n}\n\nexport function RemapDialog({\n  importedTerm,\n  projectCreatedTerms,\n  project,\n  onConfirm,\n  onClose,\n}: RemapDialogProps) {\n  const [selectedTargetIri, setSelectedTargetIri] = useState<string>(\"\");\n\n  const importedIri =\n    typeof importedTerm[\"id\"] === \"string\" ? (importedTerm[\"id\"] as string) : \"\";\n  const importedType =\n    typeof importedTerm[\"type\"] === \"string\" ? (importedTerm[\"type\"] as string) : \"\";\n  const importedLabel = resolveTermLabel(importedTerm[\"rdfs:label\"]);\n  const displayImportedLabel =\n    importedLabel.length > 0 ? importedLabel : iriTail(importedIri);\n\n  // Filter to project-created terms with matching OWL type (SPEC section 13.6).\n  // See open_questions: operator may wish to show all project-created terms instead.\n  const candidateTerms = projectCreatedTerms.filter(\n    (t) => typeof t[\"type\"] === \"string\" && t[\"type\"] === importedType,\n  );\n\n  function handleApply() {\n    if (selectedTargetIri === \"\") return;\n    const result = remapReferences(project, importedIri, selectedTargetIri);\n    onConfirm(result.project);\n  }\n\n  return (\n    <Dialog title=\"Remap References\" onClose={onClose} testId=\"gw-dialog-remap\">\n      <p style={{ marginBottom: \"0.75rem\", fontSize: \"0.85rem\" }}>\n        Replace all references to <strong>{displayImportedLabel}</strong> with a\n        project-created term.\n      </p>\n      <p style={{ fontSize: \"0.75rem\", color: \"#64748b\", marginBottom: \"0.25rem\" }}>\n        Replace with\n      </p>\n      <select\n        value={selectedTargetIri}\n        onChange={(e) => { setSelectedTargetIri(e.target.value); }}\n        data-testid=\"gw-select-remap-target\"\n        style={{ fontSize: \"0.8rem\", width: \"100%\", marginBottom: \"0.75rem\" }}\n      >\n        <option value=\"\">(select replacement term)</option>\n        {candidateTerms.map((t) => {\n          const iri = typeof t[\"id\"] === \"string\" ? (t[\"id\"] as string) : \"\";\n          const lbl = resolveTermLabel(t[\"rdfs:label\"]);\n          const display = lbl.length > 0 ? lbl : iriTail(iri);\n          return (\n            <option key={iri} value={iri}>\n              {display}\n            </option>\n          );\n        })}\n      </select>\n      {candidateTerms.length === 0 && (\n        <p\n          style={{ fontSize: \"0.8rem\", color: \"#94a3b8\", marginBottom: \"0.75rem\" }}\n          data-testid=\"gw-remap-no-candidates\"\n        >\n          No project-created {importedType} terms available.\n        </p>\n      )}\n      <div style={{ display: \"flex\", gap: \"0.5rem\", justifyContent: \"flex-end\" }}>\n        <button\n          type=\"button\"\n          className=\"gw-btn gw-btn--secondary\"\n          onClick={onClose}\n          data-testid=\"gw-btn-remap-cancel\"\n        >\n          Cancel\n        </button>\n        <button\n          type=\"button\"\n          className=\"gw-btn\"\n          onClick={handleApply}\n          disabled={selectedTargetIri === \"\"}\n          data-testid=\"gw-btn-remap-apply\"\n        >\n          Apply\n        </button>\n      </div>\n    </Dialog>\n  );\n}",
+            "scope": "moderate"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/imported-term-read-only.spec.ts",
+            "describe": "Sub-task E Playwright spec (AC1 + AC2). AC1: open imported-term.jsonld fixture, save, re-parse -- assert ecm:source: 'ecm:imported-ontology' is preserved in the downloaded file. AC2: load fixture, click the imported 'Imported Class' term in the Classes section, assert gw-inspector-imported-term is visible, assert gw-inspector-term-imported-badge is visible, assert no edit controls (no input, no Delete button) are present in the inspector panel, assert gw-btn-remap is visible. Negative invariant: assert gw-dialog-edit-term is NOT visible after the click (per recon F4 / existing term-crud.spec.ts AC4). Remap flow: assert clicking gw-btn-remap opens gw-dialog-remap; assert gw-select-remap-target is present; assert gw-btn-remap-cancel closes the dialog."
+          }
+        ],
+        "open_questions": [
+          "OQ2 (RemapDialog candidate filtering): RemapDialog currently filters projectCreatedTerms to same OWL type as importedTerm (e.g., only owl:Class candidates shown for an imported owl:Class). If the operator prefers showing ALL project-created terms regardless of type, remove the `t['type'] === importedType` filter in RemapDialog's candidateTerms derivation. Current same-type default is semantically conservative and matches SPEC 13.6 intent.",
+          "OQ5 (Inspector term-mode testId): The read-only term panel uses data-testid='gw-inspector-imported-term' (per recon OQ5 suggestion). Sub-task E Playwright spec should assert this testId is visible when a term is selected. Confirm this ID before authoring the spec.",
+          "remapOpen stale-state edge case: if the user opens RemapDialog (remapOpen=true) then navigates away by clicking a canvas node or edge, remapOpen stays true in state. When they return to a term selection, the dialog re-appears immediately. This is consistent with the existing deleteInstanceConfirmOpen pattern in Inspector but may surprise users. A future improvement could reset remapOpen whenever selectedTermId changes via a useEffect."
+        ],
+        "summary": "Three-file change implementing sub-task C. Inspector.tsx: extended InspectorProps with selectedTermId, added remapOpen useState (unconditional per hook rules), inserted a term-mode early-return block that renders read-only metadata + imported badge + Remap affordance, mounts RemapDialog on button click. App.tsx: added selectedTermId useState, wired mutual exclusion (CanvasView onEdgeSelect/onNodeSelect clear selectedTermId; TermSidebar onImportedTermClick clears the other two), passed selectedTermId to Inspector. RemapDialog.tsx: new Dialog component matching EditTermDialog pattern; filters candidates to same OWL type; calls remapReferences kernel on apply; propagates updated project via onConfirm. Existing instance/relation/empty branches in Inspector are untouched; the negative-invariant Playwright test (term-crud.spec.ts AC4, lines 219-246) is unaffected because aria-disabled and the absence of role='button' on imported term list items are unchanged by sub-task B.",
+        "self_assessment": "uncertain"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:36:31Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:798-rat-p3-c3.2-C",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:797-dev-p3-c3.2-C",
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task C -- Pass 2a ratification",
+        "purpose": "Pass 2a ratification for sub-task C. Verify: (1) Inspector's selectedTermId branch is additive (existing modes preserved); (2) App.tsx state wiring is correct; (3) RemapDialog uses the kernel pure function (no business logic in the dialog); (4) the Remap affordance is only rendered when the selected term is imported; (5) layer boundary -- no kernel imports from ui.",
+        "spec_refs": [
+          "FNSR Spec 03",
+          "CLAUDE.md section 9",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Introduces a new UI component (RemapDialog), extends InspectorProps with a new selectedTermId prop, adds a new App-level state hook, and wires a new affordance path; this changes behavioral surface area and component contracts, not just text.",
+        "rationale": "Reconnaissance is present in UPSTREAM (urn:fnsr:task:790-recon-p3-c3.2) per Spec 03 \u00c2\u00a7'Reconnaissance requirement'. The proposed change satisfies all five architect concerns in INPUTS.purpose: (1) ADDITIVE INSPECTOR BRANCH -- C3 inserts the term-mode early-return BEFORE the existing empty/relation/instance branches; the original `if ((selectedRelationId === null && selectedInstanceId === null) || project === null)` guard and downstream paths are unchanged. The new `remapOpen` useState hook is declared at component top alongside the existing four useState calls, satisfying React hook-ordering rules (rules-of-hooks holds; recon F10 anticipated this constraint). (2) APP.TSX WIRING -- C4 adds selectedTermId state adjacent to existing selection hooks; C5 clears selectedTermId on canvas edge/node select; C6 wires onImportedTermClick to set selectedTermId and clear the other two selection modes; C7 propagates to Inspector. The mutual-exclusion pattern is symmetric across the three selection-clearing sites; nothing is silently retained. (3) KERNEL PURITY OF REMAPDIALOG -- C8's RemapDialog imports `remapReferences` from `../kernel/remap-references.js` and invokes it directly in handleApply; no remapping logic is reimplemented in the dialog. The dialog's local concerns (candidate filter by OWL type, target-IRI useState, button disabled state) are presentation-only. The kernel remains the single source of remap behavior (recon F7/F8). (4) AFFORDANCE GATING -- The Remap button is wrapped in `{isImportedTerm && (...)}`; for project-created or unresolved terms, no Remap button renders. The RemapDialog mount is doubly gated by `{remapOpen && termEntry !== null && (...)}`. The affordance is structurally unreachable for non-imported terms. (5) LAYER BOUNDARY -- RemapDialog lives in src/ui/ and imports from src/kernel/; direction is ui->kernel, which is permitted per CLAUDE.md section 9 (Layer 2 may import Layer 0). No kernel file is modified; no kernel->ui edge is introduced. ADDITIONAL OBSERVATIONS: the developer's self_assessment of 'uncertain' is acknowledged; the three open_questions (OQ2 candidate-filter strictness, OQ5 testId convention, remapOpen stale-state on selection change) are non-blocking -- OQ2 is a deliberate conservative default matching SPEC section 13.6, OQ5 is a downstream sub-task E concern, and the remapOpen stale-state mirrors the existing deleteInstanceConfirmOpen pattern (consistency over novel behavior). Per CLAUDE.md section 7.8 'Chain-shape variation by artifact kind', this is TypeScript code; verification-ritual is correctly omitted upstream and the substrate's test-runner is the proper verification step queued downstream of applier.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:790-recon-p3-c3.2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:797-dev-p3-c3.2-C",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 13.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 13.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 3.2 AC2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 9 Layer Boundaries",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 7.8 Chain-shape variation",
+            "source": "CLAUDE.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Inspector multi-mode early-return ordering is the load-bearing pattern for additive mode introductions: hooks declared unconditionally at top, then mode branches return in priority order (term -> empty -> relation -> instance). Sub-task C correctly placed the new `remapOpen` useState alongside the existing four hooks BEFORE any branch, preserving rules-of-hooks invariants. Future sub-tasks adding Inspector modes (e.g., literal-mode, snapshot-mode) should follow the same declare-then-branch pattern; violating it produces silent runtime hook-mismatch errors that would not be caught by `npm run build`."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Cross-selection mutual-exclusion in App.tsx is currently maintained by spreading the clears across each selection-setting site (CanvasView onEdgeSelect/onNodeSelect, TermSidebar onImportedTermClick) rather than centralizing in a `selectExactlyOne(kind, id)` helper. With three selection modes the pattern is still manageable; at four or more it becomes a structural defect candidate (one omitted clear creates a phantom dual-selection). Worth surfacing as a refactor candidate if a fourth selection axis is introduced (e.g., snapshot selection or ontology-record selection)."
+          },
+          {
+            "id": "B3",
+            "category": "discipline-correction",
+            "content": "The proposed change correctly threads remap business logic through the kernel pure function (`remapReferences`) rather than reimplementing inside RemapDialog. This is the architectural commitment from CLAUDE.md section 9 working as intended: when a UI affordance corresponds to a transformation already implemented in the kernel, the dialog is a thin presentation layer over a kernel call. Any future affordance landing in ui/ that performs entity-graph mutation should mirror this shape -- if the operation does not yet exist in the kernel, add the kernel function first, ratify it, then build the dialog."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:37:28Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:799-apply-p3-c3.2-C",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:798-rat-p3-c3.2-C",
+        "urn:fnsr:task:797-dev-p3-c3.2-C"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task C -- applier",
+        "purpose": "Pass 2b commit-finalize for sub-task C.",
+        "source_task": "urn:fnsr:task:797-dev-p3-c3.2-C"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C8",
+            "path": "src\\ui\\RemapDialog.tsx",
+            "mode": "create",
+            "bytes_written": 4156,
+            "bom_prepended": true
+          },
+          {
+            "id": "C1",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 48
+          },
+          {
+            "id": "C2",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 238
+          },
+          {
+            "id": "C3",
+            "path": "src\\ui\\Inspector.tsx",
+            "mode": "edit",
+            "delta_bytes": 4486
+          },
+          {
+            "id": "C4",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 170
+          },
+          {
+            "id": "C6",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 188
+          },
+          {
+            "id": "C5",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 50
+          },
+          {
+            "id": "C7",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 44
+          }
+        ],
+        "failed": [],
+        "summary": "8 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:37:28Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:800-dev-p3-c3.2-E",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:790-recon-p3-c3.2",
+        "urn:fnsr:task:793-apply-p3-c3.2-B",
+        "urn:fnsr:task:796-apply-p3-c3.2-D",
+        "urn:fnsr:task:799-apply-p3-c3.2-C"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task E -- Playwright AC1+AC2 tests",
+        "purpose": "Sub-task E: tests/playwright/imported-term-read-only.spec.ts (new) -- Playwright tests covering IMPLEMENTATION_PLAN section 3.2 AC1 + AC2. Per OQ2 CONFIRM, AC1 is satisfied via fixture round-trip (load imported-term.jsonld -> verify ecm:source field present in loaded document), NOT via the CLI import path. AC2 verifies clicking an imported term in the sidebar opens the Inspector in read-only term-mode with the imported badge visible and no edit affordance reachable. Per OQ4 CONFIRM, the existing negative-invariant test at tests/playwright/term-crud.spec.ts:219-246 must continue passing -- this new spec covers the POSITIVE invariant (Inspector opens) without conflicting. Use the existing tests/playwright/ scaffold and fixture conventions; recon will report the specifics.",
+        "files_in_scope": [
+          "tests/playwright/imported-term-read-only.spec.ts (new)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN section 3.2 AC1",
+          "IMPLEMENTATION_PLAN section 3.2 AC2"
+        ],
+        "constraint": "Single new file. Follow existing tests/playwright/ patterns. Do NOT modify tests/playwright/term-crud.spec.ts -- the existing negative-invariant test stays as a regression guard.",
+        "ft_anchor": "ft-778-dev-p3-c3-1"
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "tests/playwright/imported-term-read-only.spec.ts",
+            "rationale": "New file covering IMPL PLAN \u00c2\u00a73.2 AC1 (ecm:source preserved through Open\u00e2\u2020\u2019Save\u00e2\u2020\u2019re-parse round-trip) and AC2 (clicking imported term opens Inspector in read-only term mode with imported badge visible and no EditTermDialog). Follows the import pattern, fixture-path convention, and describe/test structure of all existing Playwright specs. Uses only testIds confirmed present after sub-tasks B, C, D: gw-inspector-imported-term (Inspector.tsx line 345), gw-inspector-term-imported-badge (Inspector.tsx line 353), gw-file-input, gw-btn-save, gw-term-section-classes, gw-term-item, gw-dialog-edit-term.",
+            "before": null,
+            "after": "import { test, expect } from \"@playwright/test\";\nimport path from \"path\";\nimport fs from \"fs\";\n\n/**\n * Phase 3 Chain 3.2-UI sub-task E -- Imported Term Read-Only acceptance tests.\n *\n * AC1: Fixture round-trip: load imported-term.jsonld -> Save -> re-parse:\n *      ecm:source === \"ecm:imported-ontology\" preserved on the imported term.\n *      (IMPL PLAN section 3.2 AC1; FR-U010)\n *\n * AC2: Clicking an imported term in the sidebar opens the Inspector in\n *      read-only term-mode: imported badge visible; no edit affordance reachable.\n *      (IMPL PLAN section 3.2 AC2; FR-U010)\n */\n\nconst IMPORTED_TERM_FIXTURE = path.join(\n  process.cwd(),\n  \"tests\",\n  \"playwright\",\n  \"fixtures\",\n  \"imported-term.jsonld\",\n);\n\ntest.describe(\"Imported Term Read-Only (Phase 3.2 AC1 + AC2; FR-U010)\", () => {\n  test(\n    \"AC1: Open imported-term fixture -> Save -> re-parse: ecm:source preserved as ecm:imported-ontology\",\n    async ({ page }) => {\n      await page.goto(\"/\");\n\n      // FR-U002: load the imported-term fixture via hidden file input.\n      await page.getByTestId(\"gw-file-input\").setInputFiles(IMPORTED_TERM_FIXTURE);\n      await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n      // FR-U003: save and capture the downloaded file.\n      const [download] = await Promise.all([\n        page.waitForEvent(\"download\"),\n        page.getByTestId(\"gw-btn-save\").click(),\n      ]);\n\n      const downloadPath = await download.path();\n      expect(downloadPath, \"download must be saved to disk\").not.toBeNull();\n\n      const content = fs.readFileSync(downloadPath!, \"utf-8\");\n      const parsed = JSON.parse(content) as Record<string, unknown>;\n\n      // ecm:terms must be present and be an array.\n      const terms = parsed[\"ecm:terms\"];\n      expect(Array.isArray(terms), \"ecm:terms must be an array\").toBe(true);\n      const termArray = terms as Array<Record<string, unknown>>;\n\n      // Locate the imported term entry by its known IRI.\n      const importedTerm = termArray.find(\n        (t) => t[\"id\"] === \"https://example.org/ontology/ImportedClass\",\n      );\n      expect(\n        importedTerm,\n        \"ImportedClass term must be present in ecm:terms after round-trip\",\n      ).toBeDefined();\n\n      // AC1: ecm:source must survive the Open -> Save -> re-parse round-trip.\n      expect(\n        importedTerm![\"ecm:source\"],\n        \"ecm:source must be ecm:imported-ontology after round-trip\",\n      ).toBe(\"ecm:imported-ontology\");\n    },\n  );\n\n  test(\n    \"AC2: Click imported term in sidebar -> Inspector shows read-only term panel with imported badge; no EditTermDialog\",\n    async ({ page }) => {\n      await page.goto(\"/\");\n\n      // FR-U002: load the imported-term fixture via hidden file input.\n      await page.getByTestId(\"gw-file-input\").setInputFiles(IMPORTED_TERM_FIXTURE);\n      await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n      const classesSec = page.getByTestId(\"gw-term-section-classes\");\n\n      // Locate the imported class item in the Classes section.\n      const importedItem = classesSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"Imported Class\" });\n\n      // Structural read-only signal must still be present (negative regression guard;\n      // compatible with term-crud.spec.ts AC4 which asserts the same attribute).\n      await expect(importedItem).toHaveAttribute(\"aria-disabled\", \"true\");\n\n      // Click the imported term: onImportedTermClick fires -> selectedTermId set in App.\n      await importedItem.click();\n\n      // AC2: Inspector must switch to the read-only imported-term panel.\n      await expect(page.getByTestId(\"gw-inspector-imported-term\")).toBeVisible();\n\n      // AC2: imported badge must be visible within the Inspector term panel.\n      await expect(\n        page.getByTestId(\"gw-inspector-term-imported-badge\"),\n      ).toBeVisible();\n\n      // AC2: no edit affordance -- EditTermDialog must not be visible.\n      await expect(\n        page.getByTestId(\"gw-dialog-edit-term\"),\n      ).not.toBeVisible();\n    },\n  );\n});\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/imported-term-read-only.spec.ts",
+            "describe": "Run `npm run test:e2e -- --grep 'Imported Term Read-Only'` to exercise both new tests in isolation before the full suite run. AC1 will pass as soon as the fixture loads (ecm:source is in the stored term entry and survives canonical serialization). AC2 requires sub-tasks B and C both applied (TermSidebar fires onImportedTermClick; Inspector renders gw-inspector-imported-term); confirm those apply tasks completed (793-apply-p3-c3.2-B and 799-apply-p3-c3.2-C are both done per UPSTREAM). Confirm term-crud.spec.ts AC4 (lines 219-246) still passes: aria-disabled assertion and no-EditTermDialog assertion are both unaffected by sub-task B's onImportedTermClick addition."
+          }
+        ],
+        "open_questions": [],
+        "summary": "Single new file tests/playwright/imported-term-read-only.spec.ts covering IMPL PLAN \u00c2\u00a73.2 AC1 and AC2. AC1: Open\u00e2\u2020\u2019Save\u00e2\u2020\u2019re-parse round-trip on imported-term.jsonld fixture; assert ecm:source === 'ecm:imported-ontology' on the ImportedClass term entry in the downloaded file. AC2: Load fixture, click 'Imported Class' item in gw-term-section-classes, assert gw-inspector-imported-term panel is visible, assert gw-inspector-term-imported-badge is visible, assert gw-dialog-edit-term is not visible. All testIds verified against post-apply Inspector.tsx (sub-task C), TermSidebar.tsx (sub-task B), and App.tsx. File follows exact import/fixture-path/describe/test patterns of existing specs. Does not touch term-crud.spec.ts.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:40:13Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:801-rat-p3-c3.2-E",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:800-dev-p3-c3.2-E",
+        "urn:fnsr:task:790-recon-p3-c3.2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task E -- Pass 2a ratification",
+        "purpose": "Pass 2a ratification for sub-task E. Verify: (1) AC1 satisfied via fixture round-trip (NOT CLI path); (2) AC2 verifies positive invariant (Inspector opens for imported term); (3) existing term-crud.spec.ts negative invariant NOT modified; (4) fixtures used are existing tests/playwright/ shape.",
+        "spec_refs": [
+          "FNSR Spec 03",
+          "IMPLEMENTATION_PLAN section 3.2"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The change adds a new Playwright spec file that exercises new application behavior (sub-task B click routing and sub-task C Inspector term-mode rendering); it is not a typo/formatting/citation-format/terminology-tightening edit, so it falls outside editorial-correction scope.",
+        "rationale": "The proposed single-file addition (tests/playwright/imported-term-read-only.spec.ts) satisfies all four task-purpose invariants and is grounded in upstream reconnaissance (urn:fnsr:task:790-recon-p3-c3.2). (1) AC1 is implemented as a fixture round-trip: Open via setInputFiles(IMPORTED_TERM_FIXTURE) -> Save via gw-btn-save download capture -> JSON.parse the downloaded content -> assert ecm:source === 'ecm:imported-ontology' on the ImportedClass term entry. No CLI import path is invoked; this exactly matches the round-trip discipline (recon F13) and the testIds gw-file-input / gw-btn-save are confirmed present in App.tsx lines 277/307. (2) AC2 verifies a positive invariant: after click, the test asserts gw-inspector-imported-term is visible (confirmed at Inspector.tsx line 345) and gw-inspector-term-imported-badge is visible (confirmed at line 352). The test correctly distinguishes the new positive invariant ('Inspector opens read-only for imported term') from the existing AC4 negative invariant ('click does not open EditTermDialog' -- which is also reasserted as a non-regression guard within the new test). (3) tests/playwright/term-crud.spec.ts is not modified -- the changes[] entry has before: null and a single file path that is distinct from term-crud.spec.ts; AC4 (lines 219-246) and its three asserted invariants (aria-disabled='true', no role='button', no EditTermDialog on click) remain intact and remain TRUE because sub-task B routes the click to the Inspector path rather than to EditTermDialog (recon F4, F11; confirmed in TermSidebar.tsx lines 168-186 where the imported-click handler is separate from the edit-click handler and EditTermDialog is never invoked for imported terms). (4) The fixture used (tests/playwright/fixtures/imported-term.jsonld) already exists in canonical shape (recon F12; verified: ecm:terms contains 'Imported Class' with ecm:source='ecm:imported-ontology' at IRI https://example.org/ontology/ImportedClass) and the path-construction pattern path.join(process.cwd(), 'tests', 'playwright', 'fixtures', ...) matches the existing convention used by term-crud.spec.ts and term-sidebar.spec.ts (recon F16). Playwright auto-discovery (recon F15) requires no config edit. Cross-subtask dependency (recon F17): the developer's tests_recommended correctly notes AC2 depends on sub-tasks B and C, both of which are upstream of this ratification per the UPSTREAM chain. Artifact-kind chain composition (CLAUDE.md section 7.8 gap-3): this is code, so verification-ritual is appropriately skipped; mojibake-repair is appropriately skipped (file is ASCII-only); test-runner downstream of applier is the verification path. No purity, no determinism, no layer-boundary concerns -- the file lives at tests/playwright/ and imports only @playwright/test, path, fs.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:790-recon-p3-c3.2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:800-dev-p3-c3.2-E",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 3.2 AC1+AC2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 13.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 13.6",
+            "source": "project/SPEC.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Cross-subtask dependency reflected in test-spec authoring: sub-task E's AC2 test relies on testIds (gw-inspector-imported-term, gw-inspector-term-imported-badge) introduced by sub-tasks B and C earlier in the same chain. The developer correctly noted in tests_recommended that the new spec presupposes those apply tasks have landed. This is a recurring chain-3.2-style pattern where the final test-authoring sub-task encodes the acceptance signature of multiple preceding implementation sub-tasks; chain operators composing similar multi-step UI chains should sequence the test-spec sub-task last and verify the prerequisite testIds before queuing developer dispatch. Reused negative-invariant assertions (e.g., aria-disabled='true', no gw-dialog-edit-term) within the new positive-invariant test serve as belt-and-suspenders non-regression guards alongside the original AC4 in term-crud.spec.ts, which is consistent with sub-task D's defensive-guard discipline."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:41:18Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:802-apply-p3-c3.2-E",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:801-rat-p3-c3.2-E",
+        "urn:fnsr:task:800-dev-p3-c3.2-E"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI sub-task E -- applier",
+        "purpose": "Pass 2b commit-finalize for sub-task E.",
+        "source_task": "urn:fnsr:task:800-dev-p3-c3.2-E"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "tests\\playwright\\imported-term-read-only.spec.ts",
+            "mode": "create",
+            "bytes_written": 4025,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:41:19Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:803-test-p3-c3.2",
+      "agent": "test-runner",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:793-apply-p3-c3.2-B",
+        "urn:fnsr:task:796-apply-p3-c3.2-D",
+        "urn:fnsr:task:799-apply-p3-c3.2-C",
+        "urn:fnsr:task:802-apply-p3-c3.2-E"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 3.2-UI -- final test-runner (unit + integration)",
+        "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
+        "parser": "npm",
+        "purpose": "Verify Phase 3 Chain 3.2-UI did not regress the unit + integration suite. Currently 141 tests pass. Note: Playwright tests in tests/playwright/imported-term-read-only.spec.ts are NOT exercised by npm test default; operator runs them separately via `npx playwright test` as the AC1+AC2 validation step."
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 14.154525518417358,
+        "first_n_failures": [],
+        "raw_stdout_tail": "8601 timestamps normalized: no fractional seconds, Z suffix (\u00c2\u00a75.3 rule 8)\n  \u00e2\u0153\u201c PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (137ms)\n  PASSED: /cli-import-ontology.test.js (1587ms)\n  PASSED: /cli-integration.test.js (2352ms)\n  PASSED: /delete-instance.test.js (86ms)\n  PASSED: /determinism.test.js (102ms)\n  PASSED: /emitters.test.js (240ms)\n  PASSED: /import-turtle.test.js (341ms)\n  PASSED: /iri-generation.test.js (119ms)\n  PASSED: /iri-refactor.test.js (136ms)\n  PASSED: /legacy-migration.test.js (142ms)\n  PASSED: /manifest-entries.test.js (148ms)\n  PASSED: /no-network.test.js (107ms)\n  PASSED: /normalize-on-load.test.js (115ms)\n  PASSED: /remap-references.test.js (112ms)\n  PASSED: /semantic-projection.test.js (125ms)\n  PASSED: /snapshot.test.js (131ms)\n  PASSED: /starter-terms.test.js (121ms)\n  PASSED: /structural-validator.test.js (111ms)\n  PASSED: /tbox-bundle.test.js (211ms)\n  PASSED: /vmp-serializer.test.js (1013ms)\n\n  Files: 20/20 passed\n  Tests: 148/148 passed\n\n(node:10664) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:33768) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 14.15s)",
+        "parser_used": "npm"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T13:41:33Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
         }
       ]
     }

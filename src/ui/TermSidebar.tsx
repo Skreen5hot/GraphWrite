@@ -33,6 +33,11 @@ interface TermSidebarProps {
    * When undefined the Add buttons are hidden (read-only mode).
    */
   onTermsChange?: (project: Record<string, unknown>) => void;
+  /**
+   * Called when an imported-ontology term is clicked (FR-U010; sub-task B).
+   * Fires independently of onTermsChange; aria-disabled stays (no edit affordance).
+   */
+  onImportedTermClick?: (term: TermEntry) => void;
 }
 
 /** Extract the IRI tail (fragment after last '#' or last path segment). */
@@ -118,6 +123,7 @@ function TermSection({
   onAddTerm,
   addTestId,
   onTermClick,
+  onImportedTermClick,
 }: {
   title: string;
   terms: TermEntry[];
@@ -125,6 +131,7 @@ function TermSection({
   onAddTerm?: () => void;
   addTestId?: string;
   onTermClick?: (term: TermEntry) => void;
+  onImportedTermClick?: (term: TermEntry) => void;
 }) {
   return (
     <section className="gw-term-section" data-testid={testId}>
@@ -155,6 +162,9 @@ function TermSection({
               term["ecm:source"] === "ecm:project-created";
             // Imported-ontology terms carry an affirmative read-only signal (FR-U010; Chain C).
             const isImported = term["ecm:source"] === "ecm:imported-ontology";
+            // Imported terms may fire a separate read-only callback (FR-U010; sub-task B).
+            const hasImportedClickHandler =
+              isImported && onImportedTermClick !== undefined;
             return (
               <li
                 key={term.id}
@@ -167,7 +177,13 @@ function TermSection({
                 role={isClickable ? "button" : undefined}
                 tabIndex={isClickable ? 0 : undefined}
                 aria-disabled={isImported ? "true" : undefined}
-                onClick={isClickable ? () => { onTermClick(term); } : undefined}
+                onClick={
+                  isClickable
+                    ? () => { onTermClick(term); }
+                    : hasImportedClickHandler
+                    ? () => { onImportedTermClick?.(term); }
+                    : undefined
+                }
                 onKeyDown={
                   isClickable
                     ? (e) => {
@@ -190,7 +206,7 @@ function TermSection({
 }
 
 /** Left-sidebar Term Manager (SPEC §26, FR-U004 through FR-U008). */
-export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
+export function TermSidebar({ project, onTermsChange, onImportedTermClick }: TermSidebarProps) {
   /** OWL type of the term being added; null when the Add dialog is closed. */
   const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);
   /** Property type being created; null when PropertyCreationDialog is closed (FR-U033). */
@@ -279,6 +295,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         onAddTerm={canEdit ? () => setAddDialogType("owl:Class") : undefined}
         addTestId="gw-btn-add-class"
         onTermClick={canEdit ? handleTermClick : undefined}
+        onImportedTermClick={onImportedTermClick}
       />
       <TermSection
         title="Object Properties"
@@ -289,6 +306,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         }
         addTestId="gw-btn-add-object-property"
         onTermClick={canEdit ? handleTermClick : undefined}
+        onImportedTermClick={onImportedTermClick}
       />
       <TermSection
         title="Datatype Properties"
@@ -301,6 +319,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         }
         addTestId="gw-btn-add-datatype-property"
         onTermClick={canEdit ? handleTermClick : undefined}
+        onImportedTermClick={onImportedTermClick}
       />
       <TermSection
         title="Annotation Properties"
@@ -313,6 +332,7 @@ export function TermSidebar({ project, onTermsChange }: TermSidebarProps) {
         }
         addTestId="gw-btn-add-annotation-property"
         onTermClick={canEdit ? handleTermClick : undefined}
+        onImportedTermClick={onImportedTermClick}
       />
       {addDialogType !== null && project !== null && (
         <AddTermDialog

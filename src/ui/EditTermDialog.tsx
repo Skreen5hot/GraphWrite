@@ -102,6 +102,13 @@ export function EditTermDialog({
   const [pendingRefactor, setPendingRefactor] =
     useState<RefactorResult | null>(null);
 
+  // Belt-and-suspenders guard (SPEC Â§13.3 / FR-U010): primary gate is
+  // TermSidebar.tsx isClickable; this guard defends against future code
+  // paths that might open EditTermDialog for an imported term.
+  if (term["ecm:source"] === "ecm:imported-ontology") {
+    return null;
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmedLabel = label.trim();
