@@ -22,7 +22,7 @@
 
 import { parseArgs } from "node:util";
 import { readFile, writeFile } from "node:fs/promises";
-import { resolve, relative, isAbsolute } from "node:path";
+import { resolve, relative, isAbsolute, basename } from "node:path";
 import { stableStringify } from "../kernel/canonicalize.js";
 import { validate } from "../validate/index.js";
 import { INVALID_SPEC_VERSION } from "../validate/codes.js";
@@ -31,6 +31,7 @@ import { refactorIri } from "../refactor/index.js";
 import { emitTurtle } from "../emit/turtle.js";
 import { emitNTriples } from "../emit/n-triples.js";
 import { emitMarkdown } from "../emit/markdown.js";
+import { importOntology } from "../import/index.js";
 
 // ---------------------------------------------------------------------------
 // Path containment (SPEC section 12.2)
@@ -260,6 +261,92 @@ async function cmdRefactorIri(
 }
 
 // ---------------------------------------------------------------------------
+// Command: import-ontology
+// ---------------------------------------------------------------------------
+
+/**
+ * Import a Turtle ontology into a project document.
+ *
+ * Reads both input files, calls importOntology(), augments terms with
+ * ecm:source / ecm:ontologyId (SPEC Â§5.7), merges into the project document,
+ * and writes canonical JSON to --out.
+ *
+ * Exit codes (SPEC Â§23):
+ *   0 -- success
+ *   2 -- file I/O error OR SIZE_EXCEEDED
+ *   3 -- missing required argument OR PARSE_ERROR (malformed input)
+ */
+async function cmdImportOntology(
+  projectPath: string,
+  ontologyPath: string,
+  outPath: string,
+  createdAt: string,
+  allowOutside: boolean,
+): Promise<void> {
+  const resolvedProject = safeResolve(projectPath, allowOutside);
+  const resolvedOntology = safeResolve(ontologyPath, allowOutside);
+
+  // Read the project document (exits 2/3 on I/O or parse failure).
+  const project = await readJsonFile(resolvedProject);
+
+  // Read the Turtle file as raw text (adapter layer: fs I/O is permitted here).
+  let turtleContent: string;
+  try {
+    turtleContent = await readFile(resolvedOntology, "utf-8");
+  } catch {
+    process.stderr.write(`File I/O error: cannot read "${resolvedOntology}"\n`);
+    process.exit(2);
+  }
+
+  const projectId =
+    typeof project["id"] === "string" ? project["id"] : "";
+  // Pass the basename so deriveOntologyName() strips the extension correctly.
+  const fileName = basename(resolvedOntology);
+
+  const result = importOntology(turtleContent, fileName, projectId, createdAt);
+
+  if (!result.ok) {
+    if (result.code === "SIZE_EXCEEDED") {
+      // Â§12.2 hard-limit; IMPLEMENTATION_PLAN Â§3.5 AC2 specifies exit 2.
+      process.stderr.write(`import-ontology: ${result.error}\n`);
+      process.exit(2);
+    } else {
+      // PARSE_ERROR -> exit 3 per SPEC Â§23 (malformed input / parse failure).
+      process.stderr.write(`import-ontology: ${result.error}\n`);
+      process.exit(3);
+    }
+  }
+
+  // Augment each extracted term with ecm:source and ecm:ontologyId before
+  // appending to ecm:terms. ImportedTermObject omits these fields (Â§14.1
+  // extraction scope); validate() reads ecm:source to exempt imported terms
+  // from reserved-IRI collision checks (SPEC Â§5.7; recon F7).
+  const augmentedTerms = result.terms.map((term) => ({
+    ...term,
+    "ecm:source": "ecm:imported-ontology" as const,
+    "ecm:ontologyId": result.ontology.id,
+  }));
+
+  const existingOntologies = Array.isArray(project["ecm:ontologies"])
+    ? (project["ecm:ontologies"] as unknown[])
+    : [];
+  const existingTerms = Array.isArray(project["ecm:terms"])
+    ? (project["ecm:terms"] as unknown[])
+    : [];
+
+  const updatedProject: Record<string, unknown> = {
+    ...project,
+    "ecm:ontologies": [...existingOntologies, result.ontology],
+    "ecm:terms": [...existingTerms, ...augmentedTerms],
+  };
+
+  const content = stableStringify(updatedProject, true);
+  const resolvedOut = safeResolve(outPath, allowOutside);
+  await writeOutput(content, resolvedOut);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
 // Main / argument parsing
 // ---------------------------------------------------------------------------
 
@@ -330,9 +417,31 @@ async function main(): Promise<void> {
     }
 
     case "import-ontology": {
-      // Phase 1 stub: full implementation in Phase 3 (IMPLEMENTATION_PLAN section 3.5).
-      process.stderr.write("not yet implemented; available in Phase 3\n");
-      process.exit(2);
+      const projectPath = positionals[1];
+      if (!projectPath) {
+        process.stderr.write("import-ontology: <project-file> argument required\n");
+        process.exit(3);
+      }
+      const ontologyPath = positionals[2];
+      if (!ontologyPath) {
+        process.stderr.write("import-ontology: <ontology-file> argument required\n");
+        process.exit(3);
+      }
+      const outPath = values.out;
+      if (!outPath) {
+        process.stderr.write("import-ontology: --out <file> is required\n");
+        process.exit(3);
+      }
+      // Compute createdAt once at the adapter boundary (INPUTS constraint).
+      // Use --clock if provided for deterministic overrides; otherwise wall-clock.
+      const createdAt = values.clock ?? new Date().toISOString();
+      await cmdImportOntology(
+        projectPath,
+        ontologyPath,
+        outPath,
+        createdAt,
+        allowOutside,
+      );
       break;
     }
 

@@ -248,17 +248,18 @@ async function testExportZipStub(): Promise<void> {
   }
 }
 
-async function testImportOntologyStub(): Promise<void> {
-  const r = await runCli(["import-ontology", "project.jsonld", "ontology.ttl"]);
+async function testImportOntologyNoArgs(): Promise<void> {
+  // Real implementation: missing <project-file> positional exits 3.
+  const r = await runCli(["import-ontology"]);
   try {
-    strictEqual(r.exitCode, 2, `expected exit 2, got ${r.exitCode}`);
+    strictEqual(r.exitCode, 3, `expected exit 3, got ${r.exitCode}`);
     ok(
-      r.stderr.includes("not yet implemented; available in Phase 3"),
-      "expected Phase 3 stub message in stderr",
+      r.stderr.includes("import-ontology:"),
+      "expected import-ontology: error message in stderr",
     );
-    pass("AC7: import-ontology exits 2 with Phase 3 stub message");
+    pass("AC7: import-ontology without args exits 3 with error message");
   } catch (e) {
-    fail("AC7: import-ontology exits 2 with Phase 3 stub message", e);
+    fail("AC7: import-ontology without args exits 3 with error message", e);
   }
 }
 
@@ -289,7 +290,7 @@ async function main(): Promise<void> {
     await testExportTurtle();
     await testPathContainment();
     await testExportZipStub();
-    await testImportOntologyStub();
+    await testImportOntologyNoArgs();
     await testMigrate();
   } finally {
     await teardown();

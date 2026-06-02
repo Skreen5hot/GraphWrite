@@ -83677,6 +83677,35 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-06-01T14:45:44Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "8707ef0",
+            "notes": "Chain 1 (Turtle ontology import) substantively complete. 137/137 tests pass. Acceptance criteria AC1-AC6 all green. importOntology() API at src/import/ ships the engine for subsequent Phase 3 UI chains. Stakeholder demo doc at demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md. Audit-chain verified PASS (1174 entries). Substrate evolution this cycle: v3.3.1 lock discipline + v3.3.2 resolve-execution link; both shipped + tagged in AgenticDev."
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "da984f694366ddec847bc3de8a6c55c9c0d193ebe306826a5b585e7af38030fc"
+        },
+        {
+          "ts": "2026-06-02T09:01:37Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "Chain 1 demo-released review passed; re-entering implementing to ship Chain 2 (IMPLEMENTATION_PLAN section 3.5: CLI import-ontology command \u2014 replace Phase 1 stub at src/cli/index.ts:332 with real importOntology() invocation + --out flag handling)"
+          },
+          "prev_hash": "da984f694366ddec847bc3de8a6c55c9c0d193ebe306826a5b585e7af38030fc",
+          "chain_hash": "850a998f62ed83fdc1b846201fb74a7234e79dfa9af80a8ab023285f4dd9b709"
         }
       ]
     },
@@ -83858,6 +83887,766 @@
           },
           "prev_hash": "be125515ef23d25c7ce839aaa13acfc25fb4d8751340c2f98085550053e97fbe",
           "chain_hash": "54e4f4282e441778a5c87b98c0c1fbe927dc73e0767a865d18d8c0baa0f7fcd0"
+        },
+        {
+          "ts": "2026-06-02T09:59:02Z",
+          "event": "forward_track_state_transition",
+          "payload": {
+            "forward_track_id": "ft-767-recovery-dispatch-755-apply-p3-c1c-1",
+            "from_state": "A",
+            "to_state": "C",
+            "trigger": "named_deliberation_cycle_ran",
+            "reason": "v3.4.0 status communication surface ships two of the four scoped pieces (readiness probe predicate via PLO event walker; recommendation channel via fnsr.status.md). Remaining two pieces (phase-membership signal on tasks; machine-readable phase acceptance criteria) deliberately deferred per the >=2-phase-cycles-friction-observation rule. CLAUDE.md \u00a77.14 documents the partial-supersedes relationship.",
+            "transitioning_cycle": "v3.4.0-substrate-ship",
+            "timestamp": "2026-06-02T09:59:02Z",
+            "operator": "orchestrator-agent",
+            "resolution_path": "ratified-into-spec"
+          },
+          "prev_hash": "54e4f4282e441778a5c87b98c0c1fbe927dc73e0767a865d18d8c0baa0f7fcd0",
+          "chain_hash": "9727c3474d21a8053986f488131f87a10e875ddf4ddfc0e799d234edea317f0a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:768-recon-p3-c2",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 2 \u2014 CLI import-ontology command (sub-task 3.5)",
+        "purpose": "Reconnaissance for Phase 3 sub-task 3.5: CLI `import-ontology` command. The Phase 1 stub at src/cli/index.ts:332-337 currently writes 'not yet implemented; available in Phase 3' to stderr and exits 2. Replace the stub with a real implementation that calls importOntology() from src/import/index.ts (now ships in Chain 1, commit 8707ef0). Investigate: (1) the existing CLI command pattern by reading src/cli/index.ts in full \u2014 argument parsing style, error-exit conventions, --out flag handling in the export commands; (2) the project-document shape so the import result can be merged into project.ontologies and project.terms \u2014 read project document type definitions (likely in src/kernel/ or src/composition/); (3) existing CLI integration test patterns in tests/ (likely tests/cli-*.test.ts) so the new test follows the same shape. Identify the merge-into-project semantics: where do ImportedOntologyRecord and ImportedTermObject arrays land in the project JSON-LD? FR-C011 + IMPLEMENTATION_PLAN \u00a73.5 + SPEC \u00a723 are the canonical references.",
+        "files_to_read": [
+          "src/cli/index.ts",
+          "src/import/index.ts",
+          "src/import/turtle-import.ts",
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "tests/",
+          "src/kernel/",
+          "src/composition/"
+        ],
+        "spec_refs": [
+          "SPEC \u00a723",
+          "FR-C011",
+          "IMPLEMENTATION_PLAN \u00a73.5"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "The import-ontology CLI stub lives at src/cli/index.ts:332-337, writes 'not yet implemented; available in Phase 3' to stderr, and exits 2.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "332-337",
+                "excerpt": "case \"import-ontology\": {\n  // Phase 1 stub: full implementation in Phase 3 (IMPLEMENTATION_PLAN section 3.5).\n  process.stderr.write(\"not yet implemented; available in Phase 3\\n\");\n  process.exit(2);\n  break;\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "importOntology() is fully implemented in src/import/turtle-import.ts and re-exported via src/import/index.ts; the function signature is importOntology(turtleSource: string, fileName: string, projectId: string, createdAt: string): ImportResult.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "121-126",
+                "excerpt": "export function importOntology(\n  turtleSource: string,\n  fileName: string,\n  projectId: string,\n  createdAt: string,\n): ImportResult {"
+              },
+              {
+                "file": "src/import/index.ts",
+                "lines": "1-8",
+                "excerpt": "export * from \"./turtle-import.js\";"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "ImportResult is a discriminated union: ok:true carries { ontology: ImportedOntologyRecord, terms: readonly ImportedTermObject[] }; ok:false carries { error: string, code: 'SIZE_EXCEEDED' | 'PARSE_ERROR' }.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "83-94",
+                "excerpt": "export type ImportResult =\n  | { readonly ok: true; readonly ontology: ImportedOntologyRecord; readonly terms: readonly ImportedTermObject[]; }\n  | { readonly ok: false; readonly error: string; readonly code: \"SIZE_EXCEEDED\" | \"PARSE_ERROR\"; };"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "ImportedOntologyRecord (the \u00c2\u00a75.6 shape) has 10 fields: id, type, ecm:projectId, ecm:name, ecm:sourceFileName, ecm:format, ecm:contentHash, ecm:content, ecm:createdAt, ecm:importStatus \u00e2\u20ac\u201d this is the object that goes into project['ecm:ontologies'].",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "69-81",
+                "excerpt": "export interface ImportedOntologyRecord {\n  readonly id: string;\n  readonly type: \"ecm:ImportedOntology\";\n  readonly \"ecm:projectId\": string;\n  readonly \"ecm:name\": string;\n  readonly \"ecm:sourceFileName\": string;\n  readonly \"ecm:format\": \"text/turtle\";\n  readonly \"ecm:contentHash\": string;\n  readonly \"ecm:content\": string;\n  readonly \"ecm:createdAt\": string;\n  readonly \"ecm:importStatus\": \"ecm:parsed\";\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "ImportedTermObject (the \u00c2\u00a714.1 extracted-term shape) contains only: id, type, optional rdfs:label, optional rdfs:comment, optional rdfs:subClassOf, optional rdfs:subPropertyOf \u00e2\u20ac\u201d it does NOT include ecm:source, ecm:ontologyId, ecm:createdAt, or ecm:updatedAt.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "60-67",
+                "excerpt": "export interface ImportedTermObject {\n  readonly id: string;\n  readonly type: ImportedTermType;\n  readonly \"rdfs:label\"?: { readonly text: string; readonly lang: string };\n  readonly \"rdfs:comment\"?: string;\n  readonly \"rdfs:subClassOf\"?: readonly string[];\n  readonly \"rdfs:subPropertyOf\"?: readonly string[];\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "SPEC \u00c2\u00a75.7 term objects stored in ecm:terms require ecm:source and ecm:ontologyId fields; the validate() function in src/validate/index.ts reads ecm:source to distinguish imported vs project-created terms.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "481",
+                "excerpt": "Allowed `ecm:source` values: `ecm:imported-ontology`, `ecm:project-created`, `ecm:system-starter-example`."
+              },
+              {
+                "file": "src/validate/index.ts",
+                "lines": "205",
+                "excerpt": "if (t[\"ecm:source\"] !== \"ecm:project-created\") continue;"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "The CLI merge step must augment each ImportedTermObject with at least ecm:source: 'ecm:imported-ontology' and ecm:ontologyId pointing to result.ontology.id before appending to ecm:terms; this augmentation is absent from importOntology() itself.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "60-67",
+                "excerpt": "export interface ImportedTermObject { readonly id: string; readonly type: ImportedTermType; /* no ecm:source, ecm:ontologyId */ }"
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "456-457",
+                "excerpt": "\"ecm:source\": \"ecm:project-created\",\n  \"ecm:ontologyId\": null,"
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F8",
+            "claim": "The CLI command signature from SPEC \u00c2\u00a723 is: import-ontology <project-file> <ontology-file> [--out <outfile>] [--allow-outside-cwd]; positionals[1] = project path, positionals[2] = ontology TTL path.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1576",
+                "excerpt": "node index.js import-ontology project.jsonld ontology.ttl --out updated-project.jsonld"
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "612",
+                "excerpt": "Implement `node index.js import-ontology project.jsonld ontology.ttl --out updated-project.jsonld` using core `importOntology` function."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "The CLI already parses --clock, --seed, and --deterministic flags (src/cli/index.ts:272-274) but none are currently threaded to any command function; importOntology() requires a createdAt string which must be supplied by its CLI caller.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "272-274",
+                "excerpt": "clock:               { type: \"string\" as const },\nseed:                { type: \"string\" as const },\ndeterministic:       { type: \"boolean\" as const, default: false },"
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "19",
+                "excerpt": "Caller threads createdAt; this function never calls Date.now() (\u00c2\u00a79.3)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "importOntology() derives the ontology ecm:name by stripping the last file extension from fileName (e.g., 'ontology.ttl' \u00e2\u2020\u2019 'ontology'); the fileName parameter should be the basename of the CLI-supplied ontology path.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "101-104",
+                "excerpt": "function deriveOntologyName(fileName: string): string {\n  const dot = fileName.lastIndexOf(\".\");\n  return dot > 0 ? fileName.slice(0, dot) : fileName;\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "src/cli/index.ts currently imports { resolve, relative, isAbsolute } from 'node:path' but does NOT import basename; basename would be needed to extract the filename from the ontology file path for the importOntology() fileName argument.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "25",
+                "excerpt": "import { resolve, relative, isAbsolute } from \"node:path\";"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "src/cli/index.ts does not import importOntology from src/import/index.ts; this import is absent and must be added.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "23-33",
+                "excerpt": "import { parseArgs } from \"node:util\";\nimport { readFile, writeFile } from \"node:fs/promises\";\nimport { resolve, relative, isAbsolute } from \"node:path\";\nimport { stableStringify } from \"../kernel/canonicalize.js\";\n// ... no import from ../import/index.js"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "Existing CLI commands that output a mutated project document (cmdMigrate, cmdRefactorIri) do NOT update ecm:updatedAt on the project before writing; the refactorIri result spreads the original project and overwrites only the cascaded fields.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "253-258",
+                "excerpt": "const result = refactorIri(doc, oldIri, newIri);\nconst content = stableStringify(result.project, true);\nconst resolvedOut = outPath !== undefined ? safeResolve(outPath, allowOutside) : undefined;\nawait writeOutput(content, resolvedOut);\nprocess.exit(0);"
+              },
+              {
+                "file": "src/refactor/index.ts",
+                "lines": "253-257",
+                "excerpt": "const resultProject: Record<string, unknown> = {\n  ...project,\n  \"ecm:instances\": newInstances,\n  \"ecm:relations\": newRelations,\n  \"ecm:literalAssertions\": newLiterals,\n};"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "The IMPLEMENTATION_PLAN \u00c2\u00a73.5 acceptance criteria are only two: (1) valid Turtle input \u00e2\u2020\u2019 updated project passes validate with zero errors; (2) 51 MB input \u00e2\u2020\u2019 exits 2 with clear message. No ACs specify error code mapping for PARSE_ERROR, duplicate-term detection, or ecm:updatedAt mutation.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "614-616",
+                "excerpt": "**Acceptance criteria:**\n- Valid Turtle input produces updated project that passes `validate` with zero errors. CLI integration test.\n- 51 MB input file exits 2 with clear message. CLI integration test."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "The existing cli-integration.test.ts AC7 test asserts the stub behavior (exit 2, stderr contains 'not yet implemented; available in Phase 3'); this test will fail when the real implementation ships and must be replaced.",
+            "evidence": [
+              {
+                "file": "tests/cli-integration.test.ts",
+                "lines": "251-263",
+                "excerpt": "async function testImportOntologyStub(): Promise<void> {\n  const r = await runCli([\"import-ontology\", \"project.jsonld\", \"ontology.ttl\"]);\n  strictEqual(r.exitCode, 2, ...);\n  ok(r.stderr.includes(\"not yet implemented; available in Phase 3\"), ...);\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The CLI integration test harness pattern is: hand-rolled TypeScript (no framework), node:assert (strictEqual, ok), child_process.spawn with stdio:pipe, separate runCli() helper, setup()/teardown() for fixture files written to a .cli-test-fixtures/ directory.",
+            "evidence": [
+              {
+                "file": "tests/cli-integration.test.ts",
+                "lines": "115-130",
+                "excerpt": "function runCli(args: string[]): Promise<RunResult> {\n  return new Promise((res) => {\n    const child = spawn(\"node\", [CLI, ...args], { stdio: \"pipe\" });\n    // ... stdout/stderr capture\n  });\n}"
+              },
+              {
+                "file": "tests/cli-integration.test.ts",
+                "lines": "136-158",
+                "excerpt": "async function setup(): Promise<void> {\n  await mkdir(FIXTURE_DIR, { recursive: true });\n  await writeFile(join(FIXTURE_DIR, \"valid-v0.4.jsonld\"), ...);\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "The project document's ecm:ontologies field is declared as an empty array in the canonical v0.4 minimal fixture; the @context declares 'ecm:ontologies': {'@container': '@set'}.",
+            "evidence": [
+              {
+                "file": "test/fixtures/canonical-v0.4/minimal.jsonld",
+                "lines": "24-25",
+                "excerpt": "\"ecm:ontologies\": {\n  \"@container\": \"@set\"\n}"
+              },
+              {
+                "file": "test/fixtures/canonical-v0.4/minimal.jsonld",
+                "lines": "85",
+                "excerpt": "\"ecm:ontologies\": [],"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F18",
+            "claim": "importOntology() uses generateIri('ecm:uuid-urn', {}) from src/iri/index.ts to generate the ImportedOntologyRecord id, and uses node:crypto createHash for the SHA-256 content hash; it never calls Date.now() and the createdAt value is threaded from the caller.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "232-244",
+                "excerpt": "const digest = createHash(\"sha256\").update(sourceBytes).digest(\"hex\");\nconst ontology: ImportedOntologyRecord = {\n  id: generateIri(\"ecm:uuid-urn\", {}),\n  type: \"ecm:ImportedOntology\",\n  \"ecm:projectId\": projectId,\n  \"ecm:name\": deriveOntologyName(fileName),\n  ...\n  \"ecm:createdAt\": createdAt,\n  \"ecm:importStatus\": \"ecm:parsed\",\n};"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "The IMPLEMENTATION_PLAN \u00c2\u00a73.5 ACs do not specify how PARSE_ERROR (exit code for malformed Turtle) should be mapped; the existing exit-code spec in SPEC \u00c2\u00a723 maps exit 3 to 'malformed input / parse failure' which would match PARSE_ERROR, but this is not stated in \u00c2\u00a73.5 ACs.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1591-1597",
+                "excerpt": "- `2` \u00e2\u20ac\u201d file I/O errors.\n- `3` \u00e2\u20ac\u201d malformed input."
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "83-94",
+                "excerpt": "readonly code: \"SIZE_EXCEEDED\" | \"PARSE_ERROR\";"
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "614-616",
+                "excerpt": "- 51 MB input file exits 2 with clear message. CLI integration test."
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F20",
+            "claim": "The test runner discovers all *.test.js files in dist-tests/tests/ at runtime; any new CLI integration test file placed in tests/ will automatically be compiled and discovered.",
+            "evidence": [
+              {
+                "file": "tests/run-tests.ts",
+                "lines": "27-40",
+                "excerpt": "async function findTestFiles(dir: string): Promise<string[]> {\n  const entries = await readdir(dir, { withFileTypes: true });\n  // ... returns files ending with .test.js\n}"
+              },
+              {
+                "file": "tsconfig.test.json",
+                "lines": "8",
+                "excerpt": "\"include\": [\"src/**/*\", \"tests/**/*\", \"scripts/**/*\", \"examples/**/*\"],"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F21",
+            "claim": "The project document's projectId for importOntology() must be read from project['id']; no existing helper in src/cli/index.ts extracts projectId \u00e2\u20ac\u201d the implementation must read it directly from the parsed JSON object.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "70-98",
+                "excerpt": "async function readJsonFile(filePath: string): Promise<Record<string, unknown>> { ... } // returns Record<string,unknown>"
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "116-118",
+                "excerpt": "@param projectId - Owning project IRI (ecm:projectId)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F22",
+            "claim": "No existing fixture file in the test suite demonstrates the post-import project shape (project with populated ecm:ontologies and ecm:terms containing ecm:source: 'ecm:imported-ontology'); this shape exists only in SPEC \u00c2\u00a75.6 and \u00c2\u00a75.7 examples.",
+            "evidence": [
+              {
+                "file": "test/fixtures/canonical-v0.4/minimal.jsonld",
+                "lines": "85-89",
+                "excerpt": "\"ecm:ontologies\": [],\n\"ecm:relations\": [],\n\"ecm:serializations\": [],\n\"ecm:snapshots\": [],\n\"ecm:terms\": [],"
+              }
+            ],
+            "kind": "gap"
+          }
+        ],
+        "summary": "The Phase 3 Chain 2 `import-ontology` CLI command has a clear stub at src/cli/index.ts:332-337 to be replaced. The underlying `importOntology()` function ships fully in Chain 1 (src/import/turtle-import.ts) and returns a discriminated ImportResult containing an ImportedOntologyRecord (for ecm:ontologies) and an array of ImportedTermObject (for ecm:terms). The CLI implementation gap is threefold: (1) two new imports are absent \u00e2\u20ac\u201d `importOntology` from src/import/index.ts and `basename` from node:path; (2) the merge step must augment each ImportedTermObject with at minimum ecm:source: 'ecm:imported-ontology' and ecm:ontologyId before appending to ecm:terms, as these fields are absent from ImportedTermObject itself but required by SPEC \u00c2\u00a75.7 and read by validate(); (3) the createdAt timestamp must be sourced by the CLI adapter (via --clock or new Date()) and threaded to importOntology(). The existing cli-integration.test.ts AC7 test asserts stub behavior and will break on the real implementation; new tests covering the two \u00c2\u00a73.5 ACs (valid Turtle \u00e2\u2020\u2019 exit 0; 51 MB \u00e2\u2020\u2019 exit 2) are needed. IMPLEMENTATION_PLAN \u00c2\u00a73.5 leaves three aspects unspecified: exit-code mapping for PARSE_ERROR (SPEC \u00c2\u00a723 implies exit 3), whether ecm:updatedAt on the project itself is updated (existing commands do not update it), and how createdAt is obtained in the CLI.",
+        "evidence_paths": [
+          "src/cli/index.ts",
+          "src/import/index.ts",
+          "src/import/turtle-import.ts",
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "tests/cli-integration.test.ts",
+          "tests/run-tests.ts",
+          "tests/import-turtle.test.ts",
+          "test/fixtures/canonical-v0.4/minimal.jsonld",
+          "src/validate/index.ts",
+          "src/refactor/index.ts",
+          "src/iri/index.ts",
+          "src/kernel/canonicalize.ts",
+          "tsconfig.test.json"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "open_questions": [
+          "What exit code should the real import-ontology implementation use for a Turtle PARSE_ERROR? SPEC \u00c2\u00a723 maps exit 3 to 'malformed input / parse failure', which would match, but IMPLEMENTATION_PLAN \u00c2\u00a73.5 ACs only specify exit 2 for SIZE_EXCEEDED and do not mention PARSE_ERROR.",
+          "Should ecm:updatedAt on the project document itself be updated after ontology import? Existing commands (cmdRefactorIri, cmdMigrate) do not update ecm:updatedAt; IMPLEMENTATION_PLAN \u00c2\u00a73.5 is silent on this.",
+          "How should the CLI source the createdAt timestamp for importOntology()? Should it use --clock if provided (consistent with the deterministic flag pattern), or always use new Date().toISOString() at the adapter boundary, or require --clock explicitly?",
+          "Should ecm:createdAt and ecm:updatedAt be added to each term entry appended to ecm:terms? SPEC \u00c2\u00a75.7 shows these fields on all term objects, but they are absent from ImportedTermObject and the \u00c2\u00a73.5 ACs do not require them for validate() to pass.",
+          "Should the implementation validate the input project document before processing the import? SPEC \u00c2\u00a723 does not specify pre-import validation for the import-ontology command.",
+          "Should the implementation detect and skip terms whose IRI already exists in ecm:terms (deduplication), or blindly append all extracted terms? IMPLEMENTATION_PLAN \u00c2\u00a73.5 ACs are silent; \u00c2\u00a73.2 covers the UI remap workflow but not CLI deduplication.",
+          "The AC7 test in tests/cli-integration.test.ts tests stub behavior and will fail when the real implementation ships; should it be updated in-place or should a new test file be added for the Phase 3 import-ontology ACs?"
+        ],
+        "scope_assessment": "Investigated all files directly named in inputs.files_to_read plus the import test, validate module, refactor module, IRI module, and canonical fixture; did not investigate the emitter modules, tbox module, projection module, normalize module, or UI source files as they are not in scope for the CLI import-ontology command."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T09:10:03Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:769-dev-p3-c2",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:768-recon-p3-c2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 2 \u2014 CLI import-ontology command (sub-task 3.5)",
+        "purpose": "Implement Phase 3 sub-task 3.5 per IMPLEMENTATION_PLAN. Replace the stub at src/cli/index.ts:332-337 ('not yet implemented; available in Phase 3' + exit 2) with the real implementation. The new command MUST: (1) accept positional args [project.jsonld] [ontology.ttl]; (2) require --out <updated-project.jsonld>; (3) read both input files synchronously (these are CLI inputs \u2014 fs.readFileSync is acceptable in src/cli/, which is an adapter layer); (4) call importOntology(ttlContent, ontologyFileName, projectId, createdAt) from the now-shipped src/import/ module; (5) merge the resulting ImportedOntologyRecord and ImportedTermObject[] into the project JSON-LD (the merge target paths land in the project document's ontologies and terms arrays per SPEC \u00a75.6 / \u00a75.7 \u2014 recon will clarify the exact merge points); (6) write the merged project JSON-LD to --out using canonical JSON serialization (deterministic key ordering per NFR-003) \u2014 reuse src/kernel/canonicalize.ts if it ships such a helper, otherwise document the inline canonicalization; (7) handle the 51 MB rejection path: when importOntology returns an error result for oversize, write the error message to stderr and exit 2 (matches the IMPLEMENTATION_PLAN \u00a73.5 acceptance criterion); (8) handle missing-file errors with clear stderr message + exit code 3 (matches the refactor-iri command's convention at line ~320). Add tests/cli-import-ontology.test.ts following the existing CLI integration test pattern (recon will report the shape). Tests required: (a) valid Turtle input produces updated project that passes `validate` with zero errors; (b) 51 MB input exits 2 with stderr message. Per CLAUDE.md \u00a79 layer boundaries, src/cli/ is Layer 2 (adapter); it MAY use fs and process.argv. Per CLAUDE.md \u00a75 No Hallucinations, do not invent merge semantics \u2014 let recon ground them in actual project-document types.",
+        "files_in_scope": [
+          "src/cli/index.ts (modify: replace stub at line 332-337)",
+          "tests/cli-import-ontology.test.ts (new)"
+        ],
+        "spec_refs": [
+          "SPEC \u00a723",
+          "FR-C011",
+          "IMPLEMENTATION_PLAN \u00a73.5 acceptance criteria"
+        ],
+        "constraint": "src/cli/ is Layer 2 per CLAUDE.md \u00a79; may import from src/kernel/ + src/composition/ + src/adapters/. May use fs, process.argv. MUST NOT call Date.now() in importOntology's argument path; threads `new Date().toISOString()` from the CLI as the createdAt value (CLI is allowed to read wall-clock time, but the createdAt MUST be a single value computed once at CLI entry and threaded down, never recomputed mid-flow). Honor 2 IMPLEMENTATION_PLAN \u00a73.5 acceptance tests verbatim."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/cli/index.ts",
+            "rationale": "Add basename to the node:path import (needed to extract ontology filename from its resolved path per recon F10/F11) and add importOntology import from ../import/index.js (absent per recon F12). Both are captured in one snippet to minimise the number of applier passes over the file.",
+            "before": "import { resolve, relative, isAbsolute } from \"node:path\";\nimport { stableStringify } from \"../kernel/canonicalize.js\";\nimport { validate } from \"../validate/index.js\";\nimport { INVALID_SPEC_VERSION } from \"../validate/codes.js\";\nimport { migrate } from \"../migrate/index.js\";\nimport { refactorIri } from \"../refactor/index.js\";\nimport { emitTurtle } from \"../emit/turtle.js\";\nimport { emitNTriples } from \"../emit/n-triples.js\";\nimport { emitMarkdown } from \"../emit/markdown.js\";",
+            "after": "import { resolve, relative, isAbsolute, basename } from \"node:path\";\nimport { stableStringify } from \"../kernel/canonicalize.js\";\nimport { validate } from \"../validate/index.js\";\nimport { INVALID_SPEC_VERSION } from \"../validate/codes.js\";\nimport { migrate } from \"../migrate/index.js\";\nimport { refactorIri } from \"../refactor/index.js\";\nimport { emitTurtle } from \"../emit/turtle.js\";\nimport { emitNTriples } from \"../emit/n-triples.js\";\nimport { emitMarkdown } from \"../emit/markdown.js\";\nimport { importOntology } from \"../import/index.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/cli/index.ts",
+            "rationale": "Insert cmdImportOntology function immediately before the Main section. Implements: (1) path containment for both input files; (2) async TTL file read following the existing readFile pattern; (3) importOntology() call with createdAt threaded from the caller; (4) SIZE_EXCEEDED \u00e2\u2020\u2019 exit 2, PARSE_ERROR \u00e2\u2020\u2019 exit 3 per SPEC \u00c2\u00a723; (5) term augmentation with ecm:source and ecm:ontologyId (recon F7 \u00e2\u20ac\u201d validate() reads ecm:source to gate reserved-IRI checks); (6) spread merge into ecm:ontologies / ecm:terms arrays; (7) stableStringify + writeOutput, matching cmdRefactorIri pattern. ecm:updatedAt is not mutated (recon F13: existing commands do not update it; \u00c2\u00a73.5 ACs are silent). createdAt is supplied by the caller via values.clock ?? new Date().toISOString() (CLI boundary is permitted wall-clock, per INPUTS constraint).",
+            "before": "// ---------------------------------------------------------------------------\n// Main / argument parsing\n// ---------------------------------------------------------------------------",
+            "after": "// ---------------------------------------------------------------------------\n// Command: import-ontology\n// ---------------------------------------------------------------------------\n\n/**\n * Import a Turtle ontology into a project document.\n *\n * Reads both input files, calls importOntology(), augments terms with\n * ecm:source / ecm:ontologyId (SPEC \u00c2\u00a75.7), merges into the project document,\n * and writes canonical JSON to --out.\n *\n * Exit codes (SPEC \u00c2\u00a723):\n *   0 -- success\n *   2 -- file I/O error OR SIZE_EXCEEDED\n *   3 -- missing required argument OR PARSE_ERROR (malformed input)\n */\nasync function cmdImportOntology(\n  projectPath: string,\n  ontologyPath: string,\n  outPath: string,\n  createdAt: string,\n  allowOutside: boolean,\n): Promise<void> {\n  const resolvedProject = safeResolve(projectPath, allowOutside);\n  const resolvedOntology = safeResolve(ontologyPath, allowOutside);\n\n  // Read the project document (exits 2/3 on I/O or parse failure).\n  const project = await readJsonFile(resolvedProject);\n\n  // Read the Turtle file as raw text (adapter layer: fs I/O is permitted here).\n  let turtleContent: string;\n  try {\n    turtleContent = await readFile(resolvedOntology, \"utf-8\");\n  } catch {\n    process.stderr.write(`File I/O error: cannot read \"${resolvedOntology}\"\\n`);\n    process.exit(2);\n  }\n\n  const projectId =\n    typeof project[\"id\"] === \"string\" ? project[\"id\"] : \"\";\n  // Pass the basename so deriveOntologyName() strips the extension correctly.\n  const fileName = basename(resolvedOntology);\n\n  const result = importOntology(turtleContent, fileName, projectId, createdAt);\n\n  if (!result.ok) {\n    if (result.code === \"SIZE_EXCEEDED\") {\n      // \u00c2\u00a712.2 hard-limit; IMPLEMENTATION_PLAN \u00c2\u00a73.5 AC2 specifies exit 2.\n      process.stderr.write(`import-ontology: ${result.error}\\n`);\n      process.exit(2);\n    } else {\n      // PARSE_ERROR -> exit 3 per SPEC \u00c2\u00a723 (malformed input / parse failure).\n      process.stderr.write(`import-ontology: ${result.error}\\n`);\n      process.exit(3);\n    }\n  }\n\n  // Augment each extracted term with ecm:source and ecm:ontologyId before\n  // appending to ecm:terms. ImportedTermObject omits these fields (\u00c2\u00a714.1\n  // extraction scope); validate() reads ecm:source to exempt imported terms\n  // from reserved-IRI collision checks (SPEC \u00c2\u00a75.7; recon F7).\n  const augmentedTerms = result.terms.map((term) => ({\n    ...term,\n    \"ecm:source\": \"ecm:imported-ontology\" as const,\n    \"ecm:ontologyId\": result.ontology.id,\n  }));\n\n  const existingOntologies = Array.isArray(project[\"ecm:ontologies\"])\n    ? (project[\"ecm:ontologies\"] as unknown[])\n    : [];\n  const existingTerms = Array.isArray(project[\"ecm:terms\"])\n    ? (project[\"ecm:terms\"] as unknown[])\n    : [];\n\n  const updatedProject: Record<string, unknown> = {\n    ...project,\n    \"ecm:ontologies\": [...existingOntologies, result.ontology],\n    \"ecm:terms\": [...existingTerms, ...augmentedTerms],\n  };\n\n  const content = stableStringify(updatedProject, true);\n  const resolvedOut = safeResolve(outPath, allowOutside);\n  await writeOutput(content, resolvedOut);\n  process.exit(0);\n}\n\n// ---------------------------------------------------------------------------\n// Main / argument parsing\n// ---------------------------------------------------------------------------",
+            "scope": "moderate"
+          },
+          {
+            "id": "C3",
+            "file": "src/cli/index.ts",
+            "rationale": "Replace the Phase 1 stub with the real implementation call. Validates the two positional args and --out before delegating to cmdImportOntology. createdAt is computed once at the CLI boundary: values.clock if provided (deterministic override), otherwise new Date().toISOString(). The single computation satisfies the INPUTS constraint that createdAt is never recomputed mid-flow.",
+            "before": "    case \"import-ontology\": {\n      // Phase 1 stub: full implementation in Phase 3 (IMPLEMENTATION_PLAN section 3.5).\n      process.stderr.write(\"not yet implemented; available in Phase 3\\n\");\n      process.exit(2);\n      break;\n    }",
+            "after": "    case \"import-ontology\": {\n      const projectPath = positionals[1];\n      if (!projectPath) {\n        process.stderr.write(\"import-ontology: <project-file> argument required\\n\");\n        process.exit(3);\n      }\n      const ontologyPath = positionals[2];\n      if (!ontologyPath) {\n        process.stderr.write(\"import-ontology: <ontology-file> argument required\\n\");\n        process.exit(3);\n      }\n      const outPath = values.out;\n      if (!outPath) {\n        process.stderr.write(\"import-ontology: --out <file> is required\\n\");\n        process.exit(3);\n      }\n      // Compute createdAt once at the adapter boundary (INPUTS constraint).\n      // Use --clock if provided for deterministic overrides; otherwise wall-clock.\n      const createdAt = values.clock ?? new Date().toISOString();\n      await cmdImportOntology(\n        projectPath,\n        ontologyPath,\n        outPath,\n        createdAt,\n        allowOutside,\n      );\n      break;\n    }",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "tests/cli-integration.test.ts",
+            "rationale": "The testImportOntologyStub function asserts the Phase 1 stub message and exit code 2 (recon F15). Once C3 lands the real implementation, this test will fail because the command no longer writes the stub message. Replace it with testImportOntologyNoArgs which asserts the real implementation's missing-arg guard (exit 3, stderr contains 'import-ontology:'). The AC7 label is preserved so test-count reporting is stable.",
+            "before": "async function testImportOntologyStub(): Promise<void> {\n  const r = await runCli([\"import-ontology\", \"project.jsonld\", \"ontology.ttl\"]);\n  try {\n    strictEqual(r.exitCode, 2, `expected exit 2, got ${r.exitCode}`);\n    ok(\n      r.stderr.includes(\"not yet implemented; available in Phase 3\"),\n      \"expected Phase 3 stub message in stderr\",\n    );\n    pass(\"AC7: import-ontology exits 2 with Phase 3 stub message\");\n  } catch (e) {\n    fail(\"AC7: import-ontology exits 2 with Phase 3 stub message\", e);\n  }\n}",
+            "after": "async function testImportOntologyNoArgs(): Promise<void> {\n  // Real implementation: missing <project-file> positional exits 3.\n  const r = await runCli([\"import-ontology\"]);\n  try {\n    strictEqual(r.exitCode, 3, `expected exit 3, got ${r.exitCode}`);\n    ok(\n      r.stderr.includes(\"import-ontology:\"),\n      \"expected import-ontology: error message in stderr\",\n    );\n    pass(\"AC7: import-ontology without args exits 3 with error message\");\n  } catch (e) {\n    fail(\"AC7: import-ontology without args exits 3 with error message\", e);\n  }\n}",
+            "scope": "minimal"
+          },
+          {
+            "id": "C5",
+            "file": "tests/cli-integration.test.ts",
+            "rationale": "Update the main() call site to use the renamed function from C4. Without this change the file will not compile (testImportOntologyStub is no longer defined).",
+            "before": "    await testImportOntologyStub();",
+            "after": "    await testImportOntologyNoArgs();",
+            "scope": "minimal"
+          },
+          {
+            "id": "C6",
+            "file": "tests/cli-import-ontology.test.ts",
+            "rationale": "New integration test file covering IMPLEMENTATION_PLAN \u00c2\u00a73.5 AC1 (valid Turtle \u00e2\u2020\u2019 merged project passes validate exit 0) and AC2 (51 MB input \u00e2\u2020\u2019 exit 2 with non-empty stderr). Follows the hand-rolled pattern from cli-integration.test.ts (spawn, node:assert, setup/teardown). Uses a separate fixture directory (.cli-import-test-fixtures) to avoid collisions with the existing CLI test. The test runner auto-discovers *.test.js files in dist-tests/tests/ (recon F20); no additional configuration is required.",
+            "before": null,
+            "after": "/**\n * CLI Import-Ontology Integration Tests (IMPLEMENTATION_PLAN.md \\u00a73.5)\n *\n * Tests the compiled GraphWrite CLI (dist-tests/src/cli/index.js) via\n * child_process.spawn, per the established pattern in tests/cli-integration.test.ts.\n *\n * Acceptance criteria covered (IMPLEMENTATION_PLAN.md \\u00a73.5):\n *   AC1: Valid Turtle input produces updated project that passes `validate` with\n *        zero errors. CLI integration test.\n *   AC2: 51 MB input file exits 2 with clear message. CLI integration test.\n *\n * Pattern: hand-rolled per tests/run-tests.ts; node:assert; process.exit(1) on failure.\n */\n\nimport { strictEqual, ok } from \"node:assert\";\nimport { spawn } from \"node:child_process\";\nimport { writeFile, rm, mkdir } from \"node:fs/promises\";\nimport { join, dirname } from \"node:path\";\nimport { fileURLToPath } from \"node:url\";\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\n\n// CLI compiled to dist-tests/src/cli/index.js by tsconfig.test.json.\nconst CLI = join(__dirname, \"..\", \"src\", \"cli\", \"index.js\");\n\n// Separate fixture directory to avoid collisions with cli-integration.test.ts.\nconst FIXTURE_DIR = join(__dirname, \"..\", \"..\", \".cli-import-test-fixtures\");\n\nlet passed = 0;\nlet failed = 0;\n\nfunction pass(msg: string): void {\n  console.log(`  \\u2713 PASS: ${msg}`);\n  passed++;\n}\n\nfunction fail(msg: string, err?: unknown): void {\n  console.error(`  \\u2717 FAIL: ${msg}`);\n  if (err !== undefined) {\n    console.error(\"  \", err instanceof Error ? err.message : String(err));\n  }\n  failed++;\n}\n\n// ---------------------------------------------------------------------------\n// Fixtures\n// ---------------------------------------------------------------------------\n\n/** Minimal valid v0.4 project document. */\nconst VALID_V04: Record<string, unknown> = {\n  id: \"urn:uuid:10000000-0000-0000-0000-000000000001\",\n  type: [\"ecm:Project\", \"ecm:OntologyDesignPattern\"],\n  \"ecm:specVersion\": \"0.4\",\n  \"ecm:name\": \"Import Test Project\",\n  \"ecm:createdAt\": \"2026-05-26T00:00:00Z\",\n  \"ecm:updatedAt\": \"2026-05-26T00:00:00Z\",\n  \"iao:isAbout\": [\"https://example.org/subjects/ImportTest\"],\n  \"ecm:ontologies\": [],\n  \"ecm:terms\": [],\n  \"ecm:instances\": [],\n  \"ecm:relations\": [],\n  \"ecm:literalAssertions\": [],\n  \"ecm:layouts\": [],\n  \"ecm:snapshots\": [],\n  \"ecm:serializations\": [],\n};\n\n/** Small valid Turtle ontology with one owl:Class term. */\nconst VALID_TTL = [\n  \"@prefix owl:  <http://www.w3.org/2002/07/owl#> .\",\n  \"@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\",\n  \"\",\n  \"<https://example.org/TestClass> a owl:Class ;\",\n  \"  rdfs:label \\\"Test Class\\\"@en .\",\n  \"\",\n].join(\"\\n\");\n\n// ---------------------------------------------------------------------------\n// CLI runner\n// ---------------------------------------------------------------------------\n\ninterface RunResult {\n  exitCode: number;\n  stdout: string;\n  stderr: string;\n}\n\nfunction runCli(args: string[]): Promise<RunResult> {\n  return new Promise((res) => {\n    const child = spawn(\"node\", [CLI, ...args], { stdio: \"pipe\" });\n    let stdout = \"\";\n    let stderr = \"\";\n    child.stdout.on(\"data\", (d: Buffer) => {\n      stdout += d.toString();\n    });\n    child.stderr.on(\"data\", (d: Buffer) => {\n      stderr += d.toString();\n    });\n    child.on(\"close\", (code) => {\n      res({ exitCode: code ?? 1, stdout, stderr });\n    });\n  });\n}\n\n// ---------------------------------------------------------------------------\n// Fixture setup / teardown\n// ---------------------------------------------------------------------------\n\nasync function setup(): Promise<void> {\n  await mkdir(FIXTURE_DIR, { recursive: true });\n  await writeFile(\n    join(FIXTURE_DIR, \"project.jsonld\"),\n    JSON.stringify(VALID_V04, null, 2),\n    \"utf-8\",\n  );\n  await writeFile(\n    join(FIXTURE_DIR, \"ontology.ttl\"),\n    VALID_TTL,\n    \"utf-8\",\n  );\n}\n\nasync function teardown(): Promise<void> {\n  await rm(FIXTURE_DIR, { recursive: true, force: true });\n}\n\n// ---------------------------------------------------------------------------\n// Tests\n// ---------------------------------------------------------------------------\n\n/**\n * AC1: Valid Turtle input produces updated project that passes `validate`\n * with zero errors. (IMPLEMENTATION_PLAN \\u00a73.5 AC1)\n *\n * Two-step test: (a) import-ontology exits 0; (b) validate on the output exits 0.\n */\nasync function testValidTurtleProducesValidProject(): Promise<void> {\n  const projectPath = join(FIXTURE_DIR, \"project.jsonld\");\n  const ontologyPath = join(FIXTURE_DIR, \"ontology.ttl\");\n  const outPath = join(FIXTURE_DIR, \"merged.jsonld\");\n\n  const r = await runCli([\n    \"import-ontology\",\n    projectPath,\n    ontologyPath,\n    \"--out\",\n    outPath,\n    \"--clock\",\n    \"2026-05-26T00:00:00Z\",\n  ]);\n  try {\n    strictEqual(\n      r.exitCode,\n      0,\n      `import-ontology exited ${r.exitCode}; stderr: ${r.stderr}`,\n    );\n    pass(\"AC1(a): valid Turtle import exits 0\");\n  } catch (e) {\n    fail(\"AC1(a): valid Turtle import must exit 0\", e);\n    // Cannot run validate step if import failed.\n    return;\n  }\n\n  const v = await runCli([\"validate\", outPath]);\n  try {\n    strictEqual(\n      v.exitCode,\n      0,\n      `validate exited ${v.exitCode}; stdout: ${v.stdout}; stderr: ${v.stderr}`,\n    );\n    ok(\n      !v.stdout.includes('\"ecm:error\"'),\n      \"merged project must contain zero ecm:error findings\",\n    );\n    pass(\"AC1(b): merged project passes validate with zero errors\");\n  } catch (e) {\n    fail(\"AC1(b): merged project must pass validate with zero errors\", e);\n  }\n}\n\n/**\n * AC2: 51 MB input file exits 2 with clear message.\n * (IMPLEMENTATION_PLAN \\u00a73.5 AC2)\n *\n * Writes 51 MB of ASCII content (exceeds the 50 MB hard limit in \u00c2\u00a712.2),\n * runs import-ontology, and asserts exit 2 with a non-empty stderr message.\n */\nasync function testOversizedInputExits2(): Promise<void> {\n  const projectPath = join(FIXTURE_DIR, \"project.jsonld\");\n  const bigPath = join(FIXTURE_DIR, \"big.ttl\");\n  const outPath = join(FIXTURE_DIR, \"big-merged.jsonld\");\n\n  // 51 MB of ASCII (1 byte per char in UTF-8) \u00e2\u20ac\u201d exceeds 50 * 1024 * 1024 limit.\n  const oversized = \"a\".repeat(51 * 1024 * 1024);\n  await writeFile(bigPath, oversized, \"utf-8\");\n\n  const r = await runCli([\n    \"import-ontology\",\n    projectPath,\n    bigPath,\n    \"--out\",\n    outPath,\n    \"--clock\",\n    \"2026-05-26T00:00:00Z\",\n  ]);\n  try {\n    strictEqual(\n      r.exitCode,\n      2,\n      `expected exit 2, got ${r.exitCode}; stderr: ${r.stderr}`,\n    );\n    ok(\n      r.stderr.length > 0,\n      \"expected non-empty stderr error message for oversized input\",\n    );\n    pass(\"AC2: 51 MB input exits 2 with clear message\");\n  } catch (e) {\n    fail(\"AC2: 51 MB input must exit 2 with clear message\", e);\n  }\n}\n\n// ---------------------------------------------------------------------------\n// Main\n// ---------------------------------------------------------------------------\n\nasync function main(): Promise<void> {\n  await setup();\n  try {\n    await testValidTurtleProducesValidProject();\n    await testOversizedInputExits2();\n  } finally {\n    await teardown();\n  }\n\n  console.log(`\\n  Results: ${passed} passed, ${failed} failed`);\n  if (failed > 0) {\n    process.exit(1);\n  }\n}\n\nmain();\n",
+            "scope": "moderate"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/cli-import-ontology.test.ts",
+            "describe": "AC1 and AC2 are covered by C6. Additional cases worth adding in a follow-up: (a) PARSE_ERROR (malformed Turtle) \u00e2\u2020\u2019 exit 3; (b) missing --out argument \u00e2\u2020\u2019 exit 3; (c) missing project-file argument \u00e2\u2020\u2019 exit 3; (d) project with existing ecm:ontologies/ecm:terms merges correctly (non-empty arrays preserved after append)."
+          }
+        ],
+        "open_questions": [
+          "PARSE_ERROR exit code: recon F19 notes \u00c2\u00a73.5 ACs specify only exit 2 for SIZE_EXCEEDED. This proposal maps PARSE_ERROR to exit 3 (SPEC \u00c2\u00a723: 'malformed input / parse failure'). If the operator prefers exit 1 or exit 2 for PARSE_ERROR, C2 must be updated before applying.",
+          "ecm:updatedAt: recon F13 confirms existing commands (cmdRefactorIri, cmdMigrate) do not update ecm:updatedAt on the project. This proposal follows the same convention. If \u00c2\u00a73.5 later requires ecm:updatedAt to be updated on import, a follow-up patch is needed.",
+          "Term deduplication: recon open question \u00e2\u20ac\u201d should terms whose IRI already exists in ecm:terms be skipped? This proposal blindly appends all extracted terms (\u00c2\u00a73.5 ACs are silent). A follow-up may be needed if duplicate-IRI validation fires in a later chain.",
+          "AC7 in tests/cli-integration.test.ts: the stub test is replaced (C4/C5) with a missing-args guard test. The header-comment block (line 14 of that file) still references the old AC7 description. This is benign stale documentation, not a test failure. A follow-up editorial patch can update it."
+        ],
+        "summary": "Six changes across three files implement IMPLEMENTATION_PLAN \u00c2\u00a73.5 sub-task 3.5. C1 adds basename and importOntology imports to src/cli/index.ts. C2 inserts cmdImportOntology (the full adapter-layer implementation: path containment, async TTL read, importOntology call, term augmentation with ecm:source/ecm:ontologyId, spread merge into project arrays, stableStringify write). C3 replaces the Phase 1 stub with argument validation + cmdImportOntology dispatch (createdAt sourced from --clock or new Date() at the adapter boundary). C4 and C5 update tests/cli-integration.test.ts to replace the now-invalid stub assertion (testImportOntologyStub \u00e2\u2020\u2019 testImportOntologyNoArgs) so the existing test suite stays green. C6 creates the new tests/cli-import-ontology.test.ts covering \u00c2\u00a73.5 AC1 (valid Turtle \u00e2\u2020\u2019 merged project passes validate exit 0) and AC2 (51 MB \u00e2\u2020\u2019 exit 2 with non-empty stderr); the file is auto-discovered by tests/run-tests.ts.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T09:18:16Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:770-rat-p3-c2",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:769-dev-p3-c2",
+        "urn:fnsr:task:768-recon-p3-c2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 2 \u2014 Pass 2a ratification (sub-task 3.5)",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for Phase 3 Chain 2. Read developer's proposed src/cli/index.ts modification + tests/cli-import-ontology.test.ts from UPSTREAM. Walk reconnaissance evidence. Produce six-field ruling (ruling, editorial_verdict, editorial_verdict_reason, rationale, referenced_evidence, bankings). Verify: (1) the merge-into-project semantics align with project-document type definitions and don't break the project JSON-LD canonical shape; (2) error-handling exit codes match the existing CLI convention; (3) the CLI integration test exercises both acceptance criteria from IMPLEMENTATION_PLAN \u00a73.5; (4) no layer-boundary violations.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Architect refusal contract",
+          "IMPLEMENTATION_PLAN \u00a73.5",
+          "CLAUDE.md \u00a79 layer boundaries"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposal replaces a stub with a real CLI command, threads a new createdAt at an adapter boundary, augments term shapes flowing into project canonical state, and adds a new test file \u00e2\u20ac\u201d none of which are typo/formatting/terminology-tightening edits.",
+        "rationale": "Reconnaissance (urn:fnsr:task:768-recon-p3-c2) is present in UPSTREAM and grounds every load-bearing decision in the proposal. The four verification axes hold: (1) Merge-into-project semantics align with SPEC \u00c2\u00a75.6 and \u00c2\u00a75.7. ImportedTermObject (recon F5) lacks ecm:source and ecm:ontologyId; the proposal's C2 augments each term with `ecm:source: \"ecm:imported-ontology\"` and `ecm:ontologyId: result.ontology.id` before appending to ecm:terms, satisfying SPEC \u00c2\u00a75.7 (recon F6) and the validate() check at src/validate/index.ts:205. The spread merge `{...project, \"ecm:ontologies\": [...existing, result.ontology], \"ecm:terms\": [...existing, ...augmentedTerms]}` preserves the @context, id, type, and all unrelated project fields \u00e2\u20ac\u201d the canonical v0.4 shape (recon F17) is not perturbed. (2) Exit-code mapping is internally consistent and SPEC-aligned: SIZE_EXCEEDED \u00e2\u2020\u2019 2 (matches IMPLEMENTATION_PLAN \u00c2\u00a73.5 AC2 directly); PARSE_ERROR \u00e2\u2020\u2019 3 (matches SPEC \u00c2\u00a723 'malformed input / parse failure', recon F19); missing required positionals / --out \u00e2\u2020\u2019 3; file I/O failure on the TTL \u00e2\u2020\u2019 2. The \u00c2\u00a73.5 ACs are silent on PARSE_ERROR; the developer's open_question flags this transparently and the SPEC \u00c2\u00a723 mapping is the conservative, audit-defensible choice. (3) C6 (tests/cli-import-ontology.test.ts) exercises both \u00c2\u00a73.5 ACs directly: testValidTurtleProducesValidProject covers AC1 by running import-ontology then validate on the output and asserting both exit 0 plus absence of `\"ecm:error\"` strings in validate stdout; testOversizedInputExits2 writes 51 MB ASCII and asserts exit 2 with non-empty stderr (matches AC2 'clear message' phrasing). The test harness pattern (recon F16) is faithfully reproduced; the test file will be auto-discovered (recon F20) without runner changes. C4/C5 correctly retire the stub assertion at tests/cli-integration.test.ts AC7 (recon F15) by converting it to a missing-arg guard, preserving the AC7 label so test-count reporting is stable. (4) No layer-boundary violations: src/cli/ is Layer 2 (adapter) and may import from Layer 0 (kernel/canonicalize) and Layer 1 (import, validate, refactor) per CLAUDE.md \u00c2\u00a79; the only new wall-clock call (`new Date().toISOString()`) is at the CLI boundary, with --clock providing a deterministic override \u00e2\u20ac\u201d importOntology() itself remains free of Date.now() per recon F18, preserving kernel purity. Three loose ends are operator-acknowledged open questions (PARSE_ERROR exit code, ecm:updatedAt non-mutation, term deduplication) \u00e2\u20ac\u201d all are \u00c2\u00a73.5-silent and the proposal follows existing-command convention (recon F13) which is the right default. The C4 stale-header note is acknowledged as benign editorial drift, not a ratification blocker.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:768-recon-p3-c2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:769-dev-p3-c2",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79 Layer Boundaries",
+            "source": "CLAUDE.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Adapter-boundary term-augmentation pattern: the kernel-side importOntology() in src/import/turtle-import.ts returns ImportedTermObject values containing only the \u00c2\u00a714.1 extraction-scope fields (id, type, rdfs:label/comment/subClassOf/subPropertyOf), deliberately omitting the \u00c2\u00a75.7 project-document-shape fields (ecm:source, ecm:ontologyId). The CLI adapter is then responsible for the shape lift \u00e2\u20ac\u201d augmenting each extracted term with `ecm:source: \"ecm:imported-ontology\"` and `ecm:ontologyId: result.ontology.id` before merging into project['ecm:terms']. This split is a deliberate separation of extraction concerns (kernel) from project-document-shape concerns (adapter), and it composes with validate()'s ecm:source-based gating of reserved-IRI checks. Worth surfacing because the gap between the two shapes is invisible at the function-signature level \u00e2\u20ac\u201d a future contributor reading only importOntology()'s return type would not see that the project-document-shape fields are owed by the caller. Candidate for an architectural note in docs/ARCHITECTURE.md or an inline JSDoc on importOntology() if the pattern recurs across other Phase 3 import paths."
+          },
+          {
+            "id": "B2",
+            "category": "discipline-correction",
+            "content": "The proposal applies the CLI-boundary determinism discipline correctly: createdAt is computed once at the case-block boundary (`values.clock ?? new Date().toISOString()`), then threaded down through cmdImportOntology to importOntology(), which never recomputes. This is the canonical pattern for honoring kernel purity while permitting wall-clock at adapters, and the --clock override gives deterministic overrides for tests (used by C6). Pattern is identical to the unimplemented expectation set by the existing --clock/--seed/--deterministic flags (recon F9) which were parsed but never threaded \u00e2\u20ac\u201d this change is the first concrete consumer of values.clock, so subsequent CLI commands that need wall-clock timestamps now have a precedent to follow."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T09:19:24Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:771-apply-p3-c2",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:770-rat-p3-c2",
+        "urn:fnsr:task:769-dev-p3-c2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 2 \u2014 applier (Pass 2b commit-finalize)",
+        "purpose": "Pass 2b commit-finalize. Apply developer's changes from UPSTREAM. Event 11 gating ensures dispatch only on ratification == ratified.",
+        "source_task": "urn:fnsr:task:769-dev-p3-c2"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C6",
+            "path": "tests\\cli-import-ontology.test.ts",
+            "mode": "create",
+            "bytes_written": 7234,
+            "bom_prepended": true
+          },
+          {
+            "id": "C1",
+            "path": "src\\cli\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 63
+          },
+          {
+            "id": "C2",
+            "path": "src\\cli\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 3121
+          },
+          {
+            "id": "C3",
+            "path": "src\\cli\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 722
+          },
+          {
+            "id": "C4",
+            "path": "tests\\cli-integration.test.ts",
+            "mode": "edit",
+            "delta_bytes": 34
+          },
+          {
+            "id": "C5",
+            "path": "tests\\cli-integration.test.ts",
+            "mode": "edit",
+            "delta_bytes": 2
+          }
+        ],
+        "failed": [],
+        "summary": "6 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T09:19:24Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:772-test-p3-c2",
+      "agent": "test-runner",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:771-apply-p3-c2"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 2 \u2014 test-runner",
+        "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
+        "parser": "npm",
+        "purpose": "Verify Phase 3 Chain 2 did not regress; the 2 new CLI integration tests in tests/cli-import-ontology.test.ts pass; full suite remains green (currently 137/137)."
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 12.831080198287964,
+        "first_n_failures": [],
+        "raw_stdout_tail": "rted lexicographically (\u00c2\u00a75.3 rule 5)\n  \u00e2\u0153\u201c PASS: ISO 8601 timestamps normalized: no fractional seconds, Z suffix (\u00c2\u00a75.3 rule 8)\n  \u00e2\u0153\u201c PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (94ms)\n  PASSED: /cli-import-ontology.test.js (1251ms)\n  PASSED: /cli-integration.test.js (1973ms)\n  PASSED: /delete-instance.test.js (83ms)\n  PASSED: /determinism.test.js (80ms)\n  PASSED: /emitters.test.js (215ms)\n  PASSED: /import-turtle.test.js (297ms)\n  PASSED: /iri-generation.test.js (92ms)\n  PASSED: /iri-refactor.test.js (105ms)\n  PASSED: /legacy-migration.test.js (95ms)\n  PASSED: /manifest-entries.test.js (92ms)\n  PASSED: /no-network.test.js (83ms)\n  PASSED: /normalize-on-load.test.js (99ms)\n  PASSED: /semantic-projection.test.js (110ms)\n  PASSED: /snapshot.test.js (95ms)\n  PASSED: /starter-terms.test.js (87ms)\n  PASSED: /structural-validator.test.js (106ms)\n  PASSED: /tbox-bundle.test.js (209ms)\n  PASSED: /vmp-serializer.test.js (832ms)\n\n  Files: 19/19 passed\n  Tests: 140/140 passed\n\n(node:34852) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:26316) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 12.83s)",
+        "parser_used": "npm"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T09:19:37Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
         }
       ]
     }
