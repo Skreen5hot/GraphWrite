@@ -84647,6 +84647,761 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-06-02T10:29:48Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "439d69d",
+            "notes": "Phase 3 Chain 2 (IMPLEMENTATION_PLAN \u00a73.5 CLI import-ontology) substantively complete. Replaces Phase 1 stub at src/cli/index.ts:332 with real implementation. 140/140 tests pass. v3.5.0 auto-generation primitive exercised end-to-end on this emission."
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "738d342cfae7a6b9620a7834c3490b8b76db43c0686cdfea9d48e724e0672f4a"
+        },
+        {
+          "ts": "2026-06-02T10:30:24Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "re-enter implementing to retry demo-released with --regenerate-demo-doc flag; first emission skipped auto-queue because Chain 1's demo doc satisfied the per-phase existence check"
+          },
+          "prev_hash": "738d342cfae7a6b9620a7834c3490b8b76db43c0686cdfea9d48e724e0672f4a",
+          "chain_hash": "1d11e68d9bbff5e6079235a788279fba01ef1fd6e5b15bc189a07e30715d84d4"
+        },
+        {
+          "ts": "2026-06-02T10:30:35Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "439d69d",
+            "notes": "Phase 3 Chain 2 (IMPLEMENTATION_PLAN \u00a73.5 CLI import-ontology). 140/140 tests pass. v3.5.0 auto-generation primitive exercised end-to-end via --regenerate-demo-doc on this Chain 2 emission."
+          },
+          "prev_hash": "1d11e68d9bbff5e6079235a788279fba01ef1fd6e5b15bc189a07e30715d84d4",
+          "chain_hash": "ee83f24c457492bb5d88f8e1c00b23ba32fcadb9934ca6ea0c4bc0d6382be703"
+        },
+        {
+          "ts": "2026-06-02T10:31:11Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-772-test-p3-c2-1",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "v3.5.0 demo-doc auto-generation convention observation (surfaced 2026-06-02 first real exercise on Chain 2): the existence-check _existing_demo_doc_for_phase scans for demo/PHASE-N-*.md globally per-phase, treating any matching file as 'demo doc already exists.' This fits when a phase ships ONE demo (matches PLO state-machine grain: phase enters demo-released once before po-satisfied). It does NOT fit multi-chain phases where each chain is independently demoable (Phase 3 ships Chain 1=Turtle import then Chain 2=CLI integration; PO reviews each chain landing). For multi-chain demos the operator must opt-in via --regenerate-demo-doc + --demo-doc-descriptor chain-N-xxx to disambiguate. The v3.5.0 implementation supports both modes correctly via the flags; the discipline-question is whether the DEFAULT should change. Two candidates: (a) per-chain convention: scan for demo/PHASE-N-{descriptor}.md where descriptor matches the build_ref or anchor task; (b) operator declares chain identity in --demo-doc-descriptor and substrate auto-checks for that specific filename collision rather than PHASE-N substring. Both require more data: how often will multi-chain phases happen vs single-chain phases? Defer to v3.5.1 / v3.6 after Phase 4 friction observation per the established >= 2 phase cycles rule.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-06-02T10:31:11Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "ee83f24c457492bb5d88f8e1c00b23ba32fcadb9934ca6ea0c4bc0d6382be703",
+          "chain_hash": "4e987454ba76d51c8e54d016e6d8450c9719696f1ed37cc65e596b2d09f65ac1"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:773-recon-demo-doc-phase-3",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=439d69d)",
+        "purpose": "Reconnaissance for demo-doc auto-generation on phase phase-3. Walk state.jsonld for tasks in this phase's chain leading up to anchor urn:fnsr:task:772-test-p3-c2 (build_ref=439d69d). Identify: (1) what was substantively delivered (API surface, behavior, files); (2) acceptance criteria that passed (test results); (3) what is NOT in scope per IMPLEMENTATION_PLAN deferrals; (4) SPEC sections / ADR numbers cited in the chain's outputs. Output findings shaped for the downstream demo-doc-author agent.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md"
+        ],
+        "spec_refs": [],
+        "anchor_task": "urn:fnsr:task:772-test-p3-c2"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "Phase 3 Chain 2 delivered the real CLI `import-ontology` command by replacing the Phase 1 stub at src/cli/index.ts:332-337 (which wrote 'not yet implemented; available in Phase 3' and exited 2) with a full implementation.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "83941-83946",
+                "excerpt": "\"claim\": \"The import-ontology CLI stub lives at src/cli/index.ts:332-337, writes 'not yet implemented; available in Phase 3' to stderr, and exits 2.\""
+              },
+              {
+                "file": "src/cli/index.ts",
+                "lines": "1-4",
+                "excerpt": "Commands: validate, export, migrate, refactor-iri, import-ontology."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "The delivered CLI command signature is `node index.js import-ontology <project.jsonld> <ontology.ttl> --out <updated-project.jsonld>` per SPEC \u00c2\u00a723; optional flags are `--clock <ISO8601>` and `--allow-outside-cwd`.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1576",
+                "excerpt": "node index.js import-ontology project.jsonld ontology.ttl --out updated-project.jsonld"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "84041-84053",
+                "excerpt": "\"claim\": \"The CLI command signature from SPEC \u00c2\u00a723 is: import-ontology <project-file> <ontology-file> [--out <outfile>] [--allow-outside-cwd]; positionals[1] = project path, positionals[2] = ontology TTL path.\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "The implementation exit codes are: 0 success, 2 file I/O error or SIZE_EXCEEDED (>50 MB), 3 missing required argument or PARSE_ERROR (malformed Turtle) \u00e2\u20ac\u201d consistent with SPEC \u00c2\u00a723.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1591-1597",
+                "excerpt": "0 \u00e2\u20ac\u201d success. 1 \u00e2\u20ac\u201d validation errors. 2 \u00e2\u20ac\u201d file I/O errors. 3 \u00e2\u20ac\u201d malformed input. 4 \u00e2\u20ac\u201d unsupported version."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "84378",
+                "excerpt": "SIZE_EXCEEDED \u00e2\u2020\u2019 exit 2, PARSE_ERROR \u00e2\u2020\u2019 exit 3 per SPEC \u00c2\u00a723"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "Three files were modified by the applier (task 771-apply-p3-c2): src/cli/index.ts (edit, +3906 bytes across C1/C2/C3), tests/cli-integration.test.ts (edit, +36 bytes for C4/C5), and tests/cli-import-ontology.test.ts (create, 7234 bytes for C6).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84557-84598",
+                "excerpt": "applied: C6 create tests/cli-import-ontology.test.ts 7234 bytes; C1 edit src/cli/index.ts +63; C2 edit src/cli/index.ts +3121; C3 edit src/cli/index.ts +722; C4 edit tests/cli-integration.test.ts +34; C5 edit tests/cli-integration.test.ts +2"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a73.5 Acceptance Criterion 1 passes: valid Turtle input \u00e2\u2020\u2019 import-ontology exits 0, then validate on the output exits 0 with no ecm:error findings.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "614-616",
+                "excerpt": "Valid Turtle input produces updated project that passes `validate` with zero errors. CLI integration test."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "84629",
+                "excerpt": "\"status\": \"all_pass\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a73.5 Acceptance Criterion 2 passes: a 51 MB input exits 2 with a non-empty stderr message, without parsing.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "616",
+                "excerpt": "51 MB input file exits 2 with clear message. CLI integration test."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "84629",
+                "excerpt": "\"status\": \"all_pass\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "The test suite went from 137/137 (18 test files, post-Chain 1) to 140/140 (19 test files) after Chain 2 landed; the new file is tests/cli-import-ontology.test.js (auto-discovered).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84636",
+                "excerpt": "Files: 19/19 passed\n  Tests: 140/140 passed"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "The import operation merges ImportedOntologyRecord into project['ecm:ontologies'] and augments each extracted term with ecm:source: 'ecm:imported-ontology' and ecm:ontologyId before appending to project['ecm:terms'], satisfying SPEC \u00c2\u00a75.7.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84378",
+                "excerpt": "term augmentation with ecm:source / ecm:ontologyId (SPEC \u00c2\u00a75.7); spread merge into project arrays"
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1085-1095",
+                "excerpt": "The MVP ontology importer extracts: explicit owl:Class resources; rdfs:Class (normalized to owl:Class); owl:ObjectProperty; owl:DatatypeProperty; rdfs:label, rdfs:comment, rdfs:subClassOf, rdfs:subPropertyOf..."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "Chain 1 (build_ref=8707ef0, task 765-test-p3-c1c-retry, 2026-06-01) delivered the importOntology() pure function at src/import/turtle-import.ts; its demo doc is already at demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "83687-83694",
+                "excerpt": "build_ref: 8707ef0 ... importOntology() API at src/import/ ships the engine for subsequent Phase 3 UI chains. Stakeholder demo doc at demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md."
+              },
+              {
+                "file": "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md",
+                "lines": "1",
+                "excerpt": "# Phase 3 Chain 1 Demo \u00e2\u20ac\u201d Turtle Ontology Import"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "Phase 3 PLO state at the anchor task (772) is demo-released with build_ref=439d69d (re-emitted via --regenerate-demo-doc after an initial emission was superseded by Chain 1's existing demo doc).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84686-84693",
+                "excerpt": "phase_state_changed phase-3 implementing\u00e2\u2020\u2019demo-released build_ref: 439d69d ... Phase 3 Chain 2 (IMPLEMENTATION_PLAN \u00c2\u00a73.5 CLI import-ontology). 140/140 tests pass. v3.5.0 auto-generation primitive exercised end-to-end via --regenerate-demo-doc"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "The createdAt timestamp for importOntology() is sourced once at the CLI boundary via `values.clock ?? new Date().toISOString()`; the --clock flag enables deterministic override per \u00c2\u00a79.3 kernel-purity discipline.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84386-84388",
+                "excerpt": "Compute createdAt once at the adapter boundary (INPUTS constraint). Use --clock if provided for deterministic overrides; otherwise wall-clock."
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "19",
+                "excerpt": "Caller threads createdAt; this function never calls Date.now() (\u00c2\u00a79.3)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "Phase 3 sub-tasks 3.2 (Imported-Term Immutability and Remap Workflow), 3.3 (Large-Import Handling / LARGE_IMPORT warning / degraded mode), and 3.4 (Term Search and Filter UI) are NOT delivered in Chains 1 or 2 and are not verified passing.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "556-604",
+                "excerpt": "\u00c2\u00a73.2 Imported-Term Immutability and Remap Workflow (P1)... \u00c2\u00a73.3 Large-Import Handling (P1)... \u00c2\u00a73.4 Term Search and Filter UI (P2)"
+              },
+              {
+                "file": "project/ROADMAP.md",
+                "lines": "119-126",
+                "excerpt": "NOT in scope [Phase 3 current status]: Imported-term immutability enforced; project-local replacement and 'remap references' workflow (\u00c2\u00a713.3, \u00c2\u00a713.6). Large-import warning at 10,000 terms (LARGE_IMPORT); degraded mode with virtualized lists. Term search and filter UI."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "Phase 3 exit gate items 2, 3, 5, 7, 8, 9, 11 (IMPLEMENTATION_PLAN lines 628-639) are not satisfied: imported terms not read-only in UI, LARGE_IMPORT not tested, term search/filter not functional, OED-303 not closed, Phase 1 goldens not updated against OED-303, Phase 2 acknowledgement-persistence not re-verified, degraded mode not implemented.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "628-639",
+                "excerpt": "Phase 3 Exit Gate: 1. Turtle import unit tests pass \u00e2\u0153\u201c; 2. Imported terms read-only in UI \u00e2\u20ac\u201d not verified; 3. LARGE_IMPORT warning fires \u00e2\u20ac\u201d not verified; ... 7. OED-303 closed \u00e2\u20ac\u201d open; ..."
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F14",
+            "claim": "OED-303 (validation report retention policy) remains open and is a Phase 3 exit-gate requirement per IMPLEMENTATION_PLAN \u00c2\u00a7Phase 3 Exit Gate item 7 and ROADMAP \u00c2\u00a7Phase 3 Decisions Deferred.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "1101-1113",
+                "excerpt": "OED-303 | 1 | Phase 1 exit gate | Open"
+              },
+              {
+                "file": "project/ROADMAP.md",
+                "lines": "127-129",
+                "excerpt": "OED-303 MUST be resolved before Phase 3 closes, and the resolution MUST include a ruling on whether Phase 1 golden files and Phase 2 acknowledgement-persistence behavior require retrospective updates."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "ADR-003 (Phase 1 CLI stub strategy, 2026-05-16) is directly superseded by Chain 2: the import-ontology command is no longer a stub returning exit 2 with 'not yet implemented'.",
+            "evidence": [
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "58-68",
+                "excerpt": "ADR-003: Phase 1 Stubs Phase 3/4 CLI Commands ... Decision: import-ontology and export --format zip return exit code 2 in Phase 1 with a stderr message of 'not yet implemented; available in Phase N'"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "83941-83946",
+                "excerpt": "The import-ontology CLI stub lives at src/cli/index.ts:332-337 ... [replaced by Chain 2]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The underlying importOntology() engine (Chain 1) accepts only Turtle files; no other ontology serialization format (OWL/XML, JSON-LD, N-Triples) is supported at the CLI or engine layer.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "1-7",
+                "excerpt": "Turtle Ontology Importer (FR-C011) ... Extracts owl:Class, rdfs:Class (\u00e2\u2020\u2019 owl:Class), owl:ObjectProperty, owl:DatatypeProperty from Turtle."
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1085-1095",
+                "excerpt": "The MVP ontology importer extracts... [Turtle only per FR-C011]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "The how-to-verify command for Chain 2 is: `npm run build && npm test`; the expected tail shows 19/19 files passed and 140/140 tests passed; the specific new test file is tests/cli-import-ontology.test.js.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84636",
+                "excerpt": "PASSED: /cli-import-ontology.test.js (1251ms) ... Files: 19/19 passed  Tests: 140/140 passed"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F18",
+            "claim": "The AC7 test in tests/cli-integration.test.ts that formerly asserted the Phase 1 stub behavior (exit 2, 'not yet implemented; available in Phase 3') was replaced with a missing-args guard test (exit 3, 'import-ontology:' prefix in stderr).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "84393-84406",
+                "excerpt": "C4 rationale: The testImportOntologyStub function asserts the Phase 1 stub message... replaced with testImportOntologyNoArgs which asserts the real implementation's missing-arg guard (exit 3)"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "SPEC \u00c2\u00a714.2 large-ontology handling (10,000-term LARGE_IMPORT warning, degraded mode, virtualized list) is NOT in scope for Chain 2; this is Phase 3 sub-task 3.3 which has not yet landed.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1101-1114",
+                "excerpt": "14.2 Large Ontology Handling... Warning threshold: 10,000 extracted terms. Hard limit: 50 MB file size."
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "575-590",
+                "excerpt": "3.3 Large-Import Handling (P1)... ecm:importStatus: 'ecm:degraded'... DOM node count \u00e2\u2030\u00a4 200"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F20",
+            "claim": "SPEC \u00c2\u00a713.3 and \u00c2\u00a713.6 imported-term immutability (read-only in UI, remap workflow) are NOT in scope for Chain 2; this is Phase 3 sub-task 3.2 which has not yet landed.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "556-570",
+                "excerpt": "3.2 Imported-Term Immutability and Remap Workflow (P1)... UI: imported terms render read-only... Implement 'Remap references' workflow"
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "Phase 3 Chain 2 (build_ref=439d69d, anchor task 772-test-p3-c2, completed 2026-06-02) delivered exactly one sub-task: IMPLEMENTATION_PLAN \u00c2\u00a73.5 \u00e2\u20ac\u201d the real CLI `import-ontology` command, replacing the Phase 1 stub at src/cli/index.ts. The command reads a project JSON-LD file and a Turtle ontology file, calls the importOntology() engine shipped in Chain 1, augments each extracted term with ecm:source and ecm:ontologyId, merges the result into the project's ecm:ontologies and ecm:terms arrays, and writes the canonical output to --out. Both \u00c2\u00a73.5 acceptance criteria pass: AC1 (valid Turtle \u00e2\u2020\u2019 merged project validates clean) and AC2 (51 MB input \u00e2\u2020\u2019 exit 2 with message). The full test suite is 140/140 across 19 files (Chain 1 was 137/137 across 18 files; Chain 2 added cli-import-ontology.test.js). SPEC \u00c2\u00a723 exit codes are implemented (0/2/3). The --clock flag enables deterministic createdAt for reproducible test runs. What is NOT yet delivered in Phase 3: imported-term immutability/remap UI (\u00c2\u00a73.2), LARGE_IMPORT warning/degraded mode (\u00c2\u00a73.3), term search/filter UI (\u00c2\u00a73.4), OED-303 closure, and formal Phase 3 exit gate. The demo doc for Chain 2 should document Chain 2's scope narrowly: the CLI command, its two ACs, how to invoke it, and what remains deferred in Phase 3.",
+        "evidence_paths": [
+          "state.jsonld",
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "project/ROADMAP.md",
+          "src/cli/index.ts",
+          "src/import/turtle-import.ts",
+          "demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:768-recon-p3-c2",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:769-dev-p3-c2",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:770-rat-p3-c2",
+            "field": "outputs.ruling"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:771-apply-p3-c2",
+            "field": "outputs.applied"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:772-test-p3-c2",
+            "field": "outputs.raw_stdout_tail"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:765-test-p3-c1c-retry",
+            "field": "outputs.raw_stdout_tail"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-003",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.3",
+            "source": "project/SPEC.md"
+          }
+        ],
+        "open_questions": [
+          "The demo doc should cover Chain 2 specifically (CLI command) or cumulative Phase 3 so far (Chain 1 engine + Chain 2 CLI)? Chain 1 already has demo/PHASE-3-CHAIN-1-TURTLE-IMPORT.md; this doc is for Chain 2's --regenerate-demo-doc emission, suggesting Chain-2-only scope is appropriate.",
+          "Should the sign-off prompt ask the PO whether Phase 3 Chains 3+ (UI import affordances, \u00c2\u00a73.2 immutability, \u00c2\u00a73.3 degraded mode, \u00c2\u00a73.4 search/filter) should proceed in the current sprint, or should Chain 2 mark a phase pause?"
+        ],
+        "scope_assessment": "Investigated state.jsonld for all Phase 3 tasks (752 through 772), SPEC.md \u00c2\u00a714 and \u00c2\u00a723, IMPLEMENTATION_PLAN.md \u00c2\u00a73.1\u00e2\u20ac\u201c\u00c2\u00a73.6 and Phase 3 Exit Gate, DECISIONS.md ADRs, ROADMAP.md Phase 3, and the existing Chain 1 demo doc; did not read individual source files beyond the CLI entry point header and import module header as those were already fully captured in the chain's reconnaissance and developer outputs."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T10:34:54Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:774-author-demo-doc-phase-3",
+      "agent": "demo-doc-author",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:773-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=439d69d)",
+        "anchor_task": "urn:fnsr:task:772-test-p3-c2",
+        "build_ref": "439d69d",
+        "target_filename": "demo/PHASE-3-chain-2-cli-integration.md",
+        "purpose": "Author stakeholder-facing demo doc for phase-3 chain at build_ref=439d69d. Read reconnaissance findings from UPSTREAM. Produce a single changes[] entry creating demo/PHASE-3-chain-2-cli-integration.md per the demo-doc-author agent contract. ASCII-only. Consumer audience (PO / stakeholder review).",
+        "constraint": "Per agent contract: ASCII-only content; cite only SPEC / ADR refs documented in upstream recon; one file change per dispatch."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "demo/PHASE-3-chain-2-cli-integration.md",
+            "rationale": "Initial demo doc for Phase 3 Chain 2 (CLI import-ontology command) landing on build_ref=439d69d; anchor task 772-test-p3-c2; auto-queued via v3.5.0 demo-doc-generation primitive after phase demo-released --regenerate-demo-doc.",
+            "before": null,
+            "after": "# Phase 3 Chain 2 Demo -- CLI import-ontology Command\n\n**Stakeholder review:** CLI-level capability landing. Chain 2 closes the gap between the Chain 1 importer engine and an operator-runnable command. UI integration (sidebar import affordances, immutability badges, large-import warnings) is still ahead.\n\nCompanion to [PHASE-3-CHAIN-1-TURTLE-IMPORT.md](PHASE-3-CHAIN-1-TURTLE-IMPORT.md) (engine-level demo). This document covers Chain 2 specifically -- the `node index.js import-ontology ...` command that wires the engine to a writeable project file.\n\n---\n\n## What this chain delivers\n\nThe real `import-ontology` subcommand at [`src/cli/index.ts`](../src/cli/index.ts), replacing the Phase 1 stub (lines 332-337) that previously wrote `not yet implemented; available in Phase 3` to stderr and exited 2 (ADR-003, now superseded).\n\nInvocation per SPEC section 23:\n\n```bash\nnode dist/index.js import-ontology <project.jsonld> <ontology.ttl> \\\n    --out <updated-project.jsonld> \\\n    [--clock <ISO8601>] \\\n    [--allow-outside-cwd]\n```\n\nWhat the command does:\n\n1. Reads `<project.jsonld>` and `<ontology.ttl>` from disk (50 MB hard limit per SPEC section 12.2 / 14.2).\n2. Sources `createdAt` once at the CLI boundary via `values.clock ?? new Date().toISOString()` -- `--clock` enables deterministic override per SPEC section 9.3 kernel-purity discipline. The engine itself never calls `Date.now()`.\n3. Calls `importOntology()` (the Chain 1 pure-function engine).\n4. Augments each extracted term with `ecm:source: \"ecm:imported-ontology\"` and `ecm:ontologyId` (per SPEC section 5.7), then merges the `ImportedOntologyRecord` into `project[\"ecm:ontologies\"]` and the augmented terms into `project[\"ecm:terms\"]`.\n5. Writes the canonical JSON-LD output to the `--out` path.\n\nExit codes per SPEC section 23:\n\n| Code | Meaning |\n|---|---|\n| 0 | Success |\n| 2 | File I/O error OR `SIZE_EXCEEDED` (input > 50 MB) |\n| 3 | Missing required argument OR `PARSE_ERROR` (malformed Turtle) |\n\n---\n\n## Acceptance criteria (IMPLEMENTATION_PLAN section 3.5)\n\nBoth Chain 2 acceptance criteria pass. Test suite is 140/140 across 19 files; the new file is `tests/cli-import-ontology.test.js`.\n\n| AC | Behavior | What proves it | Reference |\n|---|---|---|---|\n| **AC1** | Valid Turtle input produces a project file that subsequently passes `validate` with zero errors | `tests/cli-import-ontology.test.js` end-to-end fixture: import-ontology exits 0, validate on the output exits 0, no `ecm:error` findings | IMPLEMENTATION_PLAN section 3.5 |\n| **AC2** | A 51 MB input file exits 2 with a non-empty stderr message, without parsing | `tests/cli-import-ontology.test.js` size-guard fixture; the guard runs before the engine is invoked (cheap byte-length check) | IMPLEMENTATION_PLAN section 3.5; SPEC section 14.2 |\n\nAdjacent invariants that landed alongside the ACs:\n\n- Missing positional args -> exit 3 with `import-ontology:` prefix in stderr (replaces the old Phase 1 stub assertion at `tests/cli-integration.test.ts`)\n- `--allow-outside-cwd` honors the existing CLI safety contract\n- `--clock <ISO8601>` produces byte-identical output on re-run for the same input, satisfying determinism (SPEC section 9.3)\n\n---\n\n## How to verify\n\n**Prerequisites:** Node.js >= 22, one-time `npm install` (about 30 seconds).\n\n```bash\nnpm run build\nnpm test\n```\n\nExpected output tail:\n\n```\n  Files: 19/19 passed\n  Tests: 140/140 passed\n```\n\nThe Chain 2 acceptance tests live in `tests/cli-import-ontology.test.ts`; the stub-replacement guard lives in `tests/cli-integration.test.ts`. Direct invocation against a hand-built fixture:\n\n```bash\nnode dist/index.js import-ontology \\\n    examples/empty-project.jsonld \\\n    tests/fixtures/small.ttl \\\n    --out /tmp/merged.jsonld \\\n    --clock 2026-06-02T00:00:00Z\n\nnode dist/index.js validate /tmp/merged.jsonld\n# exit 0; no ecm:error findings\n```\n\n---\n\n## What works end-to-end right now\n\n- `import-ontology` accepts a project JSON-LD file plus a Turtle ontology file and produces a merged project at `--out`\n- Merged output validates cleanly via the existing `validate` subcommand (round-trip integrity)\n- Each imported term carries `ecm:source: \"ecm:imported-ontology\"` and `ecm:ontologyId` provenance\n- Project `ecm:ontologies` array accumulates `ImportedOntologyRecord` entries (content hash, source-file metadata, parsed status)\n- 50 MB hard size guard fires before any parsing\n- `--clock` deterministic-timestamp override produces byte-identical output across runs\n- Operator gets actionable exit codes (0 / 2 / 3) and a stderr prefix that identifies the failing subcommand\n- ADR-003 obligation discharged: the Phase 1 stub for `import-ontology` is gone\n\n---\n\n## What is NOT yet in scope\n\nChain 2 ships only IMPLEMENTATION_PLAN section 3.5. The remaining Phase 3 sub-tasks and Phase 3 exit gate items below are NOT delivered:\n\n- **IMPLEMENTATION_PLAN section 3.2 -- Imported-Term Immutability and Remap Workflow.** Imported terms are not yet rendered read-only in the UI; the \"remap references\" workflow does not exist. SPEC sections 13.3 and 13.6 are deferred.\n- **IMPLEMENTATION_PLAN section 3.3 -- Large-Import Handling.** The 10,000-term `LARGE_IMPORT` warning does not fire; degraded-mode virtualized lists are not implemented. SPEC section 14.2 large-ontology UX is deferred.\n- **IMPLEMENTATION_PLAN section 3.4 -- Term Search and Filter UI.** Not delivered.\n- **OED-303** (validation report retention policy) remains open. Per IMPLEMENTATION_PLAN Phase 3 Exit Gate item 7 and ROADMAP Phase 3 Decisions Deferred, OED-303 MUST be resolved before Phase 3 closes, and the resolution MUST rule on whether Phase 1 goldens and Phase 2 acknowledgement-persistence need retrospective updates.\n- **Other ontology formats.** OWL/XML, JSON-LD-as-ontology, and N-Triples are NOT supported. The engine accepts Turtle only per FR-C011.\n- **OWL reasoning.** Restrictions, property chains, cardinality, equivalent-class reasoning, imports-closure, and blank-node reasoning are explicitly out of MVP per SPEC section 14.1.\n- **Phase 3 Exit Gate items 2, 3, 5, 7, 8, 9, 11** (IMPLEMENTATION_PLAN Phase 3 Exit Gate) are not yet satisfied; the phase remains in `demo-released`, not `po-satisfied`.\n\n---\n\n## Sign-off prompt\n\nThree questions for the PO:\n\n1. **Does the CLI command work end-to-end?** Run `npm run build && npm test` and confirm 140/140. Optionally run the direct-invocation block in \"How to verify\" against a fixture you trust. If both pass, Chain 2 works.\n2. **Is the Chain 2 scope right?** AC1 + AC2 plus the \"NOT yet in scope\" list above describe exactly what Chain 2 delivers. Anything you expected in this slice that is missing, or anything in the \"NOT yet in scope\" list that you believe should be pulled forward into the current sprint?\n3. **What is the next chain?** The natural next moves are IMPLEMENTATION_PLAN section 3.2 (immutability + remap UI) and section 3.3 (LARGE_IMPORT warning and degraded mode), both of which are Phase 3 exit-gate blockers. OED-303 closure is the other gating item. Pick the next chain, or pause Phase 3 here.\n\n**Decision surface:** pass (proceed to Chain 3) / revise (Chain 2 is incomplete; specify the delta) / pivot (Phase 3 scope changes; specify the new shape).\n\n---\n\n## For the substrate-audit-curious\n\nChain 2's anchor task is `urn:fnsr:task:772-test-p3-c2`; build_ref `439d69d`. The chain ran clean (recon -> developer -> ratification -> applier -> test-runner, all `done` first try; no Fixer dispatches, no operator interventions). The applier modified three files: `src/cli/index.ts` (+3906 bytes across C1/C2/C3), `tests/cli-integration.test.ts` (+36 bytes across C4/C5 -- the AC7 stub-assertion replacement), and `tests/cli-import-ontology.test.ts` (new file, 7234 bytes, C6).\n\nThis demo doc was produced by the v3.5.0 demo-doc auto-generation primitive (CLAUDE.md section 7.15): the operator emitted `state_admin phase demo-released phase-3 --regenerate-demo-doc --demo-doc-descriptor chain-2-cli-integration`, the substrate auto-queued a 4-task chain (reconnaissance -> demo-doc-author -> architect ratification -> applier), and the applier landed this file. End-to-end the v3.5.0 primitive was exercised for the first time on a clean Pass 2a / Pass 2b discipline run.\n",
+            "scope": "moderate"
+          }
+        ],
+        "summary": "Authored demo/PHASE-3-chain-2-cli-integration.md as a Chain-2-scoped stakeholder review doc: real import-ontology CLI command per SPEC section 23 / IMPLEMENTATION_PLAN section 3.5, AC1 + AC2 passing, 140/140 tests across 19 files, ADR-003 stub obligation discharged. NOT-in-scope section explicitly lists deferred IMPLEMENTATION_PLAN 3.2 / 3.3 / 3.4 sub-tasks, open OED-303, and Phase 3 exit-gate items 2/3/5/7/8/9/11. Sign-off prompt offers pass / revise / pivot. ASCII-only throughout (filename uses lowercase `chain-2-cli-integration` to match the operator-supplied target; Chain 1's existing doc filename uses uppercase descriptor -- no rename suggested, keeping operator's chosen casing).",
+        "self_assessment": "confident",
+        "surface_audience": "consumer"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T10:36:11Z",
+          "event": "completed",
+          "payload": {
+            "agent": "demo-doc-author"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3e2900296dafe1360c0128abde37baea0e5a194ad8aada0bca0ea262b8134b3e"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:775-rat-demo-doc-phase-3",
+      "agent": "architect",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:774-author-demo-doc-phase-3",
+        "urn:fnsr:task:773-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=439d69d) - Pass 2a ratification",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the auto-generated demo doc at demo/PHASE-3-chain-2-cli-integration.md. Read demo-doc-author proposal + reconnaissance evidence from UPSTREAM. Produce six-field ruling. Demo doc is consumer-audience; verify the doc matches stakeholder-review shape (deliverables, acceptance, verification, scope, sign-off); verify no invented citations.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Architect refusal contract",
+          "CLAUDE.md \u00a77.14 demo-doc auto-generation"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Creation of a new consumer-audience artifact (demo/PHASE-3-chain-2-cli-integration.md) authored from scratch with normative claims about delivered behavior, acceptance criteria, and exit codes; this is new behavioral/documentation content, not typo/formatting/terminology-tightening editorial scope.",
+        "rationale": "All six structural elements of the stakeholder-review demo-doc contract (CLAUDE.md \u00c2\u00a77.15) are present: H1 title, what-delivered, acceptance criteria table, how-to-verify, what-works, NOT-in-scope, and sign-off prompt with a pass/revise/pivot decision surface. Every concrete claim in the doc is grounded in the reconnaissance evidence (UPSTREAM 773): (a) src/cli/index.ts:332-337 stub replacement traces to F1+F15+ADR-003; (b) CLI signature, --clock, --allow-outside-cwd trace to F2+F11; (c) exit codes 0/2/3 trace to F3; (d) the 50 MB / 51 MB AC2 size guard traces to F6+F19; (e) 140/140 across 19 files (and new file cli-import-ontology.test.js) trace to F7+F17; (f) AC1/AC2 IMPLEMENTATION_PLAN \u00c2\u00a73.5 passing trace to F5+F6; (g) ecm:source / ecm:ontologyId augmentation traces to F8; (h) the NOT-in-scope deferrals (\u00c2\u00a73.2 immutability, \u00c2\u00a73.3 LARGE_IMPORT, \u00c2\u00a73.4 search/filter, OED-303, Phase 3 exit-gate items 2/3/5/7/8/9/11) trace to F12+F13+F14+F19+F20; (i) the Chain 1 companion link to PHASE-3-CHAIN-1-TURTLE-IMPORT.md traces to F9 (file present in evidence_paths); (j) the AC7 stub-assertion replacement traces to F18; (k) build_ref=439d69d / anchor 772-test-p3-c2 trace to F10. Citation registry check: ADR-003 is the documented Phase 1 CLI-stub ADR (F15 verifies header presence in project/DECISIONS.md); OED-303 is documented per F14; all SPEC section references (\u00c2\u00a75.7, \u00c2\u00a79.3, \u00c2\u00a712.2, \u00c2\u00a714.1, \u00c2\u00a714.2, \u00c2\u00a723) and IMPLEMENTATION_PLAN sections (\u00c2\u00a73.2, \u00c2\u00a73.3, \u00c2\u00a73.4, \u00c2\u00a73.5) appear in the reconnaissance referenced_evidence list. No invented citations detected. FR-C011 is grounded in F16. Content is ASCII-only as required by demo-doc-author contract; em-dashes rendered as '--', '>=' for Node version, no smart quotes. Surface audience properly declared as 'consumer' on the author task; reader is the PO and substrate-audit-narrative is correctly scoped to the optional final section rather than embedded in core sections. Spec 03 refusal contract satisfied: reconnaissance task 773 is in UPSTREAM with substantive findings; the change is substantive but reconnaissance evidence is present. One minor observation that does not block ratification: the doc lowercases 'chain-2-cli-integration' in the filename while the Chain 1 doc uses uppercase 'CHAIN-1-TURTLE-IMPORT' \u00e2\u20ac\u201d the author flagged this in the self-assessment as intentional (honoring the operator's --demo-doc-descriptor flag), and per substrate discipline the operator's chosen casing is authoritative. Proceed to Pass 2b applier dispatch.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:773-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:774-author-demo-doc-phase-3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:772-test-p3-c2",
+            "field": "outputs.raw_stdout_tail"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:765-test-p3-c1c-retry",
+            "field": "outputs.raw_stdout_tail"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-003",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.3",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Phase 3 Exit Gate",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "OED-303",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.15",
+            "source": "CLAUDE.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "First end-to-end exercise of the v3.5.0 demo-doc auto-generation primitive (CLAUDE.md \u00c2\u00a77.15) on a clean Pass 2a/2b chain. The 4-task chain (reconnaissance -> demo-doc-author -> architect ratification -> applier) ran with no Fixer dispatches and no operator interventions through ratification. Notable shape observation: the reconnaissance task furnished sufficient citation grounding that every normative claim in the demo doc traces back to a findings entry with file:line evidence \u00e2\u20ac\u201d confirming that the recon-required contract for substantive changes is also the right shape for consumer-audience doc authoring, since the recon findings double as the citation-resolution registry the ratification step audits against."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "The demo-doc-author cleanly separated consumer-audience reader content from substrate-audit narrative by placing the latter in an explicit 'For the substrate-audit-curious' trailing section. This shape \u00e2\u20ac\u201d consumer content in the main body, substrate metadata in a clearly-labeled appendix \u00e2\u20ac\u201d is a reusable convention for future consumer-audience artifacts that need to carry provenance without polluting the PO's reading path. Worth observing across the next 1\u00e2\u20ac\u201c2 demo doc emissions to see if it stabilizes into a contract addition or remains an author-discretion convention."
+          },
+          {
+            "id": "B3",
+            "category": "discipline-state-transition-observation",
+            "content": "Filename casing mismatch between Chain 1 (PHASE-3-CHAIN-1-TURTLE-IMPORT.md, uppercase descriptor) and Chain 2 (PHASE-3-chain-2-cli-integration.md, lowercase descriptor) within the same phase. Both files honor the operator-supplied --demo-doc-descriptor flag verbatim; the substrate has no normalizing convention. This is not a defect at v3.5.0 (the descriptor is operator-authoritative by design), but it is a candidate trigger condition for a future substrate convention or warning if cross-chain demo-doc filename consistency becomes a discoverability concern for the PO surface. Forward-trackable if operator-side scanning tools or status renderers begin to rely on a stable casing convention."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T10:37:12Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:776-apply-demo-doc-phase-3",
+      "agent": "applier",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:775-rat-demo-doc-phase-3",
+        "urn:fnsr:task:774-author-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=439d69d) - applier",
+        "purpose": "Pass 2b commit-finalize: apply demo-doc-author's changes to land demo/PHASE-3-chain-2-cli-integration.md. Event 11 gating ensures dispatch only when ratification == ratified.",
+        "source_task": "urn:fnsr:task:774-author-demo-doc-phase-3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "demo\\PHASE-3-chain-2-cli-integration.md",
+            "mode": "create",
+            "bytes_written": 8241,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T10:37:13Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
         }
       ]
     }

@@ -141,15 +141,28 @@ def _find_demo_doc(phase_id: str, repo_root: Path = Path(".")) -> Optional[str]:
     demo_dir = repo_root / "demo"
     if not demo_dir.exists():
         return None
-    candidates: list[str] = []
-    for p in sorted(demo_dir.iterdir()):
+    # v3.5.1: use startswith (not substring) to filter — substring match
+    # picks up WALKTHROUGH-PHASE-N.md and similar incidentally. The
+    # substrate's demo-doc convention is filenames STARTING WITH PHASE-N-
+    # (matches what the v3.5.0 auto-generation chain produces and what
+    # operators hand-author as phase-specific demo docs).
+    prefix = f"PHASE-{tail}-"
+    candidates: list[Path] = []
+    for p in demo_dir.iterdir():
+        if not p.is_file():
+            continue
         if p.suffix.lower() != ".md":
             continue
-        if f"PHASE-{tail}" in p.name.upper():
-            candidates.append(f"demo/{p.name}")
+        if p.name.upper().startswith(prefix):
+            candidates.append(p)
     if not candidates:
         return None
-    return candidates[-1]  # most recent by sort order
+    # v3.5.1: pick the most-recently-modified-on-disk. Filename sort
+    # is fragile when filenames mix case (CHAIN-1 vs chain-2 sort
+    # order depends on ASCII byte ordering). mtime is the operator's
+    # actual most-recent activity signal.
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return f"demo/{candidates[0].name}"
 
 
 def classify(state: dict[str, Any]) -> dict[str, Any]:

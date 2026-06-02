@@ -204,6 +204,78 @@ class TestRender(unittest.TestCase):
         self.assertIn("state_admin phase demo-released", md)
 
 
+class TestFindDemoDoc(unittest.TestCase):
+    """v3.5.1 regression: _find_demo_doc must use startswith (not
+    substring) so WALKTHROUGH-PHASE-N.md doesn't incidentally match,
+    and must pick by mtime (not filename sort) so mixed-case
+    descriptors don't surface the wrong file.
+
+    Bug surfaced 2026-06-02 first real exercise of v3.5.0: Chain 2
+    landed demo/PHASE-3-chain-2-cli-integration.md correctly, but
+    fnsr.status.md linked demo/WALKTHROUGH-PHASE-3.md because the
+    v3.4.0 substring match picked it up + sort order put it last.
+    """
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-find-demo-"))
+        self.demo_dir = self.tmpdir / "demo"
+        self.demo_dir.mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_walkthrough_phase_n_does_NOT_match(self):
+        """v3.4.0 bug: substring match incidentally picked up
+        WALKTHROUGH-PHASE-3.md. v3.5.1 must filter to startswith
+        only."""
+        (self.demo_dir / "WALKTHROUGH-PHASE-3.md").write_text(
+            "# walkthrough", encoding="utf-8"
+        )
+        result = fs._find_demo_doc("phase-3", self.tmpdir)
+        self.assertIsNone(result)
+
+    def test_multiple_phase_n_picks_most_recent_mtime(self):
+        """When multiple PHASE-N-*.md files exist, pick by mtime,
+        not filename sort order."""
+        old = self.demo_dir / "PHASE-3-CHAIN-1-TURTLE.md"
+        new = self.demo_dir / "PHASE-3-chain-2-cli.md"
+        old.write_text("old", encoding="utf-8")
+        new.write_text("new", encoding="utf-8")
+        # Set mtimes: old is older, new is newer
+        import os as _os
+        old_mtime = 1_700_000_000.0
+        new_mtime = 1_700_000_100.0
+        _os.utime(old, (old_mtime, old_mtime))
+        _os.utime(new, (new_mtime, new_mtime))
+        result = fs._find_demo_doc("phase-3", self.tmpdir)
+        self.assertEqual(result, "demo/PHASE-3-chain-2-cli.md")
+
+    def test_phase_n_dash_prevents_collision_with_phase_n_plus_digits(self):
+        """phase-3 query must NOT match PHASE-30-*.md."""
+        (self.demo_dir / "PHASE-30-CHAIN-1.md").write_text(
+            "phase-30", encoding="utf-8"
+        )
+        result = fs._find_demo_doc("phase-3", self.tmpdir)
+        self.assertIsNone(result)
+
+    def test_case_insensitive_prefix_match(self):
+        """Operator may write filename in any case; substrate finds it."""
+        (self.demo_dir / "phase-3-lowercase.md").write_text(
+            "lower", encoding="utf-8"
+        )
+        result = fs._find_demo_doc("phase-3", self.tmpdir)
+        self.assertEqual(result, "demo/phase-3-lowercase.md")
+
+    def test_no_demo_dir_returns_none(self):
+        # Use a tmpdir that has NO demo subdirectory
+        empty = Path(tempfile.mkdtemp(prefix="fnsr-no-demo-"))
+        try:
+            result = fs._find_demo_doc("phase-3", empty)
+            self.assertIsNone(result)
+        finally:
+            shutil.rmtree(empty, ignore_errors=True)
+
+
 class TestEmit(unittest.TestCase):
     def setUp(self):
         self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-status-emit-"))
