@@ -48,6 +48,7 @@ STATUS_FILE = "fnsr.status.md"
 
 # Classification states (closed enumeration)
 STATE_DECISION_NECESSARY = "decision-necessary"
+STATE_RATIFICATION_DENIED = "ratification-denied"
 STATE_READY_FOR_REVIEW = "ready-for-review"
 STATE_READY_FOR_RELEASE = "ready-for-release"
 STATE_WORKING = "working"
@@ -56,6 +57,7 @@ STATE_IDLE = "idle"
 
 CLASSIFICATION_STATES = (
     STATE_DECISION_NECESSARY,
+    STATE_RATIFICATION_DENIED,
     STATE_READY_FOR_REVIEW,
     STATE_READY_FOR_RELEASE,
     STATE_WORKING,
@@ -117,7 +119,10 @@ def _dispatchable_counts(
     state: dict[str, Any],
 ) -> tuple[int, int, list[str]]:
     """Return (in_progress_count, dispatchable_ready_count, dispatchable_ids).
-    Ready tasks are dispatchable iff every dep is status=done.
+    Ready tasks are dispatchable iff every dep is status=done AND no
+    applier-class task is Event-11-blocked by a non-ratified architect
+    upstream (v3.5.3 fix per Aaron 2026-06-02 — classifier previously
+    reported denied-applier-blocked tasks as 'working' misleadingly).
     """
     tasks = state.get("tasks", []) or []
     by_id = {t.get("@id"): t for t in tasks}
@@ -130,9 +135,90 @@ def _dispatchable_counts(
         deps_ok = all(
             (by_id.get(d) or {}).get("status") == "done" for d in deps
         )
-        if deps_ok:
-            dispatchable.append(t.get("@id", ""))
+        if not deps_ok:
+            continue
+        # v3.5.3: Event 11 gating — applier blocked if upstream architect
+        # ratification ruling is not "ratified"
+        if _applier_event11_blocked(t, by_id):
+            continue
+        dispatchable.append(t.get("@id", ""))
     return in_progress, len(dispatchable), dispatchable
+
+
+def _applier_event11_blocked(
+    task: dict[str, Any], by_id: dict[str, dict[str, Any]]
+) -> bool:
+    """Mirror fnsr_daemon._architect_ratification_block: True iff the
+    task is an applier whose upstream architect ratification ruling is
+    not 'ratified'. v3.5.3 substrate gap closure.
+    """
+    if task.get("agent") != "applier":
+        return False
+    for dep_id in task.get("depends_on", []) or []:
+        dep = by_id.get(dep_id)
+        if dep is None or dep.get("agent") != "architect":
+            continue
+        inputs = dep.get("inputs") or {}
+        mode = inputs.get("mode") if isinstance(inputs, dict) else None
+        if mode != "ratification":
+            continue
+        outputs = dep.get("outputs") or {}
+        ruling = outputs.get("ruling") if isinstance(outputs, dict) else None
+        if ruling != "ratified":
+            return True
+    return False
+
+
+def _find_ratification_denied_appliers(
+    state: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Walk for applier tasks with status=ready, deps=done, but Event 11
+    blocked. Return per-task records with the architect's ruling and
+    rationale for operator-facing rendering.
+    """
+    tasks = state.get("tasks", []) or []
+    by_id = {t.get("@id"): t for t in tasks}
+    out: list[dict[str, Any]] = []
+    for t in tasks:
+        if t.get("status") != "ready":
+            continue
+        if t.get("agent") != "applier":
+            continue
+        deps = t.get("depends_on", []) or []
+        if not all((by_id.get(d) or {}).get("status") == "done" for d in deps):
+            continue
+        if not _applier_event11_blocked(t, by_id):
+            continue
+        # Find the denying architect dep
+        denying_arch_id = None
+        denying_arch = None
+        for dep_id in deps:
+            dep = by_id.get(dep_id)
+            if dep is None or dep.get("agent") != "architect":
+                continue
+            inputs = dep.get("inputs") or {}
+            mode = inputs.get("mode") if isinstance(inputs, dict) else None
+            if mode != "ratification":
+                continue
+            outputs = dep.get("outputs") or {}
+            ruling = (
+                outputs.get("ruling") if isinstance(outputs, dict) else None
+            )
+            if ruling != "ratified":
+                denying_arch_id = dep_id
+                denying_arch = dep
+                break
+        if denying_arch is None:
+            continue
+        arch_out = denying_arch.get("outputs") or {}
+        out.append({
+            "applier_task_id": t.get("@id"),
+            "architect_task_id": denying_arch_id,
+            "ruling": arch_out.get("ruling"),
+            "editorial_verdict": arch_out.get("editorial_verdict"),
+            "rationale": arch_out.get("rationale", ""),
+        })
+    return out
 
 
 def _find_demo_doc(phase_id: str, repo_root: Path = Path(".")) -> Optional[str]:
@@ -185,6 +271,19 @@ def classify(state: dict[str, Any]) -> dict[str, Any]:
             "state": STATE_DECISION_NECESSARY,
             "pending_count": pending_n,
             "pending_task_ids": pending_ids,
+        }
+
+    # v3.5.3: ratification-denied appliers (Event 11 stalls). Substrate
+    # correctly refuses to dispatch the applier; classifier surfaces it
+    # so the operator can see the architect's rationale + decide on
+    # remediation. Closes the 2026-06-02 misleading-"working" gap that
+    # surfaced on Chain 4 sub-task B denial.
+    denied = _find_ratification_denied_appliers(state)
+    if denied:
+        return {
+            "state": STATE_RATIFICATION_DENIED,
+            "denied_count": len(denied),
+            "denied_entries": denied,
         }
 
     in_progress_n, dispatchable_n, dispatchable_ids = _dispatchable_counts(
@@ -307,6 +406,61 @@ def render_markdown(
             for tid in ids:
                 body.append(f"- `{tid}`")
             body.append("")
+
+    elif state == STATE_RATIFICATION_DENIED:
+        n = classification["denied_count"]
+        entries = classification.get("denied_entries") or []
+        body = [
+            "## State: Ratification Denied (Operator Action Required)",
+            "",
+            f"**{n} applier task(s) blocked by architect ratification "
+            f"denial.** The substrate correctly refuses to dispatch "
+            "the applier (Event 11 gating per CLAUDE.md §7.8) because "
+            "the upstream architect's ruling was not `ratified`. "
+            "No automated recovery is in flight; the operator chooses "
+            "the remediation path.",
+            "",
+            "### Denied entries",
+            "",
+        ]
+        for entry in entries:
+            applier_id = entry.get("applier_task_id", "?")
+            arch_id = entry.get("architect_task_id", "?")
+            ruling = entry.get("ruling", "?")
+            verdict = entry.get("editorial_verdict", "?")
+            rationale = (entry.get("rationale") or "").strip()
+            body.append(f"- **Applier blocked:** `{applier_id}`")
+            body.append(f"  - **Denying architect:** `{arch_id}`")
+            body.append(f"  - **Ruling:** `{ruling}` (editorial verdict: `{verdict}`)")
+            if rationale:
+                rationale_short = rationale[:600]
+                if len(rationale) > 600:
+                    rationale_short += "..."
+                body.append(f"  - **Rationale (first 600 chars):**")
+                body.append("    ")
+                body.append("    > " + rationale_short.replace("\n", "\n    > "))
+            body.append("")
+        body.extend([
+            "### Typical remediation paths",
+            "",
+            "Per Spec 03 + CLAUDE.md §7.8:",
+            "",
+            "1. **Reset the prior developer task** with the architect's "
+            "specific fix instructions in `inputs.purpose`; rely on the "
+            "existing chain to re-run dev → ratify → apply.",
+            "2. **Queue a new dev/rat/apply triple** (v2 of the work) "
+            "+ abandon the blocked applier (`state_admin abandon ... "
+            "--replaced-by <new-applier-id>`); rewire downstream task "
+            "deps from the abandoned applier to the new one.",
+            "3. **Override the denial** (RARELY appropriate): manually "
+            "ratify by writing a new architect ratification task with "
+            "the corrected criteria; only valid if the original denial "
+            "was based on a misreading of the proposal.",
+            "",
+            "The denying architect's `outputs.rationale` (above) is the "
+            "operator's authoritative read on what needs to change.",
+            "",
+        ])
 
     elif state == STATE_READY_FOR_REVIEW:
         phase = classification.get("phase_id") or ""

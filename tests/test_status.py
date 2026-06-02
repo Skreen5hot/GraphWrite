@@ -207,6 +207,98 @@ class TestClassifier(unittest.TestCase):
         cls = fs.classify(state)
         self.assertEqual(cls["state"], fs.STATE_WORKING)
 
+    def test_ratification_denied_applier_classifies_correctly(self):
+        """v3.5.3: applier with status=ready + all deps done + upstream
+        architect ratification ruling=denied → ratification-denied
+        state (NOT 'working'). Closes the 2026-06-02 misleading-
+        'working' gap that surfaced on Chain 4 sub-task B denial."""
+        state = {"tasks": [
+            {"@id": "urn:t:dev", "agent": "developer", "status": "done",
+             "depends_on": [], "history": []},
+            {"@id": "urn:t:arch", "agent": "architect", "status": "done",
+             "inputs": {"mode": "ratification"},
+             "outputs": {"ruling": "denied",
+                         "editorial_verdict": "substantive",
+                         "rationale": "Verification criterion #2 NOT MET"},
+             "depends_on": ["urn:t:dev"], "history": []},
+            {"@id": "urn:t:apply", "agent": "applier", "status": "ready",
+             "depends_on": ["urn:t:arch", "urn:t:dev"],
+             "history": []},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_RATIFICATION_DENIED)
+        self.assertEqual(cls["denied_count"], 1)
+        entry = cls["denied_entries"][0]
+        self.assertEqual(entry["applier_task_id"], "urn:t:apply")
+        self.assertEqual(entry["architect_task_id"], "urn:t:arch")
+        self.assertEqual(entry["ruling"], "denied")
+
+    def test_ratification_ratified_applier_is_working_not_denied(self):
+        """Sanity: applier with ratified upstream is dispatchable
+        normally → working."""
+        state = {"tasks": [
+            {"@id": "urn:t:dev", "agent": "developer", "status": "done",
+             "depends_on": [], "history": []},
+            {"@id": "urn:t:arch", "agent": "architect", "status": "done",
+             "inputs": {"mode": "ratification"},
+             "outputs": {"ruling": "ratified",
+                         "editorial_verdict": "substantive",
+                         "rationale": "ok"},
+             "depends_on": ["urn:t:dev"], "history": []},
+            {"@id": "urn:t:apply", "agent": "applier", "status": "ready",
+             "depends_on": ["urn:t:arch", "urn:t:dev"],
+             "history": []},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_WORKING)
+
+    def test_ratification_denied_wins_over_chain_complete(self):
+        """A denied applier preempts chain-complete classification
+        even when a phase has a later done task."""
+        state = {"tasks": [
+            {"@id": "urn:t:phase-anchor", "agent": "test-runner",
+             "status": "done", "depends_on": [], "history": [
+                {"event": "phase_state_changed",
+                 "ts": "2026-06-02T10:00:00Z",
+                 "payload": {"phase_id": "phase-3",
+                              "to_state": "implementing"}},
+                {"event": "completed", "ts": "2026-06-02T13:00:00Z",
+                 "payload": {}}]},
+            # Denied applier in flight
+            {"@id": "urn:t:dev", "agent": "developer", "status": "done",
+             "depends_on": [], "history": []},
+            {"@id": "urn:t:arch", "agent": "architect", "status": "done",
+             "inputs": {"mode": "ratification"},
+             "outputs": {"ruling": "denied", "editorial_verdict": "x"},
+             "depends_on": ["urn:t:dev"], "history": []},
+            {"@id": "urn:t:apply", "agent": "applier", "status": "ready",
+             "depends_on": ["urn:t:arch", "urn:t:dev"],
+             "history": []},
+        ]}
+        cls = fs.classify(state)
+        self.assertEqual(cls["state"], fs.STATE_RATIFICATION_DENIED)
+
+    def test_render_ratification_denied_surfaces_rationale(self):
+        md = fs.render_markdown({
+            "state": fs.STATE_RATIFICATION_DENIED,
+            "denied_count": 1,
+            "denied_entries": [{
+                "applier_task_id": "urn:fnsr:task:814-apply-p3-c4-B",
+                "architect_task_id": "urn:fnsr:task:813-rat-p3-c4-B",
+                "ruling": "denied",
+                "editorial_verdict": "substantive",
+                "rationale": "Verification criterion #2 NOT MET: the "
+                             "task explicitly required '50MB hard-reject "
+                             "runs BEFORE FileReader'.",
+            }],
+        })
+        self.assertIn("Ratification Denied", md)
+        self.assertIn("urn:fnsr:task:814-apply-p3-c4-B", md)
+        self.assertIn("urn:fnsr:task:813-rat-p3-c4-B", md)
+        self.assertIn("50MB hard-reject", md)
+        self.assertIn("Reset the prior developer task", md)
+        self.assertIn("state_admin abandon", md)
+
     def test_chain_complete_loses_to_ready_for_review(self):
         """If a phase is in demo-released, ready-for-review wins
         regardless of chain-complete signals on other phases."""
