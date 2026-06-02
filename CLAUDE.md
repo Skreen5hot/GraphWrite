@@ -533,6 +533,68 @@ The `phase_state_changed` audit event payload carries `deploy_url`, `build_ref`,
 
 The v3.1.0-era forward-track `ft-767-recovery-dispatch-755-apply-p3-c1c-1` (subject: `capability:phase-readiness-auto-detect-v3.4`) scoped four missing pieces. v3.4.0 ships two of them: the **readiness probe predicate** (via the PLO event walker) and the **recommendation channel** (via the status file). The remaining two — **phase-membership signal on tasks** and **machine-readable phase acceptance criteria** — remain forward-tracked because they require ≥2 phase cycles of friction observation before a stable shape emerges (per the established substrate-build discipline).
 
+## 7.15 Demo-Doc Auto-Generation (v3.5.0)
+
+Per Aaron 2026-06-02: v3.4.0 ships the *channel* that says "demo is ready and validate at {demoLink}" — but the substrate doesn't actually PRODUCE the demo doc. Operator (or orchestrator-Agent) hand-authoring leaves a gap: demo emission requires a manual artifact step. v3.5.0 closes the gap. When `state_admin phase demo-released <phase-id>` is emitted and no `demo/PHASE-N-*.md` exists for the phase, the substrate auto-queues a **4-task demo-doc generation chain** that lands the doc through the normal Pass 2a / Pass 2b discipline.
+
+### The 4-task auto-queued chain
+
+```
+reconnaissance       (walk the phase task chain; identify deliverables,
+                      acceptance criteria passing, NOT-in-scope, citations)
+    ↓
+demo-doc-author      (NEW Opus-tier worker agent; consumer-audience
+                      output; produces a single changes[] entry creating
+                      demo/PHASE-N-{descriptor}.md per the agent
+                      contract's stakeholder-review structure)
+    ↓
+architect            (Pass 2a ratification; ruling="ratified" required
+                      for applier dispatch via Event 11 gating)
+    ↓
+applier              (Pass 2b commit-finalize; lands the demo doc)
+```
+
+ASCII-only by agent contract; skips `mojibake-repair` (gap-7/8 territory). The recon is REQUIRED per Spec 03 (demo-doc creation is substantive; architect refusal contract requires reconnaissance entry in UPSTREAM).
+
+### New worker agent: [`demo-doc-author`](.claude/agents/demo-doc-author.md)
+
+- **Tier:** Opus (consumer-audience artifact warrants the strongest model)
+- **Audience:** `surface_audience: "consumer"` per CLAUDE.md §7.13. The reader is the PO; substrate-self-validation narrative belongs in audit chain, NOT in the demo doc.
+- **Required outputs:** `[changes, summary, self_assessment, surface_audience]`
+- **Contract:** one file change per dispatch; ASCII-only; cite only documented SPEC / ADR refs; stakeholder-review Markdown structure (H1 title, what-delivered, acceptance criteria table, how-to-verify, what-works, NOT-in-scope, sign-off prompt)
+
+### Operator CLI flags
+
+```bash
+# Default behavior: auto-queue chain if no demo doc exists
+python state_admin.py phase demo-released phase-3 \
+    --anchor-task urn:fnsr:task:765-test-p3-c1c-retry \
+    --build-ref 8707ef0 \
+    --deploy-url https://example.com/demo
+
+# Opt out: operator will hand-author
+python state_admin.py phase demo-released phase-3 \
+    --anchor-task ... --no-auto-demo-doc
+
+# Force regeneration even if demo/PHASE-3-*.md exists
+python state_admin.py phase demo-released phase-3 \
+    --anchor-task ... --regenerate-demo-doc
+
+# Custom descriptor in the filename
+python state_admin.py phase demo-released phase-3 \
+    --anchor-task ... --demo-doc-descriptor chain-2-cli-integration
+```
+
+The default filename is `demo/PHASE-{N}-{descriptor}.md` where `{descriptor}` is the `--demo-doc-descriptor` value or `auto-demo` if unspecified.
+
+### Composes with v3.4.0 status surface
+
+Once `phase demo-released` emits and the auto-queued chain enters the dispatch loop, [`fnsr.status.md`](fnsr.status.md) classifies as `working` (dispatchable ready task exists). When the applier lands the demo doc, the next watchdog probe re-classifies as `ready-for-review` AND the demo-doc convention scan (§7.14) finds the new file at `demo/PHASE-N-{descriptor}.md` and links it in the operator message verbatim. End-to-end: one operator command (`phase demo-released`) → daemon dispatches the chain → applier lands the doc → status file populates the demo link → operator opens the file and reviews. No hand-authoring required.
+
+### Substrate-discipline note
+
+This is the first substrate-shipped agent that produces a **consumer-audience artifact** (per the v3.1.0 surface-audience primitive). Prior worker agents — developer, architect, reconnaissance, etc. — emit `internal` audience outputs that the substrate's audit chain consumes. Demo-doc-author breaks that pattern deliberately because the demo doc has a *non-substrate* reader (the PO). The agent contract's `produces_consumer: true` declaration + the per-output `surface_audience: "consumer"` field carry that audience marking into audit; future tooling can apply differential quality gates per CLAUDE.md §7.13.
+
 ## 8. Session Workflow
 
 ### Starting a session

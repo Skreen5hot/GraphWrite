@@ -1892,6 +1892,7 @@ _DEFAULT_TEMPLATE_SYNC_MANIFEST = (
     ".claude/agents/applier.md",
     ".claude/agents/architect.md",
     ".claude/agents/delivery-manager.md",
+    ".claude/agents/demo-doc-author.md",
     ".claude/agents/developer.md",
     ".claude/agents/git-committer.md",
     ".claude/agents/marep-orchestrator.md",
@@ -2141,6 +2142,157 @@ def cmd_phase_implementing(args: argparse.Namespace) -> int:
     )
 
 
+def _existing_demo_doc_for_phase(
+    phase_id: str, repo_root: Path = Path(".")
+) -> Optional[str]:
+    """Return relative path of existing demo/PHASE-N-*.md if any."""
+    if not phase_id.startswith("phase-"):
+        return None
+    tail = phase_id.split("-", 1)[1].upper()
+    demo_dir = repo_root / "demo"
+    if not demo_dir.exists():
+        return None
+    for p in sorted(demo_dir.iterdir()):
+        if p.suffix.lower() == ".md" and f"PHASE-{tail}" in p.name.upper():
+            return f"demo/{p.name}"
+    return None
+
+
+def _compose_demo_doc_chain(
+    state: dict[str, Any],
+    phase_id: str,
+    anchor_task_id: str,
+    build_ref: Optional[str],
+    descriptor: str,
+) -> list[dict[str, Any]]:
+    """v3.5.0: compose the 4-task auto-generation chain for a demo doc.
+
+    Chain shape (CLAUDE.md §7.8 default substantive + §7.15 demo-doc
+    flavor): reconnaissance -> demo-doc-author -> architect (ratification)
+    -> applier. ASCII-only by agent contract; skip mojibake-repair.
+
+    Returns a list of task dicts ready for `state["tasks"].extend(...)`.
+    Task IDs sequenced starting at next_task_id_num.
+    """
+    base_n = d._next_task_id_num(state)
+    tail_short = phase_id.split("-", 1)[1] if "-" in phase_id else phase_id
+    target_filename = f"demo/PHASE-{tail_short.upper()}-{descriptor}.md"
+
+    chain_label = (
+        f"Phase {tail_short} demo-doc auto-generation "
+        f"(build_ref={build_ref or 'unspecified'})"
+    )
+
+    recon_id = f"urn:fnsr:task:{base_n}-recon-demo-doc-{phase_id}"
+    author_id = f"urn:fnsr:task:{base_n + 1}-author-demo-doc-{phase_id}"
+    rat_id = f"urn:fnsr:task:{base_n + 2}-rat-demo-doc-{phase_id}"
+    apply_id = f"urn:fnsr:task:{base_n + 3}-apply-demo-doc-{phase_id}"
+
+    return [
+        {
+            "@id": recon_id,
+            "agent": "reconnaissance",
+            "status": "ready",
+            "priority": 8,
+            "depends_on": [],
+            "inputs": {
+                "phase": phase_id,
+                "chain_label": chain_label,
+                "purpose": (
+                    f"Reconnaissance for demo-doc auto-generation on "
+                    f"phase {phase_id}. Walk state.jsonld for tasks in "
+                    f"this phase's chain leading up to anchor "
+                    f"{anchor_task_id} (build_ref={build_ref or 'n/a'}). "
+                    f"Identify: (1) what was substantively delivered "
+                    f"(API surface, behavior, files); (2) acceptance "
+                    f"criteria that passed (test results); (3) what is "
+                    f"NOT in scope per IMPLEMENTATION_PLAN deferrals; "
+                    f"(4) SPEC sections / ADR numbers cited in the "
+                    f"chain's outputs. Output findings shaped for the "
+                    f"downstream demo-doc-author agent."
+                ),
+                "files_to_read": [
+                    "project/SPEC.md",
+                    "project/IMPLEMENTATION_PLAN.md",
+                    "project/DECISIONS.md",
+                ],
+                "spec_refs": [],
+                "anchor_task": anchor_task_id,
+            },
+        },
+        {
+            "@id": author_id,
+            "agent": "demo-doc-author",
+            "status": "ready",
+            "priority": 8,
+            "depends_on": [recon_id],
+            "inputs": {
+                "phase": phase_id,
+                "chain_label": chain_label,
+                "anchor_task": anchor_task_id,
+                "build_ref": build_ref,
+                "target_filename": target_filename,
+                "purpose": (
+                    f"Author stakeholder-facing demo doc for "
+                    f"{phase_id} chain at build_ref={build_ref}. Read "
+                    f"reconnaissance findings from UPSTREAM. Produce a "
+                    f"single changes[] entry creating {target_filename} "
+                    f"per the demo-doc-author agent contract. ASCII-only. "
+                    f"Consumer audience (PO / stakeholder review)."
+                ),
+                "constraint": (
+                    "Per agent contract: ASCII-only content; cite only "
+                    "SPEC / ADR refs documented in upstream recon; one "
+                    "file change per dispatch."
+                ),
+            },
+        },
+        {
+            "@id": rat_id,
+            "agent": "architect",
+            "status": "ready",
+            "priority": 8,
+            "depends_on": [author_id, recon_id],
+            "inputs": {
+                "phase": phase_id,
+                "mode": "ratification",
+                "chain_label": chain_label + " - Pass 2a ratification",
+                "purpose": (
+                    f"Pass 2a ratification per FNSR Spec 03 for the "
+                    f"auto-generated demo doc at {target_filename}. "
+                    f"Read demo-doc-author proposal + reconnaissance "
+                    f"evidence from UPSTREAM. Produce six-field ruling. "
+                    f"Demo doc is consumer-audience; verify the doc "
+                    f"matches stakeholder-review shape (deliverables, "
+                    f"acceptance, verification, scope, sign-off); "
+                    f"verify no invented citations."
+                ),
+                "spec_refs": [
+                    "FNSR Spec 03 §Architect refusal contract",
+                    "CLAUDE.md §7.14 demo-doc auto-generation",
+                ],
+            },
+        },
+        {
+            "@id": apply_id,
+            "agent": "applier",
+            "status": "ready",
+            "priority": 8,
+            "depends_on": [rat_id, author_id],
+            "inputs": {
+                "phase": phase_id,
+                "chain_label": chain_label + " - applier",
+                "purpose": (
+                    "Pass 2b commit-finalize: apply demo-doc-author's "
+                    f"changes to land {target_filename}. Event 11 gating "
+                    f"ensures dispatch only when ratification == ratified."
+                ),
+                "source_task": author_id,
+            },
+        },
+    ]
+
+
 def cmd_phase_demo_released(args: argparse.Namespace) -> int:
     state_path = Path(args.state_path)
     state = _load_state(state_path)
@@ -2151,10 +2303,44 @@ def cmd_phase_demo_released(args: argparse.Namespace) -> int:
         extra["deploy_url"] = args.deploy_url
     if args.notes:
         extra["notes"] = args.notes
-    return _plo_emit_transition(
+    rc = _plo_emit_transition(
         state_path, state, args.phase_id, "demo-released",
         args.anchor_task, "demo-released", extra,
     )
+    if rc != 0:
+        return rc
+
+    # v3.5.0: auto-queue demo-doc generation chain if no demo doc
+    # exists for this phase (or operator forces regeneration).
+    # Operator opt-out: --no-auto-demo-doc.
+    if getattr(args, "no_auto_demo_doc", False):
+        print("  (--no-auto-demo-doc: skipping demo-doc auto-generation)")
+        return 0
+    repo_root = state_path.parent
+    existing = _existing_demo_doc_for_phase(args.phase_id, repo_root)
+    regenerate = getattr(args, "regenerate_demo_doc", False)
+    if existing and not regenerate:
+        print(f"  (demo doc already present at {existing}; "
+              f"skipping auto-generation. Use --regenerate-demo-doc to force.)")
+        return 0
+
+    descriptor = getattr(args, "demo_doc_descriptor", None) or "auto-demo"
+    # Reload state since _plo_emit_transition wrote and released the lock
+    state2 = _load_state(state_path)
+    chain_tasks = _compose_demo_doc_chain(
+        state2, args.phase_id, args.anchor_task, args.build_ref, descriptor
+    )
+    existing_ids = {t.get("@id") for t in state2.get("tasks", [])}
+    appended = 0
+    for nt in chain_tasks:
+        if nt["@id"] in existing_ids:
+            continue
+        state2["tasks"].append(nt)
+        appended += 1
+    _save_state(state_path, state2)
+    print(f"  demo-doc auto-generation chain queued: {appended} task(s) "
+          f"appended (recon -> demo-doc-author -> architect -> applier)")
+    return 0
 
 
 def cmd_phase_po_satisfied(args: argparse.Namespace) -> int:
@@ -2943,13 +3129,31 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_plo_dr = _add_plo_transition_parser(
         "demo-released",
-        "transition phase to state=demo-released (artifact deployed; PO iteration window open)",
+        "transition phase to state=demo-released (artifact deployed; PO iteration window open). "
+        "v3.5.0: auto-queues a 4-task demo-doc generation chain unless one exists.",
     )
     p_plo_dr.add_argument("--build-ref", default=None,
                            help="commit sha / build identifier of the deployed artifact")
     p_plo_dr.add_argument("--deploy-url", default=None,
                            help="URL where the deployed artifact is reachable (e.g., Pages URL)")
     p_plo_dr.add_argument("--notes", default=None)
+    p_plo_dr.add_argument("--no-auto-demo-doc", dest="no_auto_demo_doc",
+                           action="store_true",
+                           help="v3.5.0: opt out of auto-queueing the "
+                                "demo-doc-author chain on this emission. Use "
+                                "when the operator will hand-author the doc.")
+    p_plo_dr.add_argument("--regenerate-demo-doc", dest="regenerate_demo_doc",
+                           action="store_true",
+                           help="v3.5.0: force demo-doc auto-generation even "
+                                "if demo/PHASE-N-*.md already exists for the "
+                                "phase (queues a NEW demo doc; operator chooses "
+                                "which to keep).")
+    p_plo_dr.add_argument("--demo-doc-descriptor", dest="demo_doc_descriptor",
+                           default=None,
+                           help="v3.5.0: descriptor inserted into the "
+                                "auto-generated filename "
+                                "(demo/PHASE-N-{descriptor}.md). Default: "
+                                "'auto-demo'.")
     p_plo_dr.set_defaults(func=cmd_phase_demo_released)
 
     p_plo_pos = _add_plo_transition_parser(

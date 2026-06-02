@@ -2096,5 +2096,163 @@ class TestResolveExecutionMode(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class TestDemoDocAutoQueue(unittest.TestCase):
+    """v3.5.0: state_admin phase demo-released auto-queues a 4-task
+    demo-doc generation chain (recon -> demo-doc-author -> architect ->
+    applier) when no demo/PHASE-N-*.md exists for the phase. Operator
+    opts out with --no-auto-demo-doc; forces regeneration with
+    --regenerate-demo-doc.
+
+    Closes the 2026-06-02 gap Aaron flagged: v3.4.0 status surface
+    linked to demo docs but the substrate didn't generate them — they
+    were hand-authored by the orchestrator-Agent. v3.5.0 ships the
+    auto-generation primitive."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-demo-doc-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        # Seed with an anchor task done so phase demo-released emits
+        _seed_state(self.state_path, [{
+            "@id": "urn:fnsr:task:100-anchor",
+            "agent": "test-runner", "status": "done",
+            "depends_on": [],
+            "history": [{
+                "event": "completed", "payload": {},
+                "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+            }],
+        }])
+
+    def tearDown(self):
+        for k in list(state_admin._HELD_LOCKS):
+            try:
+                f = state_admin._HELD_LOCKS.pop(k)
+                d._release_lock(f)
+                f.close()
+            except OSError:
+                pass
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_existing_demo_doc_returns_path(self):
+        demo_dir = self.tmpdir / "demo"
+        demo_dir.mkdir()
+        (demo_dir / "PHASE-3-CHAIN-1.md").write_text("# demo\n",
+                                                       encoding="utf-8")
+        result = state_admin._existing_demo_doc_for_phase(
+            "phase-3", self.tmpdir
+        )
+        self.assertEqual(result, "demo/PHASE-3-CHAIN-1.md")
+
+    def test_no_demo_doc_returns_none(self):
+        (self.tmpdir / "demo").mkdir()
+        result = state_admin._existing_demo_doc_for_phase(
+            "phase-3", self.tmpdir
+        )
+        self.assertIsNone(result)
+
+    def test_compose_chain_produces_4_tasks(self):
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        tasks = state_admin._compose_demo_doc_chain(
+            state, "phase-3", "urn:fnsr:task:100-anchor",
+            "abc1234", "chain-1-turtle",
+        )
+        self.assertEqual(len(tasks), 4)
+        agents = [t["agent"] for t in tasks]
+        self.assertEqual(agents, [
+            "reconnaissance", "demo-doc-author", "architect", "applier",
+        ])
+        # Architect should be in ratification mode
+        rat = next(t for t in tasks if t["agent"] == "architect")
+        self.assertEqual(rat["inputs"]["mode"], "ratification")
+        # Demo-doc-author should carry the target filename
+        author = next(t for t in tasks if t["agent"] == "demo-doc-author")
+        self.assertEqual(
+            author["inputs"]["target_filename"],
+            "demo/PHASE-3-chain-1-turtle.md",
+        )
+        # Deps: recon has no deps; author depends on recon; rat on author
+        # + recon; applier on rat + author
+        recon = next(t for t in tasks if t["agent"] == "reconnaissance")
+        self.assertEqual(recon["depends_on"], [])
+        self.assertEqual(author["depends_on"], [recon["@id"]])
+        self.assertIn(author["@id"], rat["depends_on"])
+        self.assertIn(recon["@id"], rat["depends_on"])
+        applier = next(t for t in tasks if t["agent"] == "applier")
+        self.assertIn(rat["@id"], applier["depends_on"])
+        self.assertIn(author["@id"], applier["depends_on"])
+
+    def test_demo_released_auto_queues_when_no_doc_exists(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase", "demo-released", "phase-3",
+            "--anchor-task", "urn:fnsr:task:100-anchor",
+            "--build-ref", "abc1234",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        agents_added = [
+            t["agent"] for t in state["tasks"]
+            if "demo-doc" in t.get("@id", "")
+        ]
+        self.assertEqual(len(agents_added), 4)
+        self.assertEqual(
+            sorted(agents_added),
+            ["applier", "architect", "demo-doc-author", "reconnaissance"],
+        )
+
+    def test_no_auto_demo_doc_flag_skips_queue(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase", "demo-released", "phase-3",
+            "--anchor-task", "urn:fnsr:task:100-anchor",
+            "--build-ref", "abc1234",
+            "--no-auto-demo-doc",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        demo_doc_tasks = [
+            t for t in state["tasks"] if "demo-doc" in t.get("@id", "")
+        ]
+        self.assertEqual(len(demo_doc_tasks), 0)
+
+    def test_existing_demo_doc_skips_auto_queue(self):
+        demo_dir = self.tmpdir / "demo"
+        demo_dir.mkdir()
+        (demo_dir / "PHASE-3-EXISTING.md").write_text("# existing\n",
+                                                       encoding="utf-8")
+        # Need to also chdir or modify the existing-check to honor
+        # state_path.parent which is self.tmpdir
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase", "demo-released", "phase-3",
+            "--anchor-task", "urn:fnsr:task:100-anchor",
+            "--build-ref", "abc1234",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        demo_doc_tasks = [
+            t for t in state["tasks"] if "demo-doc" in t.get("@id", "")
+        ]
+        self.assertEqual(len(demo_doc_tasks), 0)
+
+    def test_regenerate_flag_queues_even_when_doc_exists(self):
+        demo_dir = self.tmpdir / "demo"
+        demo_dir.mkdir()
+        (demo_dir / "PHASE-3-EXISTING.md").write_text("# existing\n",
+                                                       encoding="utf-8")
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "phase", "demo-released", "phase-3",
+            "--anchor-task", "urn:fnsr:task:100-anchor",
+            "--build-ref", "abc1234",
+            "--regenerate-demo-doc",
+        ])
+        self.assertEqual(rc, 0)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        demo_doc_tasks = [
+            t for t in state["tasks"] if "demo-doc" in t.get("@id", "")
+        ]
+        self.assertEqual(len(demo_doc_tasks), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
