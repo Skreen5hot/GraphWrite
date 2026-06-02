@@ -90213,7 +90213,7 @@
     {
       "@id": "urn:fnsr:task:815-dev-p3-c4-C",
       "agent": "developer",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:808-recon-p3-c4",
@@ -90251,13 +90251,68 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "230f0cfa60abd1efd891749fe4a7bf839999d5524afbc303ecb527e6b16509f2"
+        },
+        {
+          "ts": "2026-06-02T16:53:50Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "230f0cfa60abd1efd891749fe4a7bf839999d5524afbc303ecb527e6b16509f2",
+          "chain_hash": "3909bffdbf3f8e0e5210b58fa2e9d296f62c9f65b820cad9c346daaae2ae1bbb"
         }
-      ]
+      ],
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/App.tsx",
+            "rationale": "Add ImportOntologyDialog import alongside existing dialog imports.",
+            "before": "import { ProjectSettingsDialog } from \"./ProjectSettingsDialog.js\";\nimport { NewProjectDialog } from \"./NewProjectDialog.js\";",
+            "after": "import { ImportOntologyDialog } from \"./ImportOntologyDialog.js\";\nimport { ProjectSettingsDialog } from \"./ProjectSettingsDialog.js\";\nimport { NewProjectDialog } from \"./NewProjectDialog.js\";",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/ui/App.tsx",
+            "rationale": "Add importOntologyDialogOpen boolean state following the projectSettingsOpen / newProjectDialogOpen pattern.",
+            "before": "  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);\n  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);",
+            "after": "  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);\n  const [importOntologyDialogOpen, setImportOntologyDialogOpen] = useState(false);\n  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/ui/App.tsx",
+            "rationale": "Insert Import Ontology button between Open and Download in gw-btn-group. Disabled when project === null, consistent with Download / Project Settings. test-id: gw-btn-import-ontology.",
+            "before": "          <button\n            className=\"gw-btn\"\n            data-testid=\"gw-btn-save\"\n            onClick={handleSave}\n            disabled={project === null}\n            title=\"Download project as canonical JSON-LD\"\n          >\n            Download\n          </button>",
+            "after": "          <button\n            className=\"gw-btn\"\n            data-testid=\"gw-btn-import-ontology\"\n            onClick={() => { setImportOntologyDialogOpen(true); }}\n            disabled={project === null}\n            title=\"Import terms from a Turtle (.ttl) ontology file\"\n          >\n            Import Ontology\n          </button>\n          <button\n            className=\"gw-btn\"\n            data-testid=\"gw-btn-save\"\n            onClick={handleSave}\n            disabled={project === null}\n            title=\"Download project as canonical JSON-LD\"\n          >\n            Download\n          </button>",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "src/ui/App.tsx",
+            "rationale": "Mount ImportOntologyDialog when importOntologyDialogOpen && project !== null. onConfirm receives the already-merged project from the dialog (pure state update: setProject + setValidationReport + close). Placed before projectSettingsOpen block following existing dialog render order.",
+            "before": "      {projectSettingsOpen && project !== null && (\n        <ProjectSettingsDialog\n          project={project}\n          onSave={(updated) => {\n            setProject(updated);\n            setValidationReport(validate(updated));\n            setProjectSettingsOpen(false);\n          }}\n          onClose={() => { setProjectSettingsOpen(false); }}\n        />\n      )}",
+            "after": "      {importOntologyDialogOpen && project !== null && (\n        <ImportOntologyDialog\n          project={project}\n          onConfirm={(updatedProject) => {\n            setProject(updatedProject);\n            setValidationReport(validate(updatedProject));\n            setImportOntologyDialogOpen(false);\n          }}\n          onClose={() => { setImportOntologyDialogOpen(false); }}\n        />\n      )}\n      {projectSettingsOpen && project !== null && (\n        <ProjectSettingsDialog\n          project={project}\n          onSave={(updated) => {\n            setProject(updated);\n            setValidationReport(validate(updated));\n            setProjectSettingsOpen(false);\n          }}\n          onClose={() => { setProjectSettingsOpen(false); }}\n        />\n      )}",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/import-ontology-button.spec.ts",
+            "describe": "Playwright E2E: (1) gw-btn-import-ontology is present and disabled before a project is loaded; (2) after loading a .jsonld fixture via gw-file-input the button becomes enabled; (3) clicking the button opens gw-dialog-import-ontology; (4) providing a .ttl fixture via gw-import-file-input reaches the preview phase and the Import button becomes enabled; (5) clicking Import closes the dialog and the sidebar reflects the newly imported term count."
+          }
+        ],
+        "open_questions": [],
+        "summary": "Four minimal changes to src/ui/App.tsx: (C1) import ImportOntologyDialog; (C2) add importOntologyDialogOpen boolean state; (C3) insert gw-btn-import-ontology button between Open and Download (disabled when project===null); (C4) mount ImportOntologyDialog conditional block before projectSettingsOpen, with onConfirm calling setProject+setValidationReport+close (pure state update; the dialog owns the I/O and merge). Existing button order New/Open/Download/Download-Turtle/Project-Settings is preserved with Import-Ontology inserted after Open. All existing test-ids unchanged.",
+        "self_assessment": "confident"
+      }
     },
     {
       "@id": "urn:fnsr:task:816-rat-p3-c4-C",
       "agent": "architect",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:815-dev-p3-c4-C",
@@ -90272,12 +90327,64 @@
           "FNSR Spec 03",
           "IMPLEMENTATION_PLAN section 3.1"
         ]
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposal introduces new UI control wiring (new test-id, new useState hook, new component mount, new state-update handler) that changes user-facing behavior \u00e2\u20ac\u201d well outside the editorial-correction scope (typo / formatting / terminology-tightening / citation-format-update).",
+        "rationale": "All five verification points from the task purpose are satisfied: (1) Import button placement and test-id \u00e2\u20ac\u201d C3 inserts the new <button> in gw-btn-group between gw-btn-open and gw-btn-save with data-testid='gw-btn-import-ontology', a clean nominal extension consistent with the five-button group documented in recon F7. (2) Disabled state matches Save/Project-Settings \u00e2\u20ac\u201d C3 uses `disabled={project === null}` verbatim, identical to gw-btn-save / gw-btn-save-turtle / gw-btn-project-settings per F7; the answered open question about coupling to blocking validation errors was deliberately decided in favor of matching the Save baseline (no scope creep). (3) Merge handler is a pure state update \u00e2\u20ac\u201d C4's onConfirm body is exactly `setProject(updatedProject); setValidationReport(validate(updatedProject)); setImportOntologyDialogOpen(false);` with no I/O or side effects beyond setState, and the setProject+setValidationReport(validate(...)) pairing precisely matches the invariant established in F16. The actual merge (CLI-equivalent per F9) is delegated to the dialog component, which is correct separation of concerns for this sub-task's App.tsx-wiring scope. (4) Existing button order and test-ids unchanged \u00e2\u20ac\u201d gw-btn-new, gw-btn-open, gw-btn-save, gw-btn-save-turtle, gw-btn-project-settings are all preserved with identical attributes; only one new button is inserted. (5) Dialog state hook follows existing pattern \u00e2\u20ac\u201d C2's `const [importOntologyDialogOpen, setImportOntologyDialogOpen] = useState(false);` is a parallel-construction copy of the adjacent newProjectDialogOpen declaration, and C4's conditional mount `{importOntologyDialogOpen && project !== null && (...)}` mirrors the projectSettingsOpen block exactly. The before-snippet anchors in all four changes are unambiguous and well-bounded for applier consumption. Substantive-change reconnaissance contract satisfied: 808-recon-p3-c4 is present in UPSTREAM with 16 findings grounded in file paths and line ranges. Dependency note: this change assumes ImportOntologyDialog exists at src/ui/ImportOntologyDialog.tsx (presumably produced by a parallel sub-task in this chain); applier will succeed on the App.tsx edits regardless, but type-check / build verification downstream is required to confirm the dialog component lands.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:808-recon-p3-c4",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:815-dev-p3-c4-C",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FNSR Spec 03 \u00c2\u00a7Reconnaissance requirement",
+            "source": "Barcode CLAUDE.md \u00c2\u00a77.8"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Sub-task C's App.tsx wiring exemplifies the minimal-edit dialog-introduction pattern that has stabilized across this codebase: one import line, one useState hook with parallel construction to an existing dialog's hook, one button insertion preserving all surrounding test-ids and disabled-state semantics, and one conditional render block whose onConfirm is a strict pure state update (setProject + setValidationReport(validate(...)) + close-setter). The pattern is now visible across NewProjectDialog, ProjectSettingsDialog, and ImportOntologyDialog \u00e2\u20ac\u201d recurring three times suggests this is a load-bearing convention for adding dialog-mediated mutations and could be surfaced as an explicit guidance note in the subject project's UI section when next a relevant doc-pass occurs."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Cross-sub-task dependency surfacing: sub-task C's C1 imports ImportOntologyDialog from a file that is presumably authored by a parallel sub-task (B), and the ratification correctly treats this as a forward-resolved dependency rather than a missing-anchor defect. The implicit convention is that operator-composed chains within a phase trust their internal authoring contract; the per-sub-task ratifications cover slice-level minimality, with chain-level integration verified downstream via build + Playwright. Worth surfacing if a future cycle reveals a missing-dialog-component cascade \u00e2\u20ac\u201d append-time chain validation could grow a 'declared-import-resolves-to-in-chain-output' predicate."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:54:38Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:817-apply-p3-c4-C",
       "agent": "applier",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:816-rat-p3-c4-C",
@@ -90288,12 +90395,54 @@
         "chain_label": "Phase 3 Chain 4 sub-task C -- applier",
         "purpose": "Pass 2b commit-finalize for sub-task C.",
         "source_task": "urn:fnsr:task:815-dev-p3-c4-C"
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 66
+          },
+          {
+            "id": "C2",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 83
+          },
+          {
+            "id": "C3",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 333
+          },
+          {
+            "id": "C4",
+            "path": "src\\ui\\App.tsx",
+            "mode": "edit",
+            "delta_bytes": 404
+          }
+        ],
+        "failed": [],
+        "summary": "4 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:54:38Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:818-dev-p3-c4-D",
       "agent": "developer",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:808-recon-p3-c4",
@@ -90313,12 +90462,57 @@
         ],
         "constraint": "Single new test file + optional fixture. Follow tests/playwright/imported-term-read-only.spec.ts (from Chain 3.2-UI) for structural pattern.",
         "ft_anchor": null
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "tests/playwright/fixtures/sample-ontology.ttl",
+            "rationale": "Recon F11 confirms no .ttl fixture exists under tests/playwright/fixtures/. Task INPUTS requires 2\u00e2\u20ac\u201c3 owl:Class, 1 owl:ObjectProperty, 1 owl:DatatypeProperty, rdfs:label + rdfs:subClassOf. This fixture yields exactly 5 importable terms (3+1+1), matching the preview-count assertion in C2.",
+            "before": null,
+            "after": "@prefix owl:  <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .\n\n<https://example.org/sample/Animal> a owl:Class ;\n    rdfs:label \"Animal\"@en .\n\n<https://example.org/sample/Dog> a owl:Class ;\n    rdfs:label \"Dog\"@en ;\n    rdfs:subClassOf <https://example.org/sample/Animal> .\n\n<https://example.org/sample/Cat> a owl:Class ;\n    rdfs:label \"Cat\"@en ;\n    rdfs:subClassOf <https://example.org/sample/Animal> .\n\n<https://example.org/sample/hasPet> a owl:ObjectProperty ;\n    rdfs:label \"has pet\"@en .\n\n<https://example.org/sample/petName> a owl:DatatypeProperty ;\n    rdfs:label \"pet name\"@en ;\n    rdfs:range xsd:string .\n",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "tests/playwright/ontology-import.spec.ts",
+            "rationale": "New E2E Playwright spec covering the browser import workflow per task INPUTS steps 1\u00e2\u20ac\u201c7 and IMPLEMENTATION_PLAN section 3.1 AC1\u00e2\u20ac\u201cAC6. Follows the structural pattern of tests/playwright/imported-term-read-only.spec.ts (fixture constant, test.describe wrapper, per-AC test bodies, page.getByTestId references, async download + fs.readFileSync for round-trip). testIds used are confirmed from the applied ImportOntologyDialog (gw-dialog-import-ontology, gw-import-file-input, gw-import-preview-count, gw-btn-import-confirm) and App.tsx (gw-btn-import-ontology, gw-btn-save, gw-file-input) and TermSidebar (gw-term-section-classes, gw-term-section-object-properties, gw-term-section-datatype-properties, gw-term-item). The aria-disabled='true' check for imported visual treatment matches the existing imported-term-read-only.spec.ts AC2 pattern.",
+            "before": null,
+            "after": "import { test, expect } from \"@playwright/test\";\nimport path from \"path\";\nimport fs from \"fs\";\n\n/**\n * Phase 3 Chain 4 sub-task D -- Ontology Import E2E acceptance tests.\n *\n * AC1-5 (happy path):\n *   Launch app -> load minimal-v0.3.jsonld project -> click gw-btn-import-ontology ->\n *   attach sample-ontology.ttl via gw-import-file-input ->\n *   gw-import-preview-count shows \"5 terms ready to import.\" ->\n *   click gw-btn-import-confirm -> dialog closes -> sidebar Classes section shows\n *   Animal / Dog / Cat with aria-disabled=\"true\" (imported read-only treatment;\n *   SPEC section 13.3; FR-U010); Object Properties shows \"has pet\"; Datatype\n *   Properties shows \"pet name\".\n *   (IMPLEMENTATION_PLAN section 3.1 AC1-AC5; FR-C011)\n *\n * AC6 (round-trip):\n *   Save after import -> re-parse downloaded JSON-LD ->\n *   all five imported terms carry ecm:source === \"ecm:imported-ontology\";\n *   ecm:ontologies has one entry with ecm:format === \"text/turtle\".\n *   (IMPLEMENTATION_PLAN section 3.1 AC6; mirrors Chain 3.2-UI AC1; FR-C011)\n */\n\nconst MINIMAL_FIXTURE = path.join(\n  process.cwd(),\n  \"tests\",\n  \"playwright\",\n  \"fixtures\",\n  \"minimal-v0.3.jsonld\",\n);\n\nconst SAMPLE_ONTOLOGY = path.join(\n  process.cwd(),\n  \"tests\",\n  \"playwright\",\n  \"fixtures\",\n  \"sample-ontology.ttl\",\n);\n\ntest.describe(\"Ontology Import (Phase 3 Chain 4 AC1-AC6; FR-C011)\", () => {\n  test(\n    \"AC1-5: Load project -> open dialog -> attach .ttl -> verify preview count -> confirm -> sidebar shows imported terms\",\n    async ({ page }) => {\n      await page.goto(\"/\");\n\n      // Step 1: Load a project so gw-btn-import-ontology is enabled.\n      await page.getByTestId(\"gw-file-input\").setInputFiles(MINIMAL_FIXTURE);\n      await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n      await expect(page.getByTestId(\"gw-btn-import-ontology\")).toBeEnabled();\n\n      // Step 2: Open Import Ontology dialog.\n      await page.getByTestId(\"gw-btn-import-ontology\").click();\n      await expect(\n        page.getByTestId(\"gw-dialog-import-ontology\"),\n      ).toBeVisible();\n\n      // Step 3: Attach the Turtle fixture to the hidden file input inside the dialog.\n      // (3 owl:Class + 1 owl:ObjectProperty + 1 owl:DatatypeProperty = 5 terms)\n      // setInputFiles bypasses the Browse button; works on display:none inputs (Playwright contract).\n      await page\n        .getByTestId(\"gw-import-file-input\")\n        .setInputFiles(SAMPLE_ONTOLOGY);\n\n      // Step 4: Preview count must appear once async FileReader + crypto.subtle.digest\n      // + importOntology completes. Auto-retry waits up to expect.timeout.\n      await expect(\n        page.getByTestId(\"gw-import-preview-count\"),\n      ).toBeVisible();\n      await expect(\n        page.getByTestId(\"gw-import-preview-count\"),\n      ).toContainText(\"5 terms ready to import.\");\n\n      // Step 5: Import confirm button enabled once preview is ready.\n      await expect(\n        page.getByTestId(\"gw-btn-import-confirm\"),\n      ).toBeEnabled();\n      await page.getByTestId(\"gw-btn-import-confirm\").click();\n\n      // Step 6a: Dialog must close after confirm (parent sets importOntologyDialogOpen=false).\n      await expect(\n        page.getByTestId(\"gw-dialog-import-ontology\"),\n      ).not.toBeVisible();\n\n      // Step 6b: Classes section must show the three imported classes.\n      const classesSec = page.getByTestId(\"gw-term-section-classes\");\n\n      const animalItem = classesSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"Animal\" });\n      await expect(animalItem).toBeVisible();\n      // Imported visual treatment: aria-disabled=\"true\" (FR-U010; SPEC section 13.3).\n      await expect(animalItem).toHaveAttribute(\"aria-disabled\", \"true\");\n\n      const dogItem = classesSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"Dog\" });\n      await expect(dogItem).toBeVisible();\n      await expect(dogItem).toHaveAttribute(\"aria-disabled\", \"true\");\n\n      const catItem = classesSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"Cat\" });\n      await expect(catItem).toBeVisible();\n      await expect(catItem).toHaveAttribute(\"aria-disabled\", \"true\");\n\n      // Step 6c: Object Properties section shows the imported ObjectProperty.\n      const opSec = page.getByTestId(\"gw-term-section-object-properties\");\n      const hasPetItem = opSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"has pet\" });\n      await expect(hasPetItem).toBeVisible();\n      await expect(hasPetItem).toHaveAttribute(\"aria-disabled\", \"true\");\n\n      // Step 6d: Datatype Properties section shows the imported DatatypeProperty.\n      const dpSec = page.getByTestId(\n        \"gw-term-section-datatype-properties\",\n      );\n      const petNameItem = dpSec\n        .getByTestId(\"gw-term-item\")\n        .filter({ hasText: \"pet name\" });\n      await expect(petNameItem).toBeVisible();\n      await expect(petNameItem).toHaveAttribute(\"aria-disabled\", \"true\");\n    },\n  );\n\n  test(\n    \"AC6 (round-trip): Save after import -> re-parse -> ecm:source and ecm:ontologies entry preserved\",\n    async ({ page }) => {\n      await page.goto(\"/\");\n\n      // Setup: load project + run the full import flow (mirrors AC1-5 setup).\n      await page.getByTestId(\"gw-file-input\").setInputFiles(MINIMAL_FIXTURE);\n      await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n      await page.getByTestId(\"gw-btn-import-ontology\").click();\n      await expect(\n        page.getByTestId(\"gw-dialog-import-ontology\"),\n      ).toBeVisible();\n      await page\n        .getByTestId(\"gw-import-file-input\")\n        .setInputFiles(SAMPLE_ONTOLOGY);\n      await expect(\n        page.getByTestId(\"gw-import-preview-count\"),\n      ).toBeVisible();\n      await page.getByTestId(\"gw-btn-import-confirm\").click();\n      await expect(\n        page.getByTestId(\"gw-dialog-import-ontology\"),\n      ).not.toBeVisible();\n\n      // AC6: Save -> capture downloaded JSON-LD -> re-parse.\n      const [download] = await Promise.all([\n        page.waitForEvent(\"download\"),\n        page.getByTestId(\"gw-btn-save\").click(),\n      ]);\n\n      const downloadPath = await download.path();\n      expect(\n        downloadPath,\n        \"download must be saved to disk\",\n      ).not.toBeNull();\n\n      const content = fs.readFileSync(downloadPath!, \"utf-8\");\n      const parsed = JSON.parse(content) as Record<string, unknown>;\n\n      // ecm:terms must be present and contain exactly five imported terms.\n      const terms = parsed[\"ecm:terms\"];\n      expect(\n        Array.isArray(terms),\n        \"ecm:terms must be an array\",\n      ).toBe(true);\n\n      const importedTerms = (\n        terms as Array<Record<string, unknown>>\n      ).filter((t) => t[\"ecm:source\"] === \"ecm:imported-ontology\");\n      expect(\n        importedTerms.length,\n        \"all five imported terms must survive round-trip with ecm:source = ecm:imported-ontology\",\n      ).toBe(5);\n\n      // ecm:ontologies must contain one entry from the import.\n      const ontologies = parsed[\"ecm:ontologies\"];\n      expect(\n        Array.isArray(ontologies),\n        \"ecm:ontologies must be an array\",\n      ).toBe(true);\n      const ontologyArray = ontologies as Array<Record<string, unknown>>;\n      expect(\n        ontologyArray.length,\n        \"one imported ontology record must be present in ecm:ontologies\",\n      ).toBeGreaterThanOrEqual(1);\n\n      // The imported ontology record must carry ecm:format = \"text/turtle\"\n      // (IMPLEMENTATION_PLAN section 3.1 AC4; SPEC section 5.6).\n      const importedOntology = ontologyArray.find(\n        (o) => o[\"ecm:format\"] === \"text/turtle\",\n      );\n      expect(\n        importedOntology,\n        \"imported ontology record must carry ecm:format = \\\"text/turtle\\\"\",\n      ).toBeDefined();\n    },\n  );\n});\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/ontology-import.spec.ts",
+            "describe": "Run npx playwright test tests/playwright/ontology-import.spec.ts after npm run build. Requires npm run preview to be serving on :4173. Both tests should pass green. If crypto.subtle is unavailable in the test browser, the preview-count assertion will time out \u00e2\u20ac\u201d verify the Chromium version supports SubtleCrypto (all modern Chromium does)."
+          }
+        ],
+        "open_questions": [
+          "The ImportOntologyDialog uses `new Date().toISOString()` for createdAt (line 128), which is non-deterministic. The AC6 round-trip test does not assert a specific createdAt on the ontology record \u00e2\u20ac\u201d it only checks ecm:format and ecm:source. If a future test needs to assert the exact ontology record shape, this non-determinism will require either a time-injection hook or a loose assertion. No action needed now.",
+          "The fixture uses rdfs:range xsd:string on the DatatypeProperty. The current ImportedTermObject interface has no rdfs:range field, so this triple is silently ignored at parse time. If a future sub-task adds range preservation, the round-trip test may need a new assertion. No action needed now.",
+          "If the STARTER_TERMS set ever gains a class with label 'Animal', 'Dog', or 'Cat', the classesSec filter assertions in AC1-5 could match a starter term rather than the imported term. The aria-disabled='true' check disambiguates (starter terms have ecm:source='ecm:system-starter-example', which does NOT set aria-disabled on the term item per TermSidebar line 179). Low risk but worth noting."
+        ],
+        "summary": "Two new files: (1) tests/playwright/fixtures/sample-ontology.ttl \u00e2\u20ac\u201d 5-term Turtle fixture (3 owl:Class with rdfs:label + rdfs:subClassOf, 1 owl:ObjectProperty, 1 owl:DatatypeProperty); (2) tests/playwright/ontology-import.spec.ts \u00e2\u20ac\u201d E2E Playwright spec with two tests. AC1-5 test covers the full happy path (load project via gw-file-input, open import dialog via gw-btn-import-ontology, attach fixture via gw-import-file-input, assert preview count '5 terms ready to import.', confirm, assert dialog closes, assert all five term types appear with aria-disabled='true' in their respective sidebar sections). AC6 round-trip test verifies ecm:source='ecm:imported-ontology' is preserved on all five terms after Save + re-parse, and ecm:ontologies contains one entry with ecm:format='text/turtle'. No changes to existing files.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T17:00:38Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:819-rat-p3-c4-D",
       "agent": "architect",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:818-dev-p3-c4-D",
@@ -90333,12 +90527,69 @@
           "FNSR Spec 03",
           "IMPLEMENTATION_PLAN section 3.1"
         ]
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Creates two new test artifacts (a Turtle fixture and a Playwright spec) that establish behavioral acceptance criteria for the ontology-import UI flow; this introduces new normative test surface, not a typo/formatting/citation tightening.",
+        "rationale": "The proposal satisfies the three purpose-stated verification criteria. (1) End-to-end coverage: the AC1-5 test exercises the full path \u00e2\u20ac\u201d load minimal-v0.3.jsonld via gw-file-input, click gw-btn-import-ontology, attach sample-ontology.ttl via gw-import-file-input, assert gw-import-preview-count text, click gw-btn-import-confirm, assert dialog dismissal, and verify sidebar state across all three term sections (Classes / Object Properties / Datatype Properties). This walks the user-visible flow from button-click to merged-project rendering. (2) Fixture validity: sample-ontology.ttl declares owl/rdfs/xsd prefixes correctly, contains exactly 5 importable terms (Animal/Dog/Cat as owl:Class with rdfs:label + rdfs:subClassOf, hasPet as owl:ObjectProperty, petName as owl:DatatypeProperty with rdfs:range xsd:string), and matches the inline SMALL_TTL pattern that recon F11 cites as the existing convention. The 5-term count is consistent with the 'gw-import-preview-count' assertion of '5 terms ready to import.' (3) Dual assertion of dialog behavior + sidebar state: dialog visibility transitions are explicitly checked (visible after click, not-visible after confirm), and post-import sidebar state is verified per-section with aria-disabled='true' confirming the FR-U010 / SPEC \u00c2\u00a713.3 imported-read-only treatment (matching the existing imported-term-read-only.spec.ts pattern per recon F12). AC6 round-trip adds a complementary save-and-reparse path that verifies ecm:source='ecm:imported-ontology' on all five terms and ecm:ontologies populated with ecm:format='text/turtle' \u00e2\u20ac\u201d this exercises the persistence-layer contract that IMPLEMENTATION_PLAN \u00c2\u00a73.1 AC6 names. Reconnaissance task 808 is present in UPSTREAM, satisfying Spec 03's reconnaissance requirement for substantive changes. Per CLAUDE.md \u00c2\u00a77.8, this is a code artifact, so verification-ritual is not required in the chain; test-runner (Playwright) is the appropriate downstream verification gate. The developer's three open questions are correctly self-classified as no-action-needed: createdAt non-determinism is not asserted, rdfs:range is not asserted, and aria-disabled='true' provides disambiguation against any same-labeled starter terms. No conflict with frozen contracts; the testIds named in the spec match those produced by the prior sub-task chain.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:808-recon-p3-c4",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:818-dev-p3-c4-D",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3 / FR-U010 / FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FNSR Spec 03 \u00c2\u00a7Reconnaissance requirement",
+            "source": "arc/spec-03.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "AC partitioning across two Playwright tests \u00e2\u20ac\u201d one for happy-path UI flow (dialog + sidebar visible state) and a separate test for persistence round-trip (Save \u00e2\u2020\u2019 re-parse) \u00e2\u20ac\u201d is a sound separation: the first test fails loudly on UI-rendering regressions and the second isolates serialization/merge contract failures. This mirrors the existing imported-term-read-only.spec.ts shape and is emerging as a stable convention for Phase 3 Chain feature acceptance specs."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T17:01:21Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:820-apply-p3-c4-D",
       "agent": "applier",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:819-rat-p3-c4-D",
@@ -90349,16 +90600,48 @@
         "chain_label": "Phase 3 Chain 4 sub-task D -- applier",
         "purpose": "Pass 2b commit-finalize for sub-task D.",
         "source_task": "urn:fnsr:task:818-dev-p3-c4-D"
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "tests\\playwright\\fixtures\\sample-ontology.ttl",
+            "mode": "create",
+            "bytes_written": 716,
+            "bom_prepended": true
+          },
+          {
+            "id": "C2",
+            "path": "tests\\playwright\\ontology-import.spec.ts",
+            "mode": "create",
+            "bytes_written": 7759,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "2 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T17:01:22Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:821-test-p3-c4",
       "agent": "test-runner",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:811-apply-p3-c4-A",
-        "urn:fnsr:task:814-apply-p3-c4-B",
+        "urn:fnsr:task:827-apply-p3-c4-B-v2",
         "urn:fnsr:task:817-apply-p3-c4-C",
         "urn:fnsr:task:820-apply-p3-c4-D"
       ],
@@ -90368,12 +90651,59 @@
         "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
         "parser": "npm",
         "purpose": "Verify Phase 3 Chain 4 did not regress the unit + integration suite. Currently 148 tests pass at build_ref=77ce8ed. After sub-task A's new tests/sha256.test.ts the expected count grows. Playwright tests in tests/playwright/ontology-import.spec.ts are NOT exercised by npm test default; operator runs them separately via npx playwright test as the AC validation step."
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T17:12:17Z",
+          "event": "operator_dep_rewire",
+          "payload": {
+            "operator": "operator",
+            "reason": "Chain 4 fix Option A: 814 abandoned; rewire to 827",
+            "old_deps": [
+              "urn:fnsr:task:811-apply-p3-c4-A",
+              "urn:fnsr:task:814-apply-p3-c4-B",
+              "urn:fnsr:task:817-apply-p3-c4-C",
+              "urn:fnsr:task:820-apply-p3-c4-D"
+            ],
+            "new_deps": [
+              "urn:fnsr:task:811-apply-p3-c4-A",
+              "urn:fnsr:task:827-apply-p3-c4-B-v2",
+              "urn:fnsr:task:817-apply-p3-c4-C",
+              "urn:fnsr:task:820-apply-p3-c4-D"
+            ]
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e182305dcd9fde8a28a73cefbf47d6806788428b7a029156b8c314e2eb62dde9"
+        },
+        {
+          "ts": "2026-06-02T17:12:50Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "e182305dcd9fde8a28a73cefbf47d6806788428b7a029156b8c314e2eb62dde9",
+          "chain_hash": "fa80493ccc4a393c5c7d80ea0b39a080098315f6ac938c235239d4c27ccb45a3"
+        }
+      ],
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 30.77023220062256,
+        "first_n_failures": [],
+        "raw_stdout_tail": " PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (278ms)\n  PASSED: /cli-import-ontology.test.js (2562ms)\n  PASSED: /cli-integration.test.js (5085ms)\n  PASSED: /delete-instance.test.js (204ms)\n  PASSED: /determinism.test.js (197ms)\n  PASSED: /emitters.test.js (486ms)\n  PASSED: /import-turtle.test.js (605ms)\n  PASSED: /iri-generation.test.js (233ms)\n  PASSED: /iri-refactor.test.js (305ms)\n  PASSED: /iri-uuid-injection.test.js (341ms)\n  PASSED: /legacy-migration.test.js (232ms)\n  PASSED: /manifest-entries.test.js (193ms)\n  PASSED: /no-network.test.js (153ms)\n  PASSED: /normalize-on-load.test.js (166ms)\n  PASSED: /remap-references.test.js (137ms)\n  PASSED: /semantic-projection.test.js (199ms)\n  PASSED: /sha256.test.js (203ms)\n  PASSED: /snapshot.test.js (201ms)\n  PASSED: /starter-terms.test.js (188ms)\n  PASSED: /structural-validator.test.js (158ms)\n  PASSED: /tbox-bundle.test.js (352ms)\n  PASSED: /vmp-serializer.test.js (1799ms)\n\n  Files: 22/22 passed\n  Tests: 159/159 passed\n\n(node:17712) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:4976) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 30.77s)",
+        "parser_used": "npm"
       }
     },
     {
       "@id": "urn:fnsr:task:822-dev-p3-c4-A2",
       "agent": "developer",
-      "status": "in_progress",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:808-recon-p3-c4"
@@ -90394,12 +90724,81 @@
         "constraint": "Non-breaking refactor mirroring sub-task A's digestHexFn pattern. src/kernel/iri/ layer purity preserved. The browser-compat path uses crypto.randomUUID (Web Crypto API) which the dialog will call as () => crypto.randomUUID(). The node fallback (no uuidFn arg) uses the existing nodeRandomUUID path so CLI tests continue passing without modification.",
         "remediation_for": "813-rat-p3-c4-B denial R2"
       },
-      "attempts": 1
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/iri/index.ts",
+            "rationale": "Add optional uuidFn parameter to generateIri. ecm:uuid-urn mode calls uuidFn() when provided (browser-compat path: caller passes () => crypto.randomUUID()), falling back to generateUuidV4() (node:crypto path) when absent. ecm:deterministic mode ignores uuidFn entirely. Fully non-breaking: all existing call sites omitting the third argument continue to hit the node fallback unchanged.",
+            "before": "/**\n * Generates an IRI for an entity under the given policy.\n *\n * Both modes produce strings of the form `urn:uuid:<UUID>`.\n *\n * **ecm:uuid-urn** (SPEC section 9.2):\n *   Non-deterministic UUIDv4. Uses crypto.randomUUID(); falls back to\n *   Math.random()-based manual generation. context.seed and\n *   context.entityContext are ignored. The non-determinism is acknowledged\n *   by spec: \"non-deterministic only until persisted\" (SPEC section 9.2).\n *\n * **ecm:deterministic** (SPEC section 9.3):\n *   UUIDv5 per RFC 4122 section 4.3 from `${context.seed}|${context.entityContext}`.\n *   Pure function; re-running with the same inputs produces the same IRI.\n *   context.seed and context.entityContext MUST be non-empty strings.\n *\n * @param policy  The IRI generation policy.\n * @param context Explicit generation inputs. Never derived from Date.now()\n *                or process.env; always threaded from the CLI (--seed flag).\n * @returns IRI string in `urn:uuid:<UUID>` format.\n * @throws {Error} If policy is ecm:deterministic and seed or entityContext\n *                 is absent or empty.\n */\nexport function generateIri(policy: IriPolicy, context: IriContext): string {\n  switch (policy) {\n    case \"ecm:uuid-urn\": {\n      return `urn:uuid:${generateUuidV4()}`;\n    }",
+            "after": "/**\n * Generates an IRI for an entity under the given policy.\n *\n * Both modes produce strings of the form `urn:uuid:<UUID>`.\n *\n * **ecm:uuid-urn** (SPEC section 9.2):\n *   Non-deterministic UUIDv4. When uuidFn is supplied, calls uuidFn() to\n *   obtain the UUID -- browser callers pass `() => crypto.randomUUID()`\n *   (Web Crypto API). When absent, uses node:crypto.randomUUID() (Node >=\n *   14.17.0), falling back to Math.random()-based manual generation.\n *   context.seed and context.entityContext are ignored. The non-determinism\n *   is acknowledged by spec: \"non-deterministic only until persisted\"\n *   (SPEC section 9.2).\n *\n * **ecm:deterministic** (SPEC section 9.3):\n *   UUIDv5 per RFC 4122 section 4.3 from `${context.seed}|${context.entityContext}`.\n *   Pure function; re-running with the same inputs produces the same IRI.\n *   context.seed and context.entityContext MUST be non-empty strings.\n *   uuidFn is ignored in this mode.\n *\n * @param policy  The IRI generation policy.\n * @param context Explicit generation inputs. Never derived from Date.now()\n *                or process.env; always threaded from the CLI (--seed flag).\n * @param uuidFn  Optional UUID factory for browser-compat callers. When\n *                provided, used instead of node:crypto.randomUUID() in\n *                ecm:uuid-urn mode. Ignored in ecm:deterministic mode.\n *                Browser callers supply `() => crypto.randomUUID()`.\n * @returns IRI string in `urn:uuid:<UUID>` format.\n * @throws {Error} If policy is ecm:deterministic and seed or entityContext\n *                 is absent or empty.\n */\nexport function generateIri(\n  policy: IriPolicy,\n  context: IriContext,\n  uuidFn?: () => string,\n): string {\n  switch (policy) {\n    case \"ecm:uuid-urn\": {\n      return `urn:uuid:${uuidFn !== undefined ? uuidFn() : generateUuidV4()}`;\n    }",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/import/turtle-import.ts",
+            "rationale": "Thread uuidFn through importOntology's async overload and implementation signature, mirroring the digestHexFn pattern from sub-task A. The sync overload (no digestHexFn, no uuidFn) is unchanged; existing CLI callers are unaffected. uuidFn is optional even on the async overload so the browser caller can omit it, though in practice the Dialog passes () => crypto.randomUUID().",
+            "before": "export function importOntology(\n  turtleSource: string,\n  fileName: string,\n  projectId: string,\n  createdAt: string,\n  digestHexFn: (bytes: Uint8Array) => Promise<string>,\n): Promise<ImportResult>;\nexport function importOntology(\n  turtleSource: string,\n  fileName: string,\n  projectId: string,\n  createdAt: string,\n  digestHexFn?: (bytes: Uint8Array) => Promise<string>,\n): ImportResult | Promise<ImportResult> {",
+            "after": "export function importOntology(\n  turtleSource: string,\n  fileName: string,\n  projectId: string,\n  createdAt: string,\n  digestHexFn: (bytes: Uint8Array) => Promise<string>,\n  uuidFn?: () => string,\n): Promise<ImportResult>;\nexport function importOntology(\n  turtleSource: string,\n  fileName: string,\n  projectId: string,\n  createdAt: string,\n  digestHexFn?: (bytes: Uint8Array) => Promise<string>,\n  uuidFn?: () => string,\n): ImportResult | Promise<ImportResult> {",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/import/turtle-import.ts",
+            "rationale": "Pass uuidFn through to generateIri inside the async browser branch. When the Dialog calls importOntology(src, name, projId, createdAt, digestHexFn, () => crypto.randomUUID()), the uuidFn reaches generateIri and node:crypto.randomUUID() is never invoked at runtime. The sync path (lines below this hunk) is untouched.",
+            "before": "      const ontology: ImportedOntologyRecord = {\n        id: generateIri(\"ecm:uuid-urn\", {}),\n        type: \"ecm:ImportedOntology\",",
+            "after": "      const ontology: ImportedOntologyRecord = {\n        id: generateIri(\"ecm:uuid-urn\", {}, uuidFn),\n        type: \"ecm:ImportedOntology\",",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "tests/iri-uuid-injection.test.ts",
+            "rationale": "New test file covering the four acceptance criteria for the uuidFn injection: AC1 injected value appears verbatim in the IRI; AC2 no-uuidFn path (node fallback) continues to produce a valid urn:uuid: IRI; AC3 uuidFn is called exactly once per invocation; AC4 ecm:deterministic mode is unaffected. Pattern follows tests/iri-generation.test.ts exactly (hand-rolled, node:assert, process.exit(1) on failure).",
+            "before": null,
+            "after": "/**\n * IRI Generation -- uuidFn injection tests (Phase 3 Chain 4 sub-task A2)\n *\n * SPEC refs: section 9.2, NFR-003, FR-C011.\n *\n * Verifies the optional uuidFn parameter added to generateIri in sub-task A2:\n * browser-compat callers supply `() => crypto.randomUUID()` instead of the\n * node:crypto path. The node fallback is non-breaking.\n *\n * AC1: Injected uuidFn return value appears verbatim as the UUID in the IRI.\n * AC2: No uuidFn -- node fallback path produces a valid urn:uuid: IRI (non-breaking).\n * AC3: uuidFn is called exactly once per generateIri invocation.\n * AC4: ecm:deterministic mode is unaffected by the uuidFn parameter.\n *\n * Pattern: hand-rolled per tests/run-tests.ts; no framework; node:assert;\n * process.exit(1) on failure. Follows tests/iri-generation.test.ts.\n */\n\nimport { ok, strictEqual } from \"node:assert\";\nimport { generateIri } from \"../src/iri/index.js\";\n\nlet passed = 0;\nlet failed = 0;\n\nfunction pass(msg: string): void {\n  console.log(`  \\u2713 PASS: ${msg}`);\n  passed++;\n}\nfunction fail(msg: string, err?: unknown): void {\n  console.error(`  \\u2717 FAIL: ${msg}`);\n  if (err !== undefined) {\n    console.error(\"  \", err instanceof Error ? err.message : String(err));\n  }\n  failed++;\n}\n\n// ---------------------------------------------------------------------------\n// Regex: valid urn:uuid: UUID (any variant; covers v4, v5, and injected values)\n// ---------------------------------------------------------------------------\nconst UUID_URN_RE = /^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;\n\n// ---------------------------------------------------------------------------\n// AC1: Injected uuidFn return value appears verbatim in IRI\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC1: injected uuidFn return value appears verbatim in IRI\");\n\ntry {\n  const FIXED_UUID = \"12345678-1234-4123-8234-123456789abc\";\n  const uuidFn = (): string => FIXED_UUID;\n  const iri = generateIri(\"ecm:uuid-urn\", {}, uuidFn);\n  strictEqual(\n    iri,\n    `urn:uuid:${FIXED_UUID}`,\n    \"IRI must equal urn:uuid:<FIXED_UUID> when uuidFn is provided (AC1)\",\n  );\n  pass(\"injected uuidFn return value appears verbatim in IRI (AC1)\");\n} catch (e) {\n  fail(\"IRI must be urn:uuid:<uuidFn()> when uuidFn is provided (AC1)\", e);\n}\n\ntry {\n  const values = [\n    \"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\n    \"11111111-2222-4333-8444-555555555555\",\n    \"deadbeef-cafe-4bab-8f00-ffffffffffff\",\n  ];\n  for (const v of values) {\n    const iri = generateIri(\"ecm:uuid-urn\", {}, () => v);\n    strictEqual(iri, `urn:uuid:${v}`, \"IRI must reflect injected value verbatim (AC1 variant)\");\n  }\n  pass(\"multiple distinct injected values each reflected verbatim in IRI (AC1 variant)\");\n} catch (e) {\n  fail(\"each injected value must appear verbatim in the IRI (AC1 variant)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// AC2: No uuidFn -- node fallback path; non-breaking for existing callers\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC2: no uuidFn arg -- node fallback path; non-breaking\");\n\ntry {\n  const iri = generateIri(\"ecm:uuid-urn\", {});\n  ok(UUID_URN_RE.test(iri), `IRI does not match urn:uuid: UUID regex (AC2): ${iri}`);\n  pass(\"no-uuidFn path (node fallback) returns valid urn:uuid: IRI (AC2)\");\n} catch (e) {\n  fail(\"no-uuidFn path must return valid urn:uuid: IRI (non-breaking, AC2)\", e);\n}\n\ntry {\n  for (let i = 0; i < 5; i++) {\n    const iri = generateIri(\"ecm:uuid-urn\", {});\n    ok(\n      UUID_URN_RE.test(iri),\n      `Call ${i + 1}: IRI does not match urn:uuid: UUID regex (AC2 robustness): ${iri}`,\n    );\n  }\n  pass(\"5 repeated no-uuidFn calls all produce valid urn:uuid: IRIs (AC2 robustness)\");\n} catch (e) {\n  fail(\"repeated no-uuidFn calls must all return valid urn:uuid: IRIs (AC2 robustness)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// AC3: uuidFn called exactly once per generateIri invocation\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC3: uuidFn called exactly once per generateIri invocation\");\n\ntry {\n  let callCount = 0;\n  const countingFn = (): string => {\n    callCount++;\n    return \"aaaabbbb-aaaa-4aaa-8aaa-aaaaaaaaaaaa\";\n  };\n\n  generateIri(\"ecm:uuid-urn\", {}, countingFn);\n  strictEqual(callCount, 1, `uuidFn must be called exactly once; got ${callCount} (AC3)`);\n\n  generateIri(\"ecm:uuid-urn\", {}, countingFn);\n  strictEqual(callCount, 2, `Second call: uuidFn total must be 2; got ${callCount} (AC3)`);\n\n  generateIri(\"ecm:uuid-urn\", {}, countingFn);\n  strictEqual(callCount, 3, `Third call: uuidFn total must be 3; got ${callCount} (AC3)`);\n\n  pass(\"uuidFn called exactly once per generateIri invocation (AC3)\");\n} catch (e) {\n  fail(\"uuidFn must be called exactly once per generateIri invocation (AC3)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// AC4: ecm:deterministic mode unaffected by uuidFn parameter\n// ---------------------------------------------------------------------------\nconsole.log(\"\\nAC4: ecm:deterministic mode unaffected by uuidFn parameter\");\n\ntry {\n  let deterministicFnCalled = false;\n  const shouldNotBeCalled = (): string => {\n    deterministicFnCalled = true;\n    return \"should-never-appear-in-deterministic-iri\";\n  };\n\n  const SEED = \"test-seed-a2\";\n  const CTX = \"entity-ctx-a2\";\n\n  const iri1 = generateIri(\n    \"ecm:deterministic\",\n    { seed: SEED, entityContext: CTX },\n    shouldNotBeCalled,\n  );\n  const iri2 = generateIri(\"ecm:deterministic\", { seed: SEED, entityContext: CTX });\n\n  ok(!deterministicFnCalled, \"uuidFn must NOT be called in ecm:deterministic mode (AC4)\");\n  strictEqual(\n    iri1,\n    iri2,\n    \"ecm:deterministic must produce same IRI with or without uuidFn (AC4)\",\n  );\n  ok(iri1.startsWith(\"urn:uuid:\"), \"ecm:deterministic IRI must start with urn:uuid: (AC4)\");\n\n  pass(\"ecm:deterministic mode unaffected by uuidFn; uuidFn not called (AC4)\");\n} catch (e) {\n  fail(\"ecm:deterministic mode must be unaffected by uuidFn parameter (AC4)\", e);\n}\n\n// ---------------------------------------------------------------------------\n// Summary\n// ---------------------------------------------------------------------------\nconsole.log(`\\n  ${passed} passed, ${failed} failed`);\nif (failed > 0) process.exit(1);\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/iri-uuid-injection.test.ts",
+            "describe": "Run via npm test or node dist-tests/tests/iri-uuid-injection.test.js after npm run build. Verifies AC1\u00e2\u20ac\u201cAC4 of the uuidFn injection: injected value verbatim in IRI, node-fallback non-breaking, call-count invariant, ecm:deterministic unaffected."
+          },
+          {
+            "file": "tests/iri-generation.test.ts",
+            "describe": "Existing test; must remain green \u00e2\u20ac\u201d AC1 (ecm:uuid-urn no-arg) and AC2 (ecm:deterministic reproducibility) are the primary regression guards for the fallback path."
+          },
+          {
+            "file": "tests/import-turtle.test.ts",
+            "describe": "Existing test; must remain green \u00e2\u20ac\u201d all six synchronous importOntology call sites exercise the no-digestHexFn/no-uuidFn path and must still pass without modification."
+          }
+        ],
+        "open_questions": [
+          "turtle-import.ts is NOT listed in files_in_scope but is the only call site that needs uuidFn threading (recon F1/evidence turtle-import.ts:254). Changes C2 and C3 are included because the sub-task description explicitly requires threading through call sites; operator should confirm they are authorized before apply.",
+          "The node:crypto import at src/iri/index.ts:20 (`import { createHash, randomUUID as nodeRandomUUID } from 'node:crypto'`) remains a module-level static import. Adding uuidFn injection prevents nodeRandomUUID from being *called* at runtime on the browser path, but Vite still externalizes the entire node:crypto import at bundle time. If the browser build fails to load src/iri/index.ts as a module (import-time error), this sub-task alone is insufficient and a follow-up is needed to make the node:crypto imports lazy (e.g., dynamic import inside generateUuidV4) or to restructure src/iri/ into separate browser/node entry points. Sub-task A2's value is establishing the injection contract; the module-level import problem may require a separate structural task.",
+          "Should the JSDoc at turtle-import.ts lines 111-121 (the importOntology block comment) be updated to document the new uuidFn parameter? Sub-task A did not update it for digestHexFn; this proposal follows the same pattern and omits the JSDoc update for minimality.",
+          "Should the file-level comment at turtle-import.ts lines 17-20 (which mentions digestHexFn) be updated to also mention uuidFn? Omitted here for minimality; operator can request as a follow-up editorial correction."
+        ],
+        "summary": "Four changes across three files. C1 adds optional uuidFn?: () => string to generateIri in src/iri/index.ts; the ecm:uuid-urn case uses uuidFn() when provided and falls back to generateUuidV4() (node:crypto path) when absent; ecm:deterministic is unaffected. C2 and C3 thread uuidFn through importOntology's async overload signature and the async-branch generateIri call in turtle-import.ts, mirroring the sub-task A digestHexFn pattern exactly. C4 is a new test file with four ACs: injected value verbatim in IRI, node-fallback non-breaking, call-count invariant, and ecm:deterministic isolation. All existing synchronous callers (CLI, six test call sites) continue unchanged.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:41:09Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:823-rat-p3-c4-A2",
       "agent": "architect",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:822-dev-p3-c4-A2",
@@ -90415,12 +90814,79 @@
           "CLAUDE.md section 9",
           "NFR-003"
         ]
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Adds a new optional parameter to two public functions (generateIri, importOntology) and modifies kernel-layer code path semantics; this is behavioral surface change, not terminology tightening.",
+        "rationale": "The proposed change satisfies all six verification dimensions named in the task purpose. (1) Pattern mirror: C1/C2/C3 add `uuidFn?: () => string` exactly parallel to `digestHexFn` from sub-task A \u00e2\u20ac\u201d same optional-parameter shape, same async-branch threading, same kernel-injection discipline. (2) Non-breaking: the parameter is optional at every level (generateIri sig, importOntology sync overload, async overload); all six sync call sites enumerated in recon F4 (cli/index.ts:306; five tests/import-turtle.test.ts sites) continue to dispatch the no-arg path that falls through to generateUuidV4() / node:crypto. (3) Call-site threading: C3 patches the single generateIri invocation inside importOntology's async branch (turtle-import.ts:234 per recon F1), passing uuidFn through; no other call sites in src/import/ require updates because the sync branch retains the node fallback. (4) No Web Crypto leak into node fallback: the kernel-side fallback path `uuidFn !== undefined ? uuidFn() : generateUuidV4()` keeps Web Crypto exclusively inside the injected closure; generateUuidV4() retains its node:crypto.randomUUID() body unchanged. (5) Layer purity: src/iri/ stays a kernel module; the injection inverts dependency direction so browser-environment knowledge lives at the call site (App.tsx / Dialog), not in the kernel \u00e2\u20ac\u201d this is the orthodox kernel-injection pattern per CLAUDE.md \u00c2\u00a79. (6) Test coverage: C4's four ACs cover injected-verbatim (AC1), node-fallback non-breaking (AC2), call-count invariant (AC3 \u00e2\u20ac\u201d guards against accidental double-invocation), and ecm:deterministic isolation (AC4 \u00e2\u20ac\u201d guards against the uuidFn leaking into the UUIDv5 path). Reconnaissance evidence (urn:fnsr:task:808-recon-p3-c4) is present in UPSTREAM and substantively justifies the change (F1 identifies the generateIri \u00e2\u2020\u2019 node:crypto.randomUUID transitive call as one of the three browser-incompat sites; F6 confirms crypto.randomUUID() is browser-available; F13 confirms tsconfig.ui.json excludes node types, so the kernel injection contract is the right shape). The developer's open question Q2 (module-level static `import { ... randomUUID as nodeRandomUUID } from 'node:crypto'` may still cause Vite bundle-time failure even with runtime injection) is a real residual risk and is correctly flagged as a possible follow-up structural task rather than a blocker for this sub-task \u00e2\u20ac\u201d establishing the injection contract is independently valuable, and the bundling question is properly scoped outside A2.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:808-recon-p3-c4",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:822-dev-p3-c4-A2",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79 Layer Boundaries",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.2 ecm:uuid-urn",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.3 ecm:deterministic",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "NFR-003",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FNSR Spec 03 Pass 2a",
+            "source": "Spec 03"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Sub-task A2 demonstrates the kernel-injection-mirror pattern: when a kernel function has multiple environment-dependent dependencies (here: digest + UUID), threading them through as separate optional injectable functions \u00e2\u20ac\u201d each with its own sub-task \u00e2\u20ac\u201d keeps each ratification narrowly scoped and each diff minimally reviewable. The pattern's discipline is that the second sub-task (A2) explicitly states it 'mirrors' the first (A) and reviewers verify pattern-match rather than re-deriving the contract; this is the second-instance compression that justifies the upfront cost of decomposition."
+          },
+          {
+            "id": "B2",
+            "category": "discipline-correction",
+            "content": "Developer open question Q2 surfaces a category of latent risk distinct from the change itself: a runtime-injection contract may be sufficient for SEMANTIC purity (no Web Crypto in the kernel call path) yet insufficient for BUNDLE purity (module-level static `import { ... } from 'node:crypto'` is still resolved at bundle time regardless of whether the imported binding is called). The honest flagging of this gap, with explicit scope-boundary reasoning ('the value of this sub-task is establishing the injection contract; the bundling question is a separate structural task'), is the discipline worth banking \u00e2\u20ac\u201d proposals that distinguish contract-establishment from full-environment-resolution let ratifications proceed without forcing structural-resolution-now."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:41:58Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:824-apply-p3-c4-A2",
       "agent": "applier",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:823-rat-p3-c4-A2",
@@ -90431,12 +90897,55 @@
         "chain_label": "Phase 3 Chain 4 sub-task A2 -- applier",
         "purpose": "Pass 2b commit-finalize for sub-task A2.",
         "source_task": "urn:fnsr:task:822-dev-p3-c4-A2"
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C4",
+            "path": "tests\\iri-uuid-injection.test.ts",
+            "mode": "create",
+            "bytes_written": 6414,
+            "bom_prepended": true
+          },
+          {
+            "id": "C1",
+            "path": "src\\iri\\index.ts",
+            "mode": "edit",
+            "delta_bytes": 572
+          },
+          {
+            "id": "C2",
+            "path": "src\\import\\turtle-import.ts",
+            "mode": "edit",
+            "delta_bytes": 50
+          },
+          {
+            "id": "C3",
+            "path": "src\\import\\turtle-import.ts",
+            "mode": "edit",
+            "delta_bytes": 8
+          }
+        ],
+        "failed": [],
+        "summary": "4 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:41:58Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:825-dev-p3-c4-B-v2",
       "agent": "developer",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:808-recon-p3-c4",
@@ -90458,12 +90967,53 @@
         "constraint": "Single new file (replacing 812's output). R1 + R2 fixes are MANDATORY per architect 813 denial. Follow the RemapDialog.tsx pattern; preserve all five gw-* test-ids from v1 (gw-dialog-import-ontology, gw-import-file-input, gw-import-preview-count, gw-btn-import-cancel, gw-btn-import-confirm). Threading uuidFn=() => crypto.randomUUID() requires A2 (824-apply-p3-c4-A2) to have landed.",
         "remediation_for": "813-rat-p3-c4-B denial R1 + R2",
         "prior_developer_output": "urn:fnsr:task:812-dev-p3-c4-B"
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/ImportOntologyDialog.tsx",
+            "rationale": "New file. Replaces the denied 812-dev-p3-c4-B v1 output. Applies both architect-mandatory fixes: R1 (file.size > 50 MB pre-check via file.size BEFORE reader.readAsText, setting error phase with the exact message from the task spec) and R2 (importOntology called with digestHexFn=sha256HexAsync and uuidFn=() => crypto.randomUUID(), so the async browser path uses only injected crypto functions and never calls node:crypto createHash or nodeRandomUUID at runtime). sha256HexAsync is inlined (globalThis.crypto.subtle) rather than imported from src/kernel/sha256.ts to minimise the node:crypto import chain pulled into the Vite browser bundle. Merge shape matches CLI cmdImportOntology (src/cli/index.ts:324-344, F9 evidence): terms augmented with ecm:source + ecm:ontologyId, spread into existing ecm:terms and ecm:ontologies. All five gw-* test-ids preserved. RemapDialog structural pattern followed (Dialog primitive, inline styles, flex Cancel/Import footer).",
+            "before": null,
+            "after": "/**\n * ImportOntologyDialog -- Import Turtle ontology file (FR-C011; SPEC section 14.1).\n *\n * Presents a file picker for .ttl files, pre-checks file size (SPEC section 12.2),\n * parses with importOntology (async browser path; digestHexFn + uuidFn injected),\n * shows a term-count preview, and on confirm merges ecm:terms + ecm:ontologies\n * per the CLI cmdImportOntology reference (IMPLEMENTATION_PLAN section 3.1).\n *\n * Browser-safe:\n *   - sha256HexAsync: inlined Web Crypto (globalThis.crypto.subtle.digest).\n *   - uuidFn: () => crypto.randomUUID() (Web Crypto API; lib:DOM typed).\n * node:crypto is NOT invoked at runtime -- importOntology async path uses only\n * the injected digest and uuid functions (R2 fix per architect 813 denial).\n *\n * SPEC refs: section 14.1, section 12.2, FR-C011, IMPLEMENTATION_PLAN section 3.1.\n * Dialog testId: \"gw-dialog-import-ontology\".\n */\n\nimport { useState, useRef, type ChangeEvent } from \"react\";\nimport { Dialog } from \"./Dialog.js\";\nimport {\n  importOntology,\n  type ImportedOntologyRecord,\n  type ImportedTermObject,\n} from \"../import/turtle-import.js\";\n\n// ---------------------------------------------------------------------------\n// Browser-safe SHA-256 (Web Crypto API; no node:crypto dependency)\n// ---------------------------------------------------------------------------\n\n/**\n * Compute a SHA-256 hex digest using globalThis.crypto.subtle.\n * Available in all modern browsers and Node >= 19.\n * Inlined here (rather than imported from src/kernel/sha256.ts) so that the\n * browser bundle does not pull in sha256.ts's top-level node:crypto import.\n */\nasync function sha256HexAsync(bytes: Uint8Array): Promise<string> {\n  const buffer = await globalThis.crypto.subtle.digest(\"SHA-256\", bytes);\n  return Array.from(new Uint8Array(buffer))\n    .map((b) => b.toString(16).padStart(2, \"0\"))\n    .join(\"\");\n}\n\n// ---------------------------------------------------------------------------\n// Types\n// ---------------------------------------------------------------------------\n\ntype DialogPhase = \"idle\" | \"reading\" | \"preview\" | \"error\";\n\ninterface PendingImport {\n  ontology: ImportedOntologyRecord;\n  terms: readonly ImportedTermObject[];\n  fileName: string;\n}\n\ninterface ImportOntologyDialogProps {\n  /** Current project document; provides the ecm:projectId for the import record. */\n  project: Record<string, unknown>;\n  /**\n   * Called with the merged project document after import is confirmed.\n   * Parent controls visibility: unmount the dialog after onConfirm fires.\n   */\n  onConfirm: (updatedProject: Record<string, unknown>) => void;\n  onClose: () => void;\n}\n\n// ---------------------------------------------------------------------------\n// Component\n// ---------------------------------------------------------------------------\n\nexport function ImportOntologyDialog({\n  project,\n  onConfirm,\n  onClose,\n}: ImportOntologyDialogProps) {\n  const [phase, setPhase] = useState<DialogPhase>(\"idle\");\n  const [errorMessage, setErrorMessage] = useState<string>(\"\");\n  const [pending, setPending] = useState<PendingImport | null>(null);\n\n  const fileInputRef = useRef<HTMLInputElement>(null);\n\n  const termCount = pending?.terms.length ?? 0;\n\n  function handleBrowse() {\n    fileInputRef.current?.click();\n  }\n\n  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {\n    const file = event.target.files?.[0];\n    if (file === undefined) return;\n    // Reset so the same file can be re-selected after an error.\n    event.target.value = \"\";\n\n    // Reject non-.ttl files (SPEC section 14.1: Turtle format only).\n    if (!file.name.toLowerCase().endsWith(\".ttl\")) {\n      setPhase(\"error\");\n      setErrorMessage(\n        \"Only .ttl (Turtle) files are supported (SPEC section 14.1).\",\n      );\n      return;\n    }\n\n    // R1: 50 MB byte-length pre-check BEFORE reader.readAsText (SPEC section 12.2).\n    // Uses file.size (cheap; no I/O) to reject oversized files before loading\n    // multi-gigabyte content into the renderer's memory.\n    if (file.size > 50 * 1024 * 1024) {\n      setPhase(\"error\");\n      setErrorMessage(\n        \"File exceeds 50 MB limit (SPEC section 12.2). Reject before parsing.\",\n      );\n      return;\n    }\n\n    setPhase(\"reading\");\n    setPending(null);\n\n    const reader = new FileReader();\n    reader.onload = async (loadEvent: ProgressEvent<FileReader>) => {\n      const raw = loadEvent.target?.result;\n      if (typeof raw !== \"string\") {\n        setPhase(\"error\");\n        setErrorMessage(\"Failed to read file content.\");\n        return;\n      }\n\n      const projectId =\n        typeof project[\"id\"] === \"string\" ? (project[\"id\"] as string) : \"\";\n      const createdAt = new Date().toISOString();\n\n      // R2: Thread digestHexFn (sha256HexAsync) AND uuidFn (() => crypto.randomUUID())\n      // into importOntology. Async browser path; createHash / nodeRandomUUID from\n      // node:crypto are never called at runtime (SPEC section 12.2, section 14.1).\n      const result = await importOntology(\n        raw,\n        file.name,\n        projectId,\n        createdAt,\n        sha256HexAsync,\n        () => crypto.randomUUID(),\n      );\n\n      if (!result.ok) {\n        setPhase(\"error\");\n        setErrorMessage(result.error);\n        return;\n      }\n\n      setPending({\n        ontology: result.ontology,\n        terms: result.terms,\n        fileName: file.name,\n      });\n      setPhase(\"preview\");\n    };\n\n    reader.onerror = () => {\n      setPhase(\"error\");\n      setErrorMessage(\"File read failed. Please try again.\");\n    };\n\n    reader.readAsText(file);\n  }\n\n  function handleConfirm() {\n    if (pending === null) return;\n\n    // Merge per CLI cmdImportOntology reference (src/cli/index.ts:324-344; F9 evidence).\n    // Augment each extracted term with ecm:source + ecm:ontologyId before appending.\n    const augmented = pending.terms.map((t) => ({\n      ...t,\n      \"ecm:source\": \"ecm:imported-ontology\" as const,\n      \"ecm:ontologyId\": pending.ontology.id,\n    }));\n    const existingOntologies = Array.isArray(project[\"ecm:ontologies\"])\n      ? (project[\"ecm:ontologies\"] as unknown[])\n      : [];\n    const existingTerms = Array.isArray(project[\"ecm:terms\"])\n      ? (project[\"ecm:terms\"] as unknown[])\n      : [];\n    const updatedProject: Record<string, unknown> = {\n      ...project,\n      \"ecm:ontologies\": [...existingOntologies, pending.ontology],\n      \"ecm:terms\": [...existingTerms, ...augmented],\n    };\n\n    onConfirm(updatedProject);\n  }\n\n  return (\n    <Dialog\n      title=\"Import Ontology\"\n      onClose={onClose}\n      testId=\"gw-dialog-import-ontology\"\n    >\n      {/* Hidden file input: .ttl only (SPEC section 14.1). */}\n      <input\n        ref={fileInputRef}\n        type=\"file\"\n        accept=\".ttl\"\n        style={{ display: \"none\" }}\n        data-testid=\"gw-import-file-input\"\n        onChange={handleFileChange}\n      />\n\n      {/* Idle / reading: browse prompt */}\n      {(phase === \"idle\" || phase === \"reading\") && (\n        <>\n          <p style={{ marginBottom: \"0.75rem\", fontSize: \"0.85rem\" }}>\n            Select a Turtle (.ttl) ontology file. Extracted terms will be\n            merged into the current project.\n          </p>\n          <button\n            type=\"button\"\n            className=\"gw-btn gw-btn--secondary\"\n            onClick={handleBrowse}\n            disabled={phase === \"reading\"}\n            style={{ marginBottom: \"0.75rem\" }}\n          >\n            {phase === \"reading\" ? \"Reading\\u2026\" : \"Browse\\u2026\"}\n          </button>\n        </>\n      )}\n\n      {/* Preview: term count and re-select affordance */}\n      {phase === \"preview\" && pending !== null && (\n        <>\n          <p style={{ marginBottom: \"0.5rem\", fontSize: \"0.85rem\" }}>\n            File: <strong>{pending.fileName}</strong>\n          </p>\n          <p\n            data-testid=\"gw-import-preview-count\"\n            style={{ marginBottom: \"0.75rem\", fontSize: \"0.85rem\" }}\n          >\n            {termCount === 0\n              ? \"No importable terms found (owl:Class, owl:ObjectProperty, owl:DatatypeProperty).\"\n              : `${termCount} term${termCount === 1 ? \"\" : \"s\"} ready to import.`}\n          </p>\n          <button\n            type=\"button\"\n            className=\"gw-btn gw-btn--secondary\"\n            onClick={() => {\n              setPhase(\"idle\");\n              setPending(null);\n            }}\n            style={{ marginBottom: \"0.75rem\" }}\n          >\n            Choose a different file\n          </button>\n        </>\n      )}\n\n      {/* Error: message and retry affordance */}\n      {phase === \"error\" && (\n        <>\n          <p\n            style={{\n              marginBottom: \"0.75rem\",\n              fontSize: \"0.85rem\",\n              color: \"#dc2626\",\n            }}\n          >\n            {errorMessage}\n          </p>\n          <button\n            type=\"button\"\n            className=\"gw-btn gw-btn--secondary\"\n            onClick={() => {\n              setPhase(\"idle\");\n              setErrorMessage(\"\");\n            }}\n            style={{ marginBottom: \"0.75rem\" }}\n          >\n            Try again\n          </button>\n        </>\n      )}\n\n      {/* Cancel / Import button row (RemapDialog layout pattern) */}\n      <div style={{ display: \"flex\", gap: \"0.5rem\", justifyContent: \"flex-end\" }}>\n        <button\n          type=\"button\"\n          className=\"gw-btn gw-btn--secondary\"\n          onClick={onClose}\n          data-testid=\"gw-btn-import-cancel\"\n        >\n          Cancel\n        </button>\n        <button\n          type=\"button\"\n          className=\"gw-btn\"\n          onClick={handleConfirm}\n          disabled={phase !== \"preview\" || termCount === 0}\n          data-testid=\"gw-btn-import-confirm\"\n        >\n          Import\n        </button>\n      </div>\n    </Dialog>\n  );\n}\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/import-ontology.spec.ts",
+            "describe": "Playwright E2E: (a) open a project, trigger Import Ontology dialog (gw-dialog-import-ontology visible), set a .ttl fixture on gw-import-file-input, wait for gw-import-preview-count to contain 'ready to import', click gw-btn-import-confirm, verify TermSidebar shows the imported term with the 'imported' badge. (b) Set a file >50 MB (mock via File constructor with a large size property if Playwright supports it) and verify the error message contains 'exceeds 50 MB limit'. (c) Set a .jsonld file and verify the error message contains '.ttl'. (d) gw-btn-import-cancel dismisses without mutating project state."
+          },
+          {
+            "file": "tests/playwright/fixtures/minimal-ontology.ttl",
+            "describe": "Minimal .ttl fixture for the import Playwright test: one owl:Class with rdfs:label 'TestClass'. Mirrors the inline SMALL_TTL constant from tests/import-turtle.test.ts but stored as a fixture file for Playwright's setInputFiles() API."
+          }
+        ],
+        "open_questions": [
+          "Vite bundler / node:crypto chain: turtle-import.ts imports createHash from node:crypto and generateIri from src/iri/index.ts which also imports nodeRandomUUID from node:crypto at module level. The dialog imports importOntology from turtle-import.js, pulling that chain into the Vite browser bundle. Vite 4/5 stubs unresolvable node: built-ins rather than failing the build, and the async path (digestHexFn provided) never calls createHash or nodeRandomUUID at runtime, so the runtime behaviour should be correct. However, if the project's Vite version emits a build error (not a warning) for unresolved node: imports, vite.config.ts will need build.rollupOptions.external for node:crypto \u00e2\u20ac\u201d which is outside this file's scope. Recommend confirming with npm run build after apply.",
+          "App.tsx wiring not in scope for this task: the dialog must be mounted from App.tsx (state for importOntologyOpen, an Import Ontology button in the header, and a handler that calls setProject + setValidationReport after onConfirm). That wiring is a separate sub-task (sub-task C per the chain description). This proposal delivers only the dialog component.",
+          "createdAt sourcing: the dialog calls new Date().toISOString() to produce the ecm:createdAt timestamp for the ImportedOntology record. This is intentional (UI layer; not kernel), matching the pattern of other UI-layer mutation sites. If the SPEC or a future ADR requires ecm:createdAt to be threaded from outside (e.g. a clock prop), the dialog signature would need to accept a clockFn prop \u00e2\u20ac\u201d surfacing as an open question for architect review."
+        ],
+        "summary": "Single new file src/ui/ImportOntologyDialog.tsx (v2 replacing denied 812 v1). Applies both architect-mandatory fixes: R1 inserts a file.size > 50 MB guard immediately after the .ttl extension check and before reader.readAsText, setting phase=error with the exact message specified; R2 calls importOntology with sha256HexAsync (inlined Web Crypto) and () => crypto.randomUUID() so the async browser path never touches node:crypto. Follows RemapDialog structural pattern (Dialog primitive, inline styles, flex Cancel/Import footer). All five gw-* test-ids present. Merge shape matches CLI cmdImportOntology (ecm:source + ecm:ontologyId augmentation, spread into ecm:terms and ecm:ontologies). Three open questions logged: Vite build verification, App.tsx wiring (out of scope), and createdAt clock threading.",
+        "self_assessment": "uncertain"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:51:03Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:826-rat-p3-c4-B-v2",
       "agent": "architect",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:825-dev-p3-c4-B-v2",
@@ -90479,12 +91029,74 @@
           "SPEC section 12.2",
           "IMPLEMENTATION_PLAN section 3.1"
         ]
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "New UI component file delivering behavioral feature content for FR-C011 (Turtle ontology import); creates a new dialog with state machine, file I/O, project mutation merge logic, and async crypto path -- substantive code addition, not a typo or formatting fix.",
+        "rationale": "v2 fully remediates both architect 813 mandatory fixes. R1: file.size > 50MB byte-length pre-check is structurally placed BEFORE reader.readAsText -- the check returns early via setPhase('error') with a SPEC section 12.2 cite, preventing multi-gigabyte FileReader memory loads as 813 required. R2: importOntology is called with both digestHexFn=sha256HexAsync (inlined Web Crypto, globalThis.crypto.subtle.digest) AND uuidFn=() => crypto.randomUUID() as the 5th and 6th positional arguments, matching the async overload signature that sub-task A landed at src/import/turtle-import.ts:128-135. The async browser path therefore never calls createHash or nodeRandomUUID at runtime; sub-task A's TextEncoder replacement of Buffer.from completes the browser-safe chain. All four original sub-task B criteria still pass: RemapDialog structural pattern (Dialog primitive + inline-style flex Cancel/Import footer per F10 evidence), CLI cmdImportOntology merge shape (terms augmented with ecm:source + ecm:ontologyId per F9 evidence, spread into existing arrays), all five gw-* test-ids present, .jsonld rejection via .endsWith('.ttl') extension check. The dev's open question on Vite bundle behavior for the node:crypto import chain is not blocking for ratification -- the async path does not invoke node:crypto at runtime; Vite 4/5 stubs unresolved node: built-ins; the downstream applier + test-runner gate (npm run build / npm test) will surface any actual build failure for operator handling. Reconnaissance evidence (urn:fnsr:task:808-recon-p3-c4) is present in UPSTREAM per Spec 03 substantive-change contract.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:808-recon-p3-c4",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:825-dev-p3-c4-B-v2",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 12.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 14.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "section 3.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "The Pass 2a denial -> developer re-do -> Pass 2a re-ratification loop operates cleanly when the original denial surfaces specific, mandatory, code-shaped fixes (R1 ordering constraint; R2 dependency-injection threading). The architect's 813 denial named exact remediation criteria; the developer's v2 proposal addressed them point-for-point with structural placement evidence and code-level injection threading; the re-ratification verifies remediation against the same named criteria. This is the discipline operating as designed for surfacing actionable feedback that does not require a full reconnaissance re-run -- the original 808 reconnaissance evidence remains authoritative for the file structure, and only the architect's R1/R2 verification is novel work."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Browser-bundle hygiene via local inlining: the developer chose to inline sha256HexAsync directly in ImportOntologyDialog.tsx (using globalThis.crypto.subtle.digest) rather than importing from src/kernel/sha256.ts, explicitly to minimize the node:crypto chain pulled into the Vite browser bundle. This is a discipline-correction candidate for the dual-platform pattern: when a kernel module has a synchronous Node-path import that is bypassed by an injected async function, the consumer that owns the injection chooses whether to import-and-tree-shake or inline-and-isolate. Future browser-path consumers may want a documented pattern decision (kernel utility refactor vs. consumer inlining) recorded in DECISIONS.md."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:52:34Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
     },
     {
       "@id": "urn:fnsr:task:827-apply-p3-c4-B-v2",
       "agent": "applier",
-      "status": "ready",
+      "status": "done",
       "priority": 10,
       "depends_on": [
         "urn:fnsr:task:826-rat-p3-c4-B-v2",
@@ -90495,7 +91107,32 @@
         "chain_label": "Phase 3 Chain 4 sub-task B v2 -- applier",
         "purpose": "Pass 2b commit-finalize for sub-task B v2. Replaces the dialog file that sub-task B v1 attempted to create (but was blocked at Event 11 by 813's denial; 814-apply-p3-c4-B abandoned as superseded by this task).",
         "source_task": "urn:fnsr:task:825-dev-p3-c4-B-v2"
-      }
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\ImportOntologyDialog.tsx",
+            "mode": "create",
+            "bytes_written": 9768,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-02T16:52:35Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
     }
   ]
 }

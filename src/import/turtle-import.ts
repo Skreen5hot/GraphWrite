@@ -15,7 +15,8 @@
  * does NOT follow owl:imports references.
  *
  * Layer boundary: MUST NOT import from src/adapters/ or src/composition/.
- * Uses node:crypto; not browser-compatible (node:crypto).
+ * Synchronous path uses node:crypto (Node-only). Supply digestHexFn (e.g.
+ * sha256HexAsync from src/kernel/sha256.ts) for the async browser-safe path.
  * Caller threads createdAt; this function never calls Date.now() (Â§9.3).
  */
 
@@ -123,9 +124,26 @@ export function importOntology(
   fileName: string,
   projectId: string,
   createdAt: string,
-): ImportResult {
-  // Â§12.2: hard-reject > 50 MB before parsing
-  const sourceBytes = Buffer.from(turtleSource, "utf8");
+): ImportResult;
+export function importOntology(
+  turtleSource: string,
+  fileName: string,
+  projectId: string,
+  createdAt: string,
+  digestHexFn: (bytes: Uint8Array) => Promise<string>,
+  uuidFn?: () => string,
+): Promise<ImportResult>;
+export function importOntology(
+  turtleSource: string,
+  fileName: string,
+  projectId: string,
+  createdAt: string,
+  digestHexFn?: (bytes: Uint8Array) => Promise<string>,
+  uuidFn?: () => string,
+): ImportResult | Promise<ImportResult> {
+  // §12.2: hard-reject > 50 MB before parsing
+  // TextEncoder is browser-compatible; byte count is identical to Buffer.from for UTF-8.
+  const sourceBytes = new TextEncoder().encode(turtleSource);
   if (sourceBytes.length > MAX_SOURCE_BYTES) {
     return {
       ok: false,
@@ -229,6 +247,28 @@ export function importOntology(
   }
 
   // Build ecm:ImportedOntology record (Â§5.6)
+  if (digestHexFn !== undefined) {
+    // Async browser path: caller supplies Web Crypto digest function.
+    const fn = digestHexFn;
+    return (async (): Promise<ImportResult> => {
+      const digest = await fn(sourceBytes);
+      const ontology: ImportedOntologyRecord = {
+        id: generateIri("ecm:uuid-urn", {}, uuidFn),
+        type: "ecm:ImportedOntology",
+        "ecm:projectId": projectId,
+        "ecm:name": deriveOntologyName(fileName),
+        "ecm:sourceFileName": fileName,
+        "ecm:format": "text/turtle",
+        "ecm:contentHash": `sha256-${digest}`,
+        "ecm:content": turtleSource,
+        "ecm:createdAt": createdAt,
+        "ecm:importStatus": "ecm:parsed",
+      };
+      return { ok: true, ontology, terms };
+    })();
+  }
+
+  // Synchronous node path (default; preserves existing behaviour verbatim).
   const digest = createHash("sha256").update(sourceBytes).digest("hex");
   const ontology: ImportedOntologyRecord = {
     id: generateIri("ecm:uuid-urn", {}),

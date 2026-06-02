@@ -157,27 +157,39 @@ function generateUuidV5(name: string): string {
  * Both modes produce strings of the form `urn:uuid:<UUID>`.
  *
  * **ecm:uuid-urn** (SPEC section 9.2):
- *   Non-deterministic UUIDv4. Uses crypto.randomUUID(); falls back to
- *   Math.random()-based manual generation. context.seed and
- *   context.entityContext are ignored. The non-determinism is acknowledged
- *   by spec: "non-deterministic only until persisted" (SPEC section 9.2).
+ *   Non-deterministic UUIDv4. When uuidFn is supplied, calls uuidFn() to
+ *   obtain the UUID -- browser callers pass `() => crypto.randomUUID()`
+ *   (Web Crypto API). When absent, uses node:crypto.randomUUID() (Node >=
+ *   14.17.0), falling back to Math.random()-based manual generation.
+ *   context.seed and context.entityContext are ignored. The non-determinism
+ *   is acknowledged by spec: "non-deterministic only until persisted"
+ *   (SPEC section 9.2).
  *
  * **ecm:deterministic** (SPEC section 9.3):
  *   UUIDv5 per RFC 4122 section 4.3 from `${context.seed}|${context.entityContext}`.
  *   Pure function; re-running with the same inputs produces the same IRI.
  *   context.seed and context.entityContext MUST be non-empty strings.
+ *   uuidFn is ignored in this mode.
  *
  * @param policy  The IRI generation policy.
  * @param context Explicit generation inputs. Never derived from Date.now()
  *                or process.env; always threaded from the CLI (--seed flag).
+ * @param uuidFn  Optional UUID factory for browser-compat callers. When
+ *                provided, used instead of node:crypto.randomUUID() in
+ *                ecm:uuid-urn mode. Ignored in ecm:deterministic mode.
+ *                Browser callers supply `() => crypto.randomUUID()`.
  * @returns IRI string in `urn:uuid:<UUID>` format.
  * @throws {Error} If policy is ecm:deterministic and seed or entityContext
  *                 is absent or empty.
  */
-export function generateIri(policy: IriPolicy, context: IriContext): string {
+export function generateIri(
+  policy: IriPolicy,
+  context: IriContext,
+  uuidFn?: () => string,
+): string {
   switch (policy) {
     case "ecm:uuid-urn": {
-      return `urn:uuid:${generateUuidV4()}`;
+      return `urn:uuid:${uuidFn !== undefined ? uuidFn() : generateUuidV4()}`;
     }
     case "ecm:deterministic": {
       const { seed, entityContext } = context;

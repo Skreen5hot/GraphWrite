@@ -10,6 +10,7 @@ import { validate, type ValidationReport } from "../validate/index.js";
 import { STARTER_TERMS, injectStarterTerms } from "../validate/starter-terms.js";
 import { serializeVmp } from "../kernel/canonicalize.js";
 import { emitTurtle } from "../emit/turtle.js";
+import { ImportOntologyDialog } from "./ImportOntologyDialog.js";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog.js";
 import { NewProjectDialog } from "./NewProjectDialog.js";
 import { ValidationPanel } from "./ValidationPanel.js";
@@ -95,6 +96,7 @@ export function App() {
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
   const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [importOntologyDialogOpen, setImportOntologyDialogOpen] = useState(false);
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -274,6 +276,15 @@ export function App() {
           </button>
           <button
             className="gw-btn"
+            data-testid="gw-btn-import-ontology"
+            onClick={() => { setImportOntologyDialogOpen(true); }}
+            disabled={project === null}
+            title="Import terms from a Turtle (.ttl) ontology file"
+          >
+            Import Ontology
+          </button>
+          <button
+            className="gw-btn"
             data-testid="gw-btn-save"
             onClick={handleSave}
             disabled={project === null}
@@ -410,6 +421,17 @@ export function App() {
           onConfirm={handleNewConfirm}
           onSkip={handleNewSkip}
           onClose={() => { setNewProjectDialogOpen(false); }}
+        />
+      )}
+      {importOntologyDialogOpen && project !== null && (
+        <ImportOntologyDialog
+          project={project}
+          onConfirm={(updatedProject) => {
+            setProject(updatedProject);
+            setValidationReport(validate(updatedProject));
+            setImportOntologyDialogOpen(false);
+          }}
+          onClose={() => { setImportOntologyDialogOpen(false); }}
         />
       )}
       {projectSettingsOpen && project !== null && (
