@@ -859,5 +859,194 @@ class TestAbandonStaleFixers(unittest.TestCase):
         self.assertEqual(state["tasks"][0]["status"], "blocked")  # untouched
 
 
+class TestRecoveryAnchorAutoSupersession(unittest.TestCase):
+    """v3.6.0: phantom-stall-after-recovery auto-resolution.
+
+    The recovery-dispatcher tags each appended recovery-chain task's
+    inputs with `recovery_anchor: <original-blocked-anchor-id>`. When
+    the daemon commits a test-runner with `outputs.status=all_pass` AND
+    `inputs.recovery_anchor` set, the anchor is auto-superseded
+    (status: blocked → done with `anchor_superseded_by` provenance
+    annotation + chain-hashed audit event).
+
+    Closes the pattern hit 3x in the 2026-06-02 → 2026-06-04 session:
+    Chain 1c (755), Chain 4.1 (835), Chain 5 sub-task A (851). Pre-
+    v3.6.0 each required manual Option-A state-surgery.
+    """
+
+    def test_recovery_dispatcher_tags_appended_tasks_with_recovery_anchor(self):
+        """v3.6.0a: dispatched recovery-chain tasks carry
+        inputs.recovery_anchor pointing back to the original anchor.
+
+        Uses the validator-friendly single-task chain pattern from
+        test_validator_pass_appends_recovery_chain (matches the existing
+        TestRecoveryDispatcher seed)."""
+        tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-rec-anchor-"))
+        try:
+            state_path = tmpdir / "state.jsonld"
+            state_path.write_text(json.dumps({
+                "@id": "urn:fnsr:run:test",
+                "tasks": [{
+                    "@id": "urn:fnsr:task:001-stalled",
+                    "status": "blocked",
+                }],
+            }), encoding="utf-8")
+            old_env = os.environ.get("FNSR_STATE")
+            os.environ["FNSR_STATE"] = str(state_path)
+            try:
+                task = {
+                    "@id": "urn:t:dispatcher",
+                    "agent": "recovery-dispatcher",
+                    "inputs": {
+                        "source_task": "urn:t:fixer",
+                        "anchor_task": "urn:fnsr:task:001-stalled",
+                    },
+                }
+                upstream = {"urn:t:fixer": {
+                    "escalate": False,
+                    "recovery_chain": [{
+                        "@id": "urn:t:recovery-dev",
+                        "agent": "developer",
+                        "depends_on": [],
+                        "inputs": {"purpose": "retry with corrected bytes"},
+                    }],
+                }}
+                result = d._recovery_dispatcher(task, upstream)
+                self.assertTrue(result.ok)
+                self.assertEqual(result.outputs["dispatched"], 1)
+                # v3.6.0a assertion: the appended task has
+                # inputs.recovery_anchor set to the original anchor id
+                final = json.loads(state_path.read_text(encoding="utf-8"))
+                by_id = {t["@id"]: t for t in final["tasks"]}
+                self.assertIn("urn:t:recovery-dev", by_id)
+                self.assertEqual(
+                    by_id["urn:t:recovery-dev"]["inputs"]["recovery_anchor"],
+                    "urn:fnsr:task:001-stalled",
+                )
+            finally:
+                if old_env is None:
+                    os.environ.pop("FNSR_STATE", None)
+                else:
+                    os.environ["FNSR_STATE"] = old_env
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_maybe_supersede_flips_blocked_anchor_to_done(self):
+        """v3.6.0b: when a recovery test-runner completes with all_pass,
+        the helper flips the anchor from blocked to done and records the
+        anchor_superseded_by_recovery audit event."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "agent": "applier",
+             "status": "blocked", "outputs": {"error": "apply_partial_failure"},
+             "history": [{"event": "cps_veto", "payload": {},
+                           "prev_hash": "0" * 64, "chain_hash": "a" * 64}]},
+            {"@id": "urn:t:apply-recovery", "agent": "applier",
+             "status": "done", "depends_on": [],
+             "inputs": {"recovery_anchor": "urn:t:anchor"},
+             "history": []},
+        ]}
+        completed = {
+            "@id": "urn:t:test-recovery",
+            "agent": "test-runner",
+            "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"status": "all_pass", "exit_code": 0},
+            "history": [],
+        }
+        d._maybe_supersede_recovery_anchor(state, completed)
+        anchor = next(t for t in state["tasks"] if t["@id"] == "urn:t:anchor")
+        self.assertEqual(anchor["status"], "done")
+        self.assertIn("anchor_superseded_by", anchor["outputs"])
+        sup = anchor["outputs"]["anchor_superseded_by"]
+        self.assertEqual(sup["test_runner_task"], "urn:t:test-recovery")
+        self.assertEqual(sup["applier_task"], "urn:t:apply-recovery")
+        # Audit event chain-hashed
+        events = [h["event"] for h in anchor["history"]]
+        self.assertIn("anchor_superseded_by_recovery", events)
+        last = anchor["history"][-1]
+        self.assertEqual(last["event"], "anchor_superseded_by_recovery")
+        self.assertEqual(last["prev_hash"], "a" * 64)
+
+    def test_maybe_supersede_is_idempotent_on_already_done_anchor(self):
+        """If the anchor is already done, the helper is a no-op."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "agent": "applier",
+             "status": "done", "outputs": {},
+             "history": []},
+        ]}
+        completed = {
+            "@id": "urn:t:test-recovery", "agent": "test-runner",
+            "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"status": "all_pass"},
+            "history": [],
+        }
+        d._maybe_supersede_recovery_anchor(state, completed)
+        anchor = state["tasks"][0]
+        self.assertEqual(anchor["status"], "done")
+        self.assertNotIn("anchor_superseded_by",
+                          anchor.get("outputs") or {})
+
+    def test_maybe_supersede_only_fires_on_test_runner_all_pass(self):
+        """Other agents / non-all_pass outputs don't trigger supersession."""
+        anchor_t = {
+            "@id": "urn:t:anchor", "agent": "applier",
+            "status": "blocked", "outputs": {},
+            "history": [{"event": "cps_veto",
+                          "prev_hash": "0" * 64, "chain_hash": "a" * 64}],
+        }
+        state = {"tasks": [anchor_t]}
+        # Wrong agent
+        d._maybe_supersede_recovery_anchor(state, {
+            "@id": "urn:t:x", "agent": "developer", "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"status": "all_pass"},
+        })
+        self.assertEqual(anchor_t["status"], "blocked")
+        # Right agent but not all_pass
+        d._maybe_supersede_recovery_anchor(state, {
+            "@id": "urn:t:y", "agent": "test-runner", "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"status": "some_failures"},
+        })
+        self.assertEqual(anchor_t["status"], "blocked")
+        # Right agent, all_pass, but no recovery_anchor tag
+        d._maybe_supersede_recovery_anchor(state, {
+            "@id": "urn:t:z", "agent": "test-runner", "status": "done",
+            "inputs": {},
+            "outputs": {"status": "all_pass"},
+        })
+        self.assertEqual(anchor_t["status"], "blocked")
+
+    def test_supersession_unwedges_stall_detector(self):
+        """After auto-supersession, the stall-detector no longer treats
+        the anchor as a candidate (closes the loop)."""
+        state = {"tasks": [
+            {"@id": "urn:t:anchor", "agent": "applier",
+             "status": "blocked", "outputs": {"error": "apply_partial_failure"},
+             "history": [{"event": "cps_veto",
+                           "ts": "2026-06-04T08:00:00Z",
+                           "prev_hash": "0" * 64, "chain_hash": "a" * 64}]},
+            {"@id": "urn:t:apply-recovery", "agent": "applier",
+             "status": "done", "depends_on": [],
+             "inputs": {"recovery_anchor": "urn:t:anchor"}, "history": []},
+        ]}
+        # Pre-supersession: stall-detector sees the anchor as candidate
+        candidates_before = d._stalls_eligible_for_fixer(state)
+        anchor_ids_before = [c["anchor_id"] for c in candidates_before]
+        self.assertIn("urn:t:anchor", anchor_ids_before)
+        # Run supersession
+        d._maybe_supersede_recovery_anchor(state, {
+            "@id": "urn:t:test-recovery", "agent": "test-runner",
+            "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"status": "all_pass"},
+        })
+        # Post-supersession: anchor no longer eligible (status=done)
+        candidates_after = d._stalls_eligible_for_fixer(state)
+        anchor_ids_after = [c["anchor_id"] for c in candidates_after]
+        self.assertNotIn("urn:t:anchor", anchor_ids_after)
+
+
 if __name__ == "__main__":
     unittest.main()

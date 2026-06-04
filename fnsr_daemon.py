@@ -3360,7 +3360,13 @@ def _recovery_dispatcher(task: dict[str, Any],
             "source_task": source_task_id,
         }, "", "")
 
-    # PASS — append-tasks
+    # PASS — append-tasks. v3.6.0: tag each appended task's inputs
+    # with recovery_anchor pointing back to the original blocked anchor.
+    # The daemon's commit hook detects when a recovery-chain test-runner
+    # reaches all_pass and auto-supersedes the anchor (clearing the
+    # downstream dep-wedge that previously required manual operator
+    # state-surgery). Closes the phantom-stall-after-recovery pattern
+    # hit 3 times in this session (Chain 1c / Chain 4.1 / Chain 5-A).
     existing_ids = {t.get("@id") for t in current_state.get("tasks", [])}
     appended_ids = []
     for nt in recovery_chain:
@@ -3368,6 +3374,12 @@ def _recovery_dispatcher(task: dict[str, Any],
             continue
         if nt["@id"] in existing_ids:
             continue  # validator should've caught; defense in depth
+        # v3.6.0: inject recovery_anchor into the task's inputs so the
+        # daemon commit hook can supersede the anchor on test-runner
+        # all_pass. Idempotent: only set if not already present.
+        nt_inputs = nt.setdefault("inputs", {})
+        if isinstance(nt_inputs, dict) and "recovery_anchor" not in nt_inputs:
+            nt_inputs["recovery_anchor"] = anchor_task_id
         current_state["tasks"].append(nt)
         appended_ids.append(nt["@id"])
 
@@ -3547,6 +3559,105 @@ def _count_fixer_attempts(state: dict[str, Any], anchor_id: str) -> int:
             elif evt == "fixer_auto_dispatched":
                 count += 1
     return count
+
+
+def _maybe_supersede_recovery_anchor(
+    state: dict[str, Any], completed_task: dict[str, Any],
+) -> None:
+    """v3.6.0: when a recovery-chain test-runner reaches all_pass,
+    auto-supersede the original blocked anchor by flipping it to
+    status=done with provenance.
+
+    Triggers iff ALL of:
+      - completed_task.agent == "test-runner"
+      - completed_task.outputs.status == "all_pass"
+      - completed_task.inputs.recovery_anchor is set (added by the
+        recovery-dispatcher when it appends the recovery chain)
+      - the referenced anchor exists in state.tasks
+      - the anchor's current status is "blocked" (idempotent: skip if
+        already done / abandoned)
+
+    Records an `anchor_superseded_by_recovery` audit event on the
+    anchor (chain-hashed via _record) and sets status=done with an
+    `outputs.anchor_superseded_by` annotation citing the test-runner
+    + the recovery applier (best-effort lookup via recovery_anchor
+    siblings; falls back to test-runner only).
+
+    Closes the phantom-stall-after-recovery pattern hit 3x this session
+    (Chain 1c, Chain 4.1, Chain 5 sub-task A). Aaron 2026-06-04
+    "sustained fix" directive.
+    """
+    if completed_task.get("agent") != "test-runner":
+        return
+    outs = completed_task.get("outputs") or {}
+    if outs.get("status") != "all_pass":
+        return
+    inputs = completed_task.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        return
+    anchor_id = inputs.get("recovery_anchor")
+    if not anchor_id or not isinstance(anchor_id, str):
+        return
+    # Look up the anchor in state.tasks
+    anchor = None
+    for t in state.get("tasks", []) or []:
+        if t.get("@id") == anchor_id:
+            anchor = t
+            break
+    if anchor is None:
+        log.warning(
+            "recovery-anchor %s referenced by %s not found in state",
+            anchor_id, completed_task.get("@id"),
+        )
+        return
+    if anchor.get("status") != "blocked":
+        # Idempotent: anchor already resolved (done / abandoned / etc.)
+        return
+    # Best-effort: find the applier sibling in the same recovery chain
+    # (any task with same recovery_anchor that is an applier).
+    test_runner_id = completed_task.get("@id")
+    applier_id = None
+    for t in state.get("tasks", []) or []:
+        if t.get("@id") == test_runner_id:
+            continue
+        if t.get("agent") != "applier":
+            continue
+        t_inputs = t.get("inputs") or {}
+        if isinstance(t_inputs, dict) and t_inputs.get("recovery_anchor") == anchor_id:
+            applier_id = t.get("@id")
+            break
+
+    # Flip anchor + record audit
+    anchor_outs = anchor.get("outputs") or {}
+    if not isinstance(anchor_outs, dict):
+        anchor_outs = {}
+    supersession_payload = {
+        "test_runner_task": test_runner_id,
+        "test_result": "all_pass",
+        "applier_task": applier_id,
+        "reason": (
+            "Recovery chain completed successfully (test-runner "
+            "all_pass); v3.6.0 auto-supersession of the blocked anchor."
+        ),
+    }
+    anchor_outs["anchor_superseded_by"] = supersession_payload
+    anchor["outputs"] = anchor_outs
+    anchor["status"] = "done"
+    anchor_prev_hash = _last_hash(anchor)
+    anchor.setdefault("history", []).append({
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "event": "anchor_superseded_by_recovery",
+        "payload": supersession_payload,
+        "prev_hash": anchor_prev_hash,
+        "chain_hash": hiri_sign(anchor_prev_hash, {
+            "event": "anchor_superseded_by_recovery",
+            "payload": supersession_payload,
+        }),
+    })
+    log.info(
+        "anchor %s superseded by recovery test-runner %s (all_pass)",
+        anchor_id, test_runner_id,
+    )
 
 
 def _stalls_eligible_for_fixer(state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -3890,6 +4001,13 @@ def run_one_cycle() -> bool:
             live["status"] = "done"
             _record(live, prev_hash, "completed", {"agent": agent_name})
             log.info("task %s done", live["@id"])
+            # v3.6.0: recovery-chain auto-supersession. If THIS task is
+            # a test-runner with all_pass AND was appended by a
+            # recovery-dispatcher (inputs.recovery_anchor set), flip the
+            # original blocked anchor to status=done with provenance.
+            # Closes the phantom-stall-after-recovery pattern that
+            # previously required manual Option-A state-surgery.
+            _maybe_supersede_recovery_anchor(state, live)
         else:
             # Include raw_stdout in failure record so post-hoc diagnosis
             # doesn't require manual reproduction. Truncated to keep state
