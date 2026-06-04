@@ -8,8 +8,9 @@
  *
  * Extracts owl:Class, rdfs:Class (â†’ owl:Class), owl:ObjectProperty,
  * owl:DatatypeProperty, owl:AnnotationProperty from Turtle. Preserves
- * rdfs:label, rdfs:comment, rdfs:subClassOf, rdfs:subPropertyOf verbatim
- * (named-node targets only).
+ * rdfs:label (with language tag), skos:definition (with language tag),
+ * skos:scopeNote (with language tag), rdfs:comment, rdfs:subClassOf,
+ * rdfs:subPropertyOf verbatim (named-node targets only).
  * Produces ecm:ImportedOntology record per Â§5.6.
  *
  * Security (Â§12.2): hard-rejects source > 50 MB before parsing;
@@ -47,6 +48,8 @@ const RDFS_LABEL      = "http://www.w3.org/2000/01/rdf-schema#label";
 const RDFS_COMMENT    = "http://www.w3.org/2000/01/rdf-schema#comment";
 const RDFS_SUB_CLASS  = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
 const RDFS_SUB_PROP   = "http://www.w3.org/2000/01/rdf-schema#subPropertyOf";
+const SKOS_DEFINITION = "http://www.w3.org/2004/02/skos/core#definition";
+const SKOS_SCOPE_NOTE = "http://www.w3.org/2004/02/skos/core#scopeNote";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +74,8 @@ export interface ImportedTermObject {
   readonly type: ImportedTermType;
   readonly "rdfs:label"?: { readonly text: string; readonly lang: string };
   readonly "rdfs:comment"?: string;
+  readonly "skos:definition"?: { readonly text: string; readonly lang: string };
+  readonly "skos:scopeNote"?: { readonly text: string; readonly lang: string };
   readonly "rdfs:subClassOf"?: readonly string[];
   readonly "rdfs:subPropertyOf"?: readonly string[];
 }
@@ -179,6 +184,8 @@ export function importOntology(
   const termTypes         = new Map<string, ImportedTermType>();
   const termLabels        = new Map<string, { text: string; lang: string }>();
   const termComments      = new Map<string, string>();
+  const termDefinitions   = new Map<string, { text: string; lang: string }>();
+  const termScopeNotes    = new Map<string, { text: string; lang: string }>();
   const termSubClassOf    = new Map<string, string[]>();
   const termSubPropertyOf = new Map<string, string[]>();
 
@@ -215,6 +222,16 @@ export function importOntology(
       termComments.set(subj, quad.object.value);
     }
 
+    if (pred === SKOS_DEFINITION && quad.object.termType === "Literal" && !termDefinitions.has(subj)) {
+      const lang = quad.object.language || "en";
+      termDefinitions.set(subj, { text: quad.object.value, lang });
+    }
+
+    if (pred === SKOS_SCOPE_NOTE && quad.object.termType === "Literal" && !termScopeNotes.has(subj)) {
+      const lang = quad.object.language || "en";
+      termScopeNotes.set(subj, { text: quad.object.value, lang });
+    }
+
     // rdfs:subClassOf: named-node targets only (blank-node restrictions excluded Â§14.1)
     if (pred === RDFS_SUB_CLASS && quad.object.termType === "NamedNode") {
       const list = termSubClassOf.get(subj) ?? [];
@@ -237,6 +254,8 @@ export function importOntology(
       type: ImportedTermType;
       "rdfs:label"?: { text: string; lang: string };
       "rdfs:comment"?: string;
+      "skos:definition"?: { text: string; lang: string };
+      "skos:scopeNote"?: { text: string; lang: string };
       "rdfs:subClassOf"?: string[];
       "rdfs:subPropertyOf"?: string[];
     } = { id: iri, type };
@@ -246,6 +265,12 @@ export function importOntology(
 
     const comment = termComments.get(iri);
     if (comment !== undefined) obj["rdfs:comment"] = comment;
+
+    const definition = termDefinitions.get(iri);
+    if (definition !== undefined) obj["skos:definition"] = definition;
+
+    const scopeNote = termScopeNotes.get(iri);
+    if (scopeNote !== undefined) obj["skos:scopeNote"] = scopeNote;
 
     const subClassOf = termSubClassOf.get(iri);
     if (subClassOf !== undefined && subClassOf.length > 0) obj["rdfs:subClassOf"] = subClassOf;

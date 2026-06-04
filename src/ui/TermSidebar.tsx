@@ -124,6 +124,7 @@ function TermSection({
   addTestId,
   onTermClick,
   onImportedTermClick,
+  searchTestId,
 }: {
   title: string;
   terms: TermEntry[];
@@ -132,9 +133,33 @@ function TermSection({
   addTestId?: string;
   onTermClick?: (term: TermEntry) => void;
   onImportedTermClick?: (term: TermEntry) => void;
+  searchTestId: string;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredTerms =
+    searchQuery.trim() === ""
+      ? terms
+      : terms.filter((term) => {
+          const q = searchQuery.toLowerCase();
+          const rawLabel = resolveTermLabel(term["rdfs:label"]);
+          return (
+            rawLabel.toLowerCase().includes(q) ||
+            term.id.toLowerCase().includes(q)
+          );
+        });
+
   return (
     <section className="gw-term-section" data-testid={testId}>
+      <input
+        type="search"
+        className="gw-term-section-search"
+        placeholder={`Search ${title.toLowerCase()}...`}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        aria-label={`Search ${title}`}
+        data-testid={searchTestId}
+      />
       <div className="gw-term-section-header">
         <h3 className="gw-term-section-title">{title}</h3>
         {onAddTerm !== undefined && (
@@ -149,11 +174,13 @@ function TermSection({
           </button>
         )}
       </div>
-      {terms.length === 0 ? (
+      {filteredTerms.length === 0 && searchQuery.trim() !== "" ? (
+        <p className="gw-term-empty">No matches for "{searchQuery}"</p>
+      ) : filteredTerms.length === 0 ? (
         <p className="gw-term-empty">No {title.toLowerCase()} yet</p>
       ) : (
-        <ul className="gw-term-list">
-          {terms.map((term) => {
+        <ul className="gw-term-list gw-term-section-list">
+          {filteredTerms.map((term) => {
             const rawTermLabel = resolveTermLabel(term["rdfs:label"]);
             const displayLabel = rawTermLabel.length > 0 ? rawTermLabel : iriTail(term.id);
             // Only project-created terms are clickable; imported/starter are not.
@@ -296,6 +323,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         addTestId="gw-btn-add-class"
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
+        searchTestId="gw-term-section-search-classes"
       />
       <TermSection
         title="Object Properties"
@@ -307,6 +335,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         addTestId="gw-btn-add-object-property"
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
+        searchTestId="gw-term-section-search-object-properties"
       />
       <TermSection
         title="Datatype Properties"
@@ -320,6 +349,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         addTestId="gw-btn-add-datatype-property"
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
+        searchTestId="gw-term-section-search-datatype-properties"
       />
       <TermSection
         title="Annotation Properties"
@@ -333,6 +363,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         addTestId="gw-btn-add-annotation-property"
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
+        searchTestId="gw-term-section-search-annotation-properties"
       />
       {addDialogType !== null && project !== null && (
         <AddTermDialog

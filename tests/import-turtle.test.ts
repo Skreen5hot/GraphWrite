@@ -11,6 +11,8 @@
  *   AC5: 51 MB input returns error result without parsing. Unit test.
  *   AC6: owl:imports NOT followed; only supplied-file terms extracted. Unit test.
  *   AC7: owl:AnnotationProperty extracted as a term (AC1-bonus). Unit test.
+ *   AC8: skos:definition preserved as { text, lang } on extracted term. Unit test.
+ *   AC9: skos:scopeNote preserved as { text, lang } on extracted term. Unit test.
  *
  * Pattern: hand-rolled per tests/run-tests.ts; no framework; node:assert;
  * process.exit(1) on failure. Follows tests/manifest-entries.test.ts.
@@ -82,6 +84,19 @@ const ANNOTATION_PROP_TTL = [
   "",
   "<http://example.org/note> a owl:AnnotationProperty ;",
   '  rdfs:label "Note"@en .',
+  "",
+].join("\n");
+
+/** Ontology with skos:definition and skos:scopeNote on one owl:Class for AC8/AC9. */
+const SKOS_TTL = [
+  "@prefix owl:  <http://www.w3.org/2002/07/owl#> .",
+  "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
+  "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .",
+  "",
+  "<https://example.org/Concept> a owl:Class ;",
+  '  rdfs:label "Concept"@en ;',
+  '  skos:definition "A general notion or abstract idea."@en ;',
+  '  skos:scopeNote "Use for abstract concepts only."@en .',
   "",
 ].join("\n");
 
@@ -243,6 +258,52 @@ try {
   pass("owl:AnnotationProperty extracted as a term (AC7)");
 } catch (e) {
   fail("owl:AnnotationProperty must be extracted as a term (AC7)", e);
+}
+
+// ---------------------------------------------------------------------------
+// AC8: skos:definition preserved as { text, lang }
+// ---------------------------------------------------------------------------
+console.log("\nAC8: skos:definition preserved as { text, lang }");
+
+try {
+  const result = importOntology(SKOS_TTL, "skos.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on SKOS Turtle");
+  if (!result.ok) throw new Error("result.ok is false");
+  const concept = result.terms.find((t) => t.id === "https://example.org/Concept");
+  ok(concept !== undefined, "Concept term must be present");
+  ok(
+    concept["skos:definition"] !== undefined,
+    "skos:definition must be preserved on extracted term (AC8)",
+  );
+  const defn = concept["skos:definition"] as { text: string; lang: string };
+  strictEqual(defn.text, "A general notion or abstract idea.", "skos:definition text must match");
+  strictEqual(defn.lang, "en", "skos:definition lang must be 'en'");
+  pass("skos:definition preserved as { text, lang } (AC8)");
+} catch (e) {
+  fail("skos:definition must be preserved as { text, lang } (AC8)", e);
+}
+
+// ---------------------------------------------------------------------------
+// AC9: skos:scopeNote preserved as { text, lang }
+// ---------------------------------------------------------------------------
+console.log("\nAC9: skos:scopeNote preserved as { text, lang }");
+
+try {
+  const result = importOntology(SKOS_TTL, "skos.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on SKOS Turtle");
+  if (!result.ok) throw new Error("result.ok is false");
+  const concept = result.terms.find((t) => t.id === "https://example.org/Concept");
+  ok(concept !== undefined, "Concept term must be present");
+  ok(
+    concept["skos:scopeNote"] !== undefined,
+    "skos:scopeNote must be preserved on extracted term (AC9)",
+  );
+  const scopeNote = concept["skos:scopeNote"] as { text: string; lang: string };
+  strictEqual(scopeNote.text, "Use for abstract concepts only.", "skos:scopeNote text must match");
+  strictEqual(scopeNote.lang, "en", "skos:scopeNote lang must be 'en'");
+  pass("skos:scopeNote preserved as { text, lang } (AC9)");
+} catch (e) {
+  fail("skos:scopeNote must be preserved as { text, lang } (AC9)", e);
 }
 
 // ---------------------------------------------------------------------------

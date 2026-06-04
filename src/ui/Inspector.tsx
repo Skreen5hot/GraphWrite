@@ -333,6 +333,18 @@ export function Inspector({
       termEntry !== null && typeof termEntry["rdfs:comment"] === "string"
         ? (termEntry["rdfs:comment"] as string)
         : null;
+    const termDefinition =
+      termEntry !== null &&
+      typeof termEntry["skos:definition"] === "object" &&
+      termEntry["skos:definition"] !== null
+        ? (termEntry["skos:definition"] as { text: string; lang: string })
+        : null;
+    const termScopeNote =
+      termEntry !== null &&
+      typeof termEntry["skos:scopeNote"] === "object" &&
+      termEntry["skos:scopeNote"] !== null
+        ? (termEntry["skos:scopeNote"] as { text: string; lang: string })
+        : null;
     const projectCreatedTerms = allTerms.filter(
       (t): t is Record<string, unknown> =>
         typeof t === "object" &&
@@ -385,18 +397,61 @@ export function Inspector({
               </p>
             </>
           )}
+          {termDefinition !== null && (
+            <div data-testid="gw-inspector-term-definition" style={{ marginBottom: "0.75rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+                Definition
+              </p>
+              <p style={{ fontSize: "0.8rem", marginBottom: "0.125rem" }}>
+                {termDefinition.text}
+              </p>
+              {termDefinition.lang.length > 0 && (
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#64748b",
+                    background: "#f1f5f9",
+                    borderRadius: "3px",
+                    padding: "0 0.25rem",
+                  }}
+                >
+                  @{termDefinition.lang}
+                </span>
+              )}
+            </div>
+          )}
           {termComment !== null && (
-            <>
+            <div data-testid="gw-inspector-term-comment" style={{ marginBottom: "0.75rem" }}>
               <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
                 Comment
               </p>
-              <p
-                style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}
-                data-testid="gw-inspector-term-comment"
-              >
+              <p style={{ fontSize: "0.8rem" }}>
                 {termComment}
               </p>
-            </>
+            </div>
+          )}
+          {termScopeNote !== null && (
+            <div data-testid="gw-inspector-term-scope-note" style={{ marginBottom: "0.75rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.125rem" }}>
+                Scope note
+              </p>
+              <p style={{ fontSize: "0.8rem", marginBottom: "0.125rem" }}>
+                {termScopeNote.text}
+              </p>
+              {termScopeNote.lang.length > 0 && (
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#64748b",
+                    background: "#f1f5f9",
+                    borderRadius: "3px",
+                    padding: "0 0.25rem",
+                  }}
+                >
+                  @{termScopeNote.lang}
+                </span>
+              )}
+            </div>
           )}
           {isImportedTerm && (
             <button
