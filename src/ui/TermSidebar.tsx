@@ -81,6 +81,36 @@ function partitionTerms(project: Record<string, unknown> | null): {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Virtualization constants + degraded-mode detection (IMPL section 3.3 / SPEC section 14.2)
+// ---------------------------------------------------------------------------
+
+/** Estimated height in px per term row, including the flex gap between items. */
+const VIRT_ITEM_HEIGHT = 28;
+
+/** Number of rows to render beyond the visible window (above and below). */
+const VIRT_OVERSCAN = 5;
+
+/**
+ * Minimum filtered-term count to activate windowing in a section.
+ * Matches IMPL section 3.3 AC5: DOM node count <= 200 regardless of total term count.
+ */
+const VIRT_THRESHOLD = 200;
+
+/**
+ * Returns true when the project document contains at least one
+ * ImportedOntologyRecord with ecm:importStatus "ecm:degraded" (SPEC section 14.2).
+ */
+function hasDegradedOntology(project: Record<string, unknown> | null): boolean {
+  if (project === null) return false;
+  const ontologies = project["ecm:ontologies"];
+  if (!Array.isArray(ontologies)) return false;
+  return (ontologies as unknown[]).some((o) => {
+    if (typeof o !== "object" || o === null) return false;
+    return (o as Record<string, unknown>)["ecm:importStatus"] === "ecm:degraded";
+  });
+}
+
 /**
  * Source-indicator badge.
  * CSS class encodes the source kind; aria-label carries the raw ecm: value
@@ -125,6 +155,7 @@ function TermSection({
   onTermClick,
   onImportedTermClick,
   searchTestId,
+  isDegraded = false,
 }: {
   title: string;
   terms: TermEntry[];
@@ -134,8 +165,12 @@ function TermSection({
   onTermClick?: (term: TermEntry) => void;
   onImportedTermClick?: (term: TermEntry) => void;
   searchTestId: string;
+  /** When true and filteredTerms.length > VIRT_THRESHOLD, activates windowing. */
+  isDegraded?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  /** Tracks scroll offset of the virtualized container; 0 when inactive. */
+  const [scrollTop, setScrollTop] = useState(0);
 
   const filteredTerms =
     searchQuery.trim() === ""
@@ -148,6 +183,70 @@ function TermSection({
             term.id.toLowerCase().includes(q)
           );
         });
+
+  // Virtualization window parameters -- computed every render; only applied when useVirt.
+  const useVirt = isDegraded && filteredTerms.length > VIRT_THRESHOLD;
+  const virtTotal = filteredTerms.length;
+  const virtContainerH = 192; // 12rem at default 16 px/rem
+  const virtStartRaw = Math.floor(scrollTop / VIRT_ITEM_HEIGHT) - VIRT_OVERSCAN;
+  const virtStartIdx = Math.min(
+    Math.max(0, virtStartRaw),
+    Math.max(0, virtTotal - 1),
+  );
+  const virtEndIdx = Math.min(
+    virtTotal,
+    virtStartIdx + Math.ceil(virtContainerH / VIRT_ITEM_HEIGHT) + VIRT_OVERSCAN * 2,
+  );
+  const virtTopPx = virtStartIdx * VIRT_ITEM_HEIGHT;
+  const virtBottomPx = Math.max(0, (virtTotal - virtEndIdx) * VIRT_ITEM_HEIGHT);
+
+  /** Render a single term <li>; shared by the full-list and virtualized paths. */
+  function renderTermItem(term: TermEntry) {
+    const rawTermLabel = resolveTermLabel(term["rdfs:label"]);
+    const displayLabel = rawTermLabel.length > 0 ? rawTermLabel : iriTail(term.id);
+    // Only project-created terms are clickable; imported/starter are not.
+    const isClickable =
+      onTermClick !== undefined &&
+      term["ecm:source"] === "ecm:project-created";
+    // Imported-ontology terms carry an affirmative read-only signal (FR-U010; Chain C).
+    const isImported = term["ecm:source"] === "ecm:imported-ontology";
+    // Imported terms may fire a separate read-only callback (FR-U010; sub-task B).
+    const hasImportedClickHandler =
+      isImported && onImportedTermClick !== undefined;
+    return (
+      <li
+        key={term.id}
+        className={
+          isClickable
+            ? "gw-term-item gw-term-item--clickable"
+            : "gw-term-item"
+        }
+        data-testid="gw-term-item"
+        role={isClickable ? "button" : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        aria-disabled={isImported ? "true" : undefined}
+        onClick={
+          isClickable
+            ? () => { onTermClick(term); }
+            : hasImportedClickHandler
+            ? () => { onImportedTermClick?.(term); }
+            : undefined
+        }
+        onKeyDown={
+          isClickable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onTermClick(term);
+                }
+              }
+            : undefined
+        }
+      >
+        <span className="gw-term-label">{displayLabel}</span>
+        <SourceBadge source={term["ecm:source"]} />
+      </li>
+    );
+  }
 
   return (
     <section className="gw-term-section" data-testid={testId}>
@@ -178,54 +277,30 @@ function TermSection({
         <p className="gw-term-empty">No matches for "{searchQuery}"</p>
       ) : filteredTerms.length === 0 ? (
         <p className="gw-term-empty">No {title.toLowerCase()} yet</p>
+      ) : useVirt ? (
+        /*
+         * Virtualized path (degraded ontology + section term count > VIRT_THRESHOLD).
+         * Spacer divs above and below the visible <ul> keep the scrollbar accurate
+         * while capping rendered <li> nodes to ~(viewport/VIRT_ITEM_HEIGHT + 2*OVERSCAN).
+         * data-testid="gw-term-section-virtualized" is the Playwright assertion handle
+         * per IMPL section 3.3 AC5.
+         */
+        <div
+          className="gw-term-section-list"
+          data-testid="gw-term-section-virtualized"
+          style={{ height: "12rem", overflowY: "auto" }}
+          onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        >
+          <div style={{ height: `${virtTopPx}px` }} aria-hidden="true" />
+          <ul className="gw-term-list">
+            {filteredTerms.slice(virtStartIdx, virtEndIdx).map(renderTermItem)}
+          </ul>
+          <div style={{ height: `${virtBottomPx}px` }} aria-hidden="true" />
+        </div>
       ) : (
+        /* Full-list path: no degraded ontology or term count <= VIRT_THRESHOLD. */
         <ul className="gw-term-list gw-term-section-list">
-          {filteredTerms.map((term) => {
-            const rawTermLabel = resolveTermLabel(term["rdfs:label"]);
-            const displayLabel = rawTermLabel.length > 0 ? rawTermLabel : iriTail(term.id);
-            // Only project-created terms are clickable; imported/starter are not.
-            const isClickable =
-              onTermClick !== undefined &&
-              term["ecm:source"] === "ecm:project-created";
-            // Imported-ontology terms carry an affirmative read-only signal (FR-U010; Chain C).
-            const isImported = term["ecm:source"] === "ecm:imported-ontology";
-            // Imported terms may fire a separate read-only callback (FR-U010; sub-task B).
-            const hasImportedClickHandler =
-              isImported && onImportedTermClick !== undefined;
-            return (
-              <li
-                key={term.id}
-                className={
-                  isClickable
-                    ? "gw-term-item gw-term-item--clickable"
-                    : "gw-term-item"
-                }
-                data-testid="gw-term-item"
-                role={isClickable ? "button" : undefined}
-                tabIndex={isClickable ? 0 : undefined}
-                aria-disabled={isImported ? "true" : undefined}
-                onClick={
-                  isClickable
-                    ? () => { onTermClick(term); }
-                    : hasImportedClickHandler
-                    ? () => { onImportedTermClick?.(term); }
-                    : undefined
-                }
-                onKeyDown={
-                  isClickable
-                    ? (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          onTermClick(term);
-                        }
-                      }
-                    : undefined
-                }
-              >
-                <span className="gw-term-label">{displayLabel}</span>
-                <SourceBadge source={term["ecm:source"]} />
-              </li>
-            );
-          })}
+          {filteredTerms.map(renderTermItem)}
         </ul>
       )}
     </section>
@@ -308,6 +383,13 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
   // callback is wired (read-only contexts pass no onTermsChange).
   const canEdit = project !== null && onTermsChange !== undefined;
 
+  /**
+   * Activates per-section windowing when the project has at least one ontology
+   * with ecm:importStatus "ecm:degraded" (SPEC section 14.2). When false, every
+   * section renders its full term list with no behavior change.
+   */
+  const isDegraded = hasDegradedOntology(project);
+
   /** Open EditTermDialog for the clicked project-created term. */
   function handleTermClick(term: TermEntry) {
     setEditTerm(term as unknown as Record<string, unknown>);
@@ -324,6 +406,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-classes"
+        isDegraded={isDegraded}
       />
       <TermSection
         title="Object Properties"
@@ -336,6 +419,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-object-properties"
+        isDegraded={isDegraded}
       />
       <TermSection
         title="Datatype Properties"
@@ -350,6 +434,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-datatype-properties"
+        isDegraded={isDegraded}
       />
       <TermSection
         title="Annotation Properties"
@@ -364,6 +449,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onTermClick={canEdit ? handleTermClick : undefined}
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-annotation-properties"
+        isDegraded={isDegraded}
       />
       {addDialogType !== null && project !== null && (
         <AddTermDialog

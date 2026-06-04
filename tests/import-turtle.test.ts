@@ -307,6 +307,66 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+// LARGE_IMPORT threshold tests (SPEC section 14.2; IMPLEMENTATION_PLAN section 3.3)
+// ---------------------------------------------------------------------------
+
+/** Generate a Turtle ontology with exactly `count` owl:Class terms (one per IRI). */
+function makeLargeTtl(count: number): string {
+  const lines: string[] = [
+    "@prefix owl: <http://www.w3.org/2002/07/owl#> .",
+    "",
+  ];
+  for (let i = 0; i < count; i++) {
+    lines.push(`<https://example.org/Class${i}> a owl:Class .`);
+  }
+  return lines.join("\n");
+}
+
+console.log("\nLARGE-1: exactly 10000 terms -- no LARGE_IMPORT warning (boundary)");
+
+try {
+  const ttl = makeLargeTtl(10_000);
+  const result = importOntology(ttl, "large-exact.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on 10000-term ontology");
+  if (!result.ok) throw new Error("result.ok is false");
+  strictEqual(result.thresholdExceeded, false, "10000 terms must NOT exceed threshold (boundary case)");
+  strictEqual(result.termCount, 10_000, "termCount must equal 10000");
+  ok(result.warning === undefined, "warning must be absent at exactly 10000 terms");
+  pass("exactly 10000 terms: thresholdExceeded=false, no warning (LARGE-1)");
+} catch (e) {
+  fail("exactly 10000 terms must not trigger LARGE_IMPORT warning (LARGE-1)", e);
+}
+
+console.log("\nLARGE-2: 10001 terms -- LARGE_IMPORT warning fired (just-over threshold)");
+
+try {
+  const ttl = makeLargeTtl(10_001);
+  const result = importOntology(ttl, "large-over.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on 10001-term ontology");
+  if (!result.ok) throw new Error("result.ok is false");
+  strictEqual(result.thresholdExceeded, true, "10001 terms must exceed threshold");
+  strictEqual(result.termCount, 10_001, "termCount must equal 10001");
+  strictEqual(result.warning, "LARGE_IMPORT", "warning must be 'LARGE_IMPORT' when threshold exceeded");
+  pass("10001 terms: thresholdExceeded=true, warning='LARGE_IMPORT' (LARGE-2)");
+} catch (e) {
+  fail("10001 terms must trigger LARGE_IMPORT warning (LARGE-2)", e);
+}
+
+console.log("\nLARGE-3: small ontology (2 terms) -- no LARGE_IMPORT warning");
+
+try {
+  const result = importOntology(SMALL_TTL, "small.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on small ontology");
+  if (!result.ok) throw new Error("result.ok is false");
+  strictEqual(result.thresholdExceeded, false, "small ontology must not exceed threshold");
+  ok(result.termCount < 10_000, "termCount must be below threshold for small ontology");
+  ok(result.warning === undefined, "warning must be absent for small ontology");
+  pass("small ontology: thresholdExceeded=false, no warning (LARGE-3)");
+} catch (e) {
+  fail("small ontology must not trigger LARGE_IMPORT warning (LARGE-3)", e);
+}
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log(`\n  ${passed} passed, ${failed} failed`);

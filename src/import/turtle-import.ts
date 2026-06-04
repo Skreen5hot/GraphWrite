@@ -38,6 +38,9 @@ import { generateIri } from "../iri/index.js";
 /** 50 MB hard limit per SPEC Â§12.2. */
 const MAX_SOURCE_BYTES = 50 * 1024 * 1024;
 
+/** Term count threshold for LARGE_IMPORT warning per SPEC section 14.2. */
+const LARGE_IMPORT_THRESHOLD = 10_000;
+
 const RDF_TYPE        = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const OWL_CLASS       = "http://www.w3.org/2002/07/owl#Class";
 const RDFS_CLASS      = "http://www.w3.org/2000/01/rdf-schema#Class";
@@ -91,7 +94,7 @@ export interface ImportedOntologyRecord {
   readonly "ecm:contentHash": string;
   readonly "ecm:content": string;
   readonly "ecm:createdAt": string;
-  readonly "ecm:importStatus": "ecm:parsed";
+  readonly "ecm:importStatus": "ecm:parsed" | "ecm:degraded";
 }
 
 /** Discriminated-union result of importOntology. */
@@ -100,6 +103,9 @@ export type ImportResult =
       readonly ok: true;
       readonly ontology: ImportedOntologyRecord;
       readonly terms: readonly ImportedTermObject[];
+      readonly warning?: "LARGE_IMPORT";
+      readonly termCount: number;
+      readonly thresholdExceeded: boolean;
     }
   | {
       readonly ok: false;
@@ -299,7 +305,10 @@ export function importOntology(
         "ecm:createdAt": createdAt,
         "ecm:importStatus": "ecm:parsed",
       };
-      return { ok: true, ontology, terms };
+      if (terms.length > LARGE_IMPORT_THRESHOLD) {
+        return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: true, warning: "LARGE_IMPORT" };
+      }
+      return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: false };
     })();
   }
 
@@ -318,5 +327,8 @@ export function importOntology(
     "ecm:importStatus": "ecm:parsed",
   };
 
-  return { ok: true, ontology, terms };
+  if (terms.length > LARGE_IMPORT_THRESHOLD) {
+    return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: true, warning: "LARGE_IMPORT" };
+  }
+  return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: false };
 }

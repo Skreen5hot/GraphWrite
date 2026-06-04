@@ -45,7 +45,7 @@ async function sha256HexAsync(bytes: Uint8Array): Promise<string> {
 // Types
 // ---------------------------------------------------------------------------
 
-type DialogPhase = "idle" | "reading" | "preview" | "error";
+type DialogPhase = "idle" | "reading" | "preview" | "large_import_warning" | "error";
 
 interface PendingImport {
   ontology: ImportedOntologyRecord;
@@ -150,7 +150,11 @@ export function ImportOntologyDialog({
         terms: result.terms,
         fileName: file.name,
       });
-      setPhase("preview");
+      if (result.warning === "LARGE_IMPORT") {
+        setPhase("large_import_warning");
+      } else {
+        setPhase("preview");
+      }
     };
 
     reader.onerror = () => {
@@ -180,6 +184,35 @@ export function ImportOntologyDialog({
     const updatedProject: Record<string, unknown> = {
       ...project,
       "ecm:ontologies": [...existingOntologies, pending.ontology],
+      "ecm:terms": [...existingTerms, ...augmented],
+    };
+
+    onConfirm(updatedProject);
+  }
+
+  function handleContinueDegraded() {
+    if (pending === null) return;
+
+    // Build degraded ontology record (SPEC section 14.2; IMPLEMENTATION_PLAN section 3.3).
+    // Spread-override ecm:importStatus; all other fields are preserved verbatim.
+    const degradedOntology: ImportedOntologyRecord = {
+      ...pending.ontology,
+      "ecm:importStatus": "ecm:degraded",
+    };
+    const augmented = pending.terms.map((t) => ({
+      ...t,
+      "ecm:source": "ecm:imported-ontology" as const,
+      "ecm:ontologyId": degradedOntology.id,
+    }));
+    const existingOntologies = Array.isArray(project["ecm:ontologies"])
+      ? (project["ecm:ontologies"] as unknown[])
+      : [];
+    const existingTerms = Array.isArray(project["ecm:terms"])
+      ? (project["ecm:terms"] as unknown[])
+      : [];
+    const updatedProject: Record<string, unknown> = {
+      ...project,
+      "ecm:ontologies": [...existingOntologies, degradedOntology],
       "ecm:terms": [...existingTerms, ...augmented],
     };
 
@@ -249,6 +282,35 @@ export function ImportOntologyDialog({
         </>
       )}
 
+      {/* Large import warning panel (SPEC section 14.2; IMPLEMENTATION_PLAN section 3.3) */}
+      {phase === "large_import_warning" && pending !== null && (
+        <div
+          data-testid="gw-import-large-warning"
+          style={{
+            marginBottom: "0.75rem",
+            padding: "0.75rem",
+            background: "#fffbeb",
+            border: "1px solid #f59e0b",
+            borderRadius: "4px",
+            fontSize: "0.85rem",
+          }}
+        >
+          <p style={{ marginBottom: "0.4rem", fontWeight: 600 }}>
+            Large import warning
+          </p>
+          <p style={{ marginBottom: "0.4rem" }}>
+            <span data-testid="gw-import-large-term-count">{termCount}</span>
+            {" terms found. "}
+            The UI will render in degraded (virtualized) mode for performance.
+            Search-only navigation will be available.
+          </p>
+          <p style={{ margin: 0 }}>
+            Select <em>Continue in degraded mode</em> to import, or{" "}
+            <em>Cancel</em> to leave the project unchanged.
+          </p>
+        </div>
+      )}
+
       {/* Error: message and retry affordance */}
       {phase === "error" && (
         <>
@@ -275,26 +337,47 @@ export function ImportOntologyDialog({
         </>
       )}
 
-      {/* Cancel / Import button row (RemapDialog layout pattern) */}
-      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          className="gw-btn gw-btn--secondary"
-          onClick={onClose}
-          data-testid="gw-btn-import-cancel"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="gw-btn"
-          onClick={handleConfirm}
-          disabled={phase !== "preview" || termCount === 0}
-          data-testid="gw-btn-import-confirm"
-        >
-          Import
-        </button>
-      </div>
+      {/* Cancel / Import button row -- conditional on phase (RemapDialog layout pattern) */}
+      {phase === "large_import_warning" ? (
+        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            className="gw-btn gw-btn--secondary"
+            onClick={onClose}
+            data-testid="gw-btn-import-cancel-large"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="gw-btn"
+            onClick={handleContinueDegraded}
+            data-testid="gw-btn-import-continue-degraded"
+          >
+            Continue in degraded mode
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            className="gw-btn gw-btn--secondary"
+            onClick={onClose}
+            data-testid="gw-btn-import-cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="gw-btn"
+            onClick={handleConfirm}
+            disabled={phase !== "preview" || termCount === 0}
+            data-testid="gw-btn-import-confirm"
+          >
+            Import
+          </button>
+        </div>
+      )}
     </Dialog>
   );
 }
