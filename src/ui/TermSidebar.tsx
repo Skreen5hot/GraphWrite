@@ -141,6 +141,9 @@ function SourceBadge({ source }: { source: string | undefined }) {
   );
 }
 
+/** Scope-filter values for the global source filter (IMPL §3.4 sub-task 2). */
+type ScopeFilter = "all" | "project-created" | "imported";
+
 /**
  * One type-section: header (with optional Add button) + item list or empty-state.
  * onAddTerm is only passed when a project is open and onTermsChange is wired.
@@ -156,6 +159,7 @@ function TermSection({
   onImportedTermClick,
   searchTestId,
   isDegraded = false,
+  scopeFilter = "all",
 }: {
   title: string;
   terms: TermEntry[];
@@ -167,15 +171,25 @@ function TermSection({
   searchTestId: string;
   /** When true and filteredTerms.length > VIRT_THRESHOLD, activates windowing. */
   isDegraded?: boolean;
+  /** Source-scope filter passed from TermSidebar root (default: "all"). */
+  scopeFilter?: ScopeFilter;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   /** Tracks scroll offset of the virtualized container; 0 when inactive. */
   const [scrollTop, setScrollTop] = useState(0);
 
+  // Scope filter: apply before search to narrow the candidate set (IMPL §3.4 sub-task 2).
+  const scopeFilteredTerms =
+    scopeFilter === "project-created"
+      ? terms.filter((t) => t["ecm:source"] !== "ecm:imported-ontology")
+      : scopeFilter === "imported"
+      ? terms.filter((t) => t["ecm:source"] === "ecm:imported-ontology")
+      : terms;
+
   const filteredTerms =
     searchQuery.trim() === ""
-      ? terms
-      : terms.filter((term) => {
+      ? scopeFilteredTerms
+      : scopeFilteredTerms.filter((term) => {
           const q = searchQuery.toLowerCase();
           const rawLabel = resolveTermLabel(term["rdfs:label"]);
           return (
@@ -273,7 +287,9 @@ function TermSection({
           </button>
         )}
       </div>
-      {filteredTerms.length === 0 && searchQuery.trim() !== "" ? (
+      {isDegraded && searchQuery.trim() === "" ? (
+        <p className="gw-term-empty gw-term-degraded-hint">Search to find terms</p>
+      ) : filteredTerms.length === 0 && searchQuery.trim() !== "" ? (
         <p className="gw-term-empty">No matches for "{searchQuery}"</p>
       ) : filteredTerms.length === 0 ? (
         <p className="gw-term-empty">No {title.toLowerCase()} yet</p>
@@ -316,6 +332,8 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
     useState<PropertyCreationType | null>(null);
   /** Term being edited; null when the Edit dialog is closed (FR-U009). */
   const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);
+  /** Global source-scope filter applied to all four sections (IMPL §3.4 sub-task 2). */
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
 
   const { classes, objectProperties, datatypeProperties, annotationProperties } =
     partitionTerms(project);
@@ -397,6 +415,19 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
 
   return (
     <>
+      <div className="gw-scope-filter">
+        <select
+          value={scopeFilter}
+          onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
+          className="gw-scope-filter-select"
+          aria-label="Filter by source"
+          data-testid="gw-term-scope-filter-global"
+        >
+          <option value="all">All</option>
+          <option value="project-created">Project-created only</option>
+          <option value="imported">Imported only</option>
+        </select>
+      </div>
       <TermSection
         title="Classes"
         terms={classes}
@@ -407,6 +438,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-classes"
         isDegraded={isDegraded}
+        scopeFilter={scopeFilter}
       />
       <TermSection
         title="Object Properties"
@@ -420,6 +452,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-object-properties"
         isDegraded={isDegraded}
+        scopeFilter={scopeFilter}
       />
       <TermSection
         title="Datatype Properties"
@@ -435,6 +468,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-datatype-properties"
         isDegraded={isDegraded}
+        scopeFilter={scopeFilter}
       />
       <TermSection
         title="Annotation Properties"
@@ -450,6 +484,7 @@ export function TermSidebar({ project, onTermsChange, onImportedTermClick }: Ter
         onImportedTermClick={onImportedTermClick}
         searchTestId="gw-term-section-search-annotation-properties"
         isDegraded={isDegraded}
+        scopeFilter={scopeFilter}
       />
       {addDialogType !== null && project !== null && (
         <AddTermDialog

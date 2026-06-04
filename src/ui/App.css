@@ -199,6 +199,34 @@ body,
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+/* Scope filter (IMPL §3.4 sub-task 2) */
+.gw-scope-filter {
+  margin-bottom: 0.5rem;
+}
+
+.gw-scope-filter-select {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.375rem;
+  background: #ffffff;
+  color: #1e293b;
+  outline: none;
+  cursor: pointer;
+}
+
+.gw-scope-filter-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Degraded-mode search gate (IMPL §3.4 sub-task 3) */
+.gw-term-degraded-hint {
+  font-style: normal;
+  color: #475569;
+}
+
 .gw-term-item {
   display: flex;
   align-items: center;

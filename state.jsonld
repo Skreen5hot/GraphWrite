@@ -100295,6 +100295,1495 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-06-04T16:53:02Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "60044f7",
+            "notes": "Phase 3 Chain 7 (SPEC \u00a75.6 amendment for ecm:degraded) closes Aaron 2026-06-04 PM review Q3 REVISE verdict. Canonical-doc amendment chain composed under operator-decision-driven adversity: v1 + v2 both defective verification-ritual inputs (source_task instead of artifact_text); Aaron Option A \u2192 v3 chain corrected inputs but Cat 9 deferred to LLM; v4 chain added verification-ritual-llm; ruling: ratified; 1 change applied; 0 failed. ASCII-only amendment text. Section 5.6 enumeration now {ecm:parsed, ecm:degraded} with cross-references to \u00a714.2 LARGE_IMPORT_THRESHOLD and IMPLEMENTATION_PLAN \u00a73.3 AC4. No code change; 165/165 tests stay green."
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "0845b9b7741ad4afc7905cc7b032b6d8e33624c4ed6689526c440c0a102909ba"
+        },
+        {
+          "ts": "2026-06-04T17:37:16Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-911-apply-p3-c7-v4-1",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "Citation hygiene discipline: distinguish SPEC line numbers (grep output) from SPEC section numbers (normative reference) in operator messaging. Surfaced 2026-06-04 during Phase 3 Chain 7 demo Q3 deliberation: my response to Aaron's request for \u00a73.4 user-demand provenance cited 'SPEC \u00a71669' which was actually grep-output LINE 1669 of project/SPEC.md. The actual normative section is \u00a726 'UI Layout' -- AND that section is explicitly non-normative ('The reference UI is non-normative guidance.'). Aaron's pull on the citation correctly weakened my REVISE argument because the \u00a726 reference cannot bear normative weight. Substrate-discipline pattern: when citing SPEC content, use the H2 section number (\u00a7NN format) NOT the file line number; when only grep line is available, fetch the surrounding section header and report both with the section header as the citable form. v3.6.x candidate companion to ft-891-verify-p3-c7-1 (verification-ritual canonical-doc input mapping): consider adding to verification-ritual Cat 9 LLM judge prompt 'flag any citation that uses a line number rather than a section number as a citation-hygiene veto.' Alternative: substrate primitive 'orchestrator-Agent self-check for citation form before assertions in operator messaging.' Aaron caught it in real-time which is the substrate working as intended (PO scrutiny is the cited verification path).",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-06-04T17:37:16Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "0845b9b7741ad4afc7905cc7b032b6d8e33624c4ed6689526c440c0a102909ba",
+          "chain_hash": "94d3c2206c34fb1f4bae47e96135b0e8c4d353e75bd575eb67c9fb928fe773a1"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:912-recon-demo-doc-phase-3",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=60044f7)",
+        "purpose": "Reconnaissance for demo-doc auto-generation on phase phase-3. Walk state.jsonld for tasks in this phase's chain leading up to anchor urn:fnsr:task:911-apply-p3-c7-v4 (build_ref=60044f7). Identify: (1) what was substantively delivered (API surface, behavior, files); (2) acceptance criteria that passed (test results); (3) what is NOT in scope per IMPLEMENTATION_PLAN deferrals; (4) SPEC sections / ADR numbers cited in the chain's outputs. Output findings shaped for the downstream demo-doc-author agent.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md"
+        ],
+        "spec_refs": [],
+        "anchor_task": "urn:fnsr:task:911-apply-p3-c7-v4"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "Chain 7 (anchor task urn:fnsr:task:911-apply-p3-c7-v4) delivered a single edit to project/SPEC.md \u00c2\u00a75.6: a closed-enumeration prose block after the existing ecm:content sentence, naming two permitted values of ecm:importStatus with semantic definitions.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100277-100288",
+                "excerpt": "\"applied\": [{\"id\": \"C1\", \"path\": \"project\\\\SPEC.md\", \"mode\": \"edit\", \"delta_bytes\": 497}], \"failed\": [], \"summary\": \"1 changes applied\""
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "426-449",
+                "excerpt": "### 5.6 Imported Ontology Object\n\n```json\n{ ... \"ecm:importStatus\": \"ecm:parsed\" }\n```\n\n`ecm:content` may be omitted...\n\n`ecm:importStatus` is a closed enumeration with two permitted values:\n\n- `\"ecm:parsed\"`: normal import; the extracted term count is at or below `LARGE_IMPORT_THRESHOLD` (10,000 terms; see section 14.2).\n- `\"ecm:degraded\"`: the user selected \"Continue in degraded mode\" at the import warning dialog (IMPLEMENTATION_PLAN section 3.3 AC4); the ontology record is stored with partial extraction and search-only navigation applies. Defined in `src/import/turtle-import.ts` (`ImportedOntologyRecord`)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "Chain 7 is a documentation-alignment amendment only: no code files were changed, no new tests were added, and 165/165 npm tests still pass at build_ref=60044f7.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100301-100313",
+                "excerpt": "\"phase_state_changed\": {\"phase_id\": \"phase-3\", \"to_state\": \"demo-released\", \"build_ref\": \"60044f7\", \"notes\": \"...Section 5.6 enumeration now {ecm:parsed, ecm:degraded}... No code change; 165/165 tests stay green.\"}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "Chain 7 was triggered by Aaron's Q3 REVISE verdict on the Chain 6 demo-doc sign-off; Chain 6 had shipped the ecm:importStatus TypeScript union but left SPEC.md \u00c2\u00a75.6 showing only 'ecm:parsed' as the normative example value.",
+            "evidence": [
+              {
+                "file": "demo/PHASE-3-chain-6-large-import-degraded.md",
+                "lines": "85-86",
+                "excerpt": "**SPEC section 5.6 amendment for `ecm:degraded`.** Sub-task A widened the TypeScript `ecm:importStatus` type to `'ecm:parsed' | 'ecm:degraded'` and the architect ratified that widening, but the normative schema in SPEC section 5.6 still shows only `'ecm:parsed'`. A SPEC section 5.6 amendment chain is not yet queued. See Sign-off prompt Q3."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "98436-98437",
+                "excerpt": "\"chain_label\": \"Phase 3 Chain 7 -- SPEC section 5.6 amendment for ecm:degraded import status (Aaron 2026-06-04 PM review Q3 revise verdict)\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "The amendment pre-existed in shipped code: ImportedOntologyRecord.ecm:importStatus was already declared as '\"ecm:parsed\" | \"ecm:degraded\"' in src/import/turtle-import.ts at line 97, and the UI layer (ImportOntologyDialog.tsx lines 193-201) applied \"ecm:degraded\" when the user chose Continue in degraded mode.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "98481-98506",
+                "excerpt": "\"claim\": \"The TypeScript `ImportedOntologyRecord` interface in `src/import/turtle-import.ts` already defines `ecm:importStatus` as a union of `\\\"ecm:parsed\\\" | \\\"ecm:degraded\\\"`\" (recon F3)... \"claim\": \"The `importOntology()` function always initializes `ecm:importStatus` to `\\\"ecm:parsed\\\"` ... the `\\\"ecm:degraded\\\"` value is applied by the UI layer (`ImportOntologyDialog.tsx`) as a spread-override after the user chooses \\\"Continue in degraded mode\\\"\" (recon F4)"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "The architect ratified Chain 7 with ruling=ratified and editorial_verdict=editorial: the amendment introduces no new normative semantics, as the union widening was already architecturally explicit in shipped TypeScript and verbatim in IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100167-100170",
+                "excerpt": "\"ruling\": \"ratified\", \"editorial_verdict\": \"editorial\", \"editorial_verdict_reason\": \"The amendment is terminology sharpening and language tightening to reflect a newly-introduced API surface (ecm:importStatus union with 'ecm:degraded') that was already architecturally explicit in shipped TypeScript (src/import/turtle-import.ts line 97; recon F3) and already named verbatim in IMPLEMENTATION_PLAN section 3.3 AC4 (recon F6); the SPEC.md section 5.6 prose block makes textually explicit what was implicit, introducing no new normative semantics -- squarely within Q-4-C amendment Ruling 3 editorial-correction scope.\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "The Pass 2a chain for Chain 7 followed the v2.8.0 canonical shape: reconnaissance (888) -> verification-ritual deterministic (906) -> verification-ritual-llm Cat 9 (909) -> architect ratification (910). Cat 9 LLM verdict was overall_status=pass: two citations verified (SPEC \u00c2\u00a714.2 LARGE_IMPORT_THRESHOLD value; IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4 exact wording). Zero vetoes; no adversarial-critic second-pass required.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100100-100129",
+                "excerpt": "909-verify-llm outputs: \"overall_status\": \"pass\", per_category_result: [{category_id: cat-09, citation_reference: 'SPEC \u00c2\u00a714.2', verdict: 'consistent', status: 'pass'}, {citation_reference: 'IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4', verdict: 'consistent', status: 'pass'}]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "SPEC sections cited in the Chain 7 amendment and its Pass 2a chain: \u00c2\u00a75.6 (Imported Ontology Object), \u00c2\u00a714.2 (Large Ontology Handling / LARGE_IMPORT_THRESHOLD), \u00c2\u00a712.2 (50 MB hard limit / no owl:imports). IMPLEMENTATION_PLAN sections: \u00c2\u00a73.3 AC4 (the governing acceptance criterion), \u00c2\u00a73.1 (importOntology() sub-task). No ADR-NNN citations appear in the \u00c2\u00a75.6 amendment itself.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "98444-98448",
+                "excerpt": "inputs.spec_refs: [\"SPEC section 5.6\", \"SPEC section 14.2\", \"IMPLEMENTATION_PLAN section 3.3 AC4\"]"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "98560-98567",
+                "excerpt": "recon F9: \"SPEC.md \u00c2\u00a75.6 contains zero ADR-NNN cross-references; the section's only text beyond the JSON block is one sentence about ecm:content.\""
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "445-449",
+                "excerpt": "`ecm:importStatus` is a closed enumeration with two permitted values: ... `LARGE_IMPORT_THRESHOLD` (10,000 terms; see section 14.2) ... (IMPLEMENTATION_PLAN section 3.3 AC4) ... Defined in `src/import/turtle-import.ts` (`ImportedOntologyRecord`)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "Cumulatively, Phase 3 (Chains 1 through 7) delivered: Turtle import engine (importOntology() at src/import/turtle-import.ts), CLI import-ontology command, kernel remapReferences() function, browser ImportOntologyDialog with imported-term read-only UI and RemapDialog, owl:AnnotationProperty extraction, SKOS preservation + per-section sidebar search + enriched Inspector metadata, LARGE_IMPORT warning with hand-rolled virtualized degraded mode, and the SPEC.md \u00c2\u00a75.6 ecm:importStatus enumeration documentation amendment.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "97807-97916",
+                "excerpt": "884-recon-demo-doc-phase-3 F4-F11: Chain 1 importOntology(); Chain 2 CLI; Chain 3 remapReferences(); Chain 3.2-UI immutability+Remap dialog; Chain 4 browser import; Chain 4.1 owl:AnnotationProperty; Chain 5 SKOS+search+Inspector; Chain 6 LARGE_IMPORT+degraded; Chain 7 SPEC \u00c2\u00a75.6 amendment."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "Test suite growth across Phase 3 (npm test counts only; Playwright runs separately): Chain 1 = 137/137 (18 files); Chain 2 = 140/140 (19 files); Chain 3 = 148/148 (20 files); Chain 3.2-UI = 148/148 (20 files); Chain 4 = 159/159 (22 files); Chain 4.1 = 160/160 (22 files); Chain 5 = 162/162 (22 files); Chain 6 = 165/165 (22 files); Chain 7 = 165/165 (22 files, no change -- documentation-only).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "97760-97802",
+                "excerpt": "884-recon F3: Test progression from 884-recon-demo-doc-phase-3 output enumerating tasks 765, 772, 781, 803, 821, 841, 858, 883 with their test counts."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "100301-100313",
+                "excerpt": "911-apply-p3-c7-v4 PLO notes: '165/165 tests stay green' -- no new tests from Chain 7."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "Playwright test files authored in Phase 3 but NOT exercised by 'npm test': tests/playwright/imported-term-read-only.spec.ts (Chain 3.2-UI), tests/playwright/ontology-import.spec.ts (Chain 4), tests/playwright/large-import-warning.spec.ts (Chain 6). Require separate 'npx playwright test' invocation.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "97965-97974",
+                "excerpt": "884-recon F15: \"Playwright tests for Phase 3 ... are NOT exercised by 'npm test'; they require a separate 'npx playwright test' invocation; the 165/165 count covers only unit and integration tests.\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "Items NOT in scope for Phase 3 per ROADMAP and the Chain 7 anchor's PLO notes: IMPLEMENTATION_PLAN \u00c2\u00a73.4 global scope filter (All/Project-created/Imported-only; Chain 5 shipped per-section search only); companion SPEC \u00c2\u00a714.2 amendment adding ecm:importStatus cross-reference (deferred per developer 889 open question 1); IMPLEMENTATION_PLAN \u00c2\u00a73.1 caller-override note for ecm:degraded (deferred per developer 889 open question 2); OED-303 validation report retention (waived under H2 preventive-deferral); N3.js devDependencies packaging risk (forward-tracked to Phase 4/5); OWL restrictions/property chains/cardinality/equivalent-class reasoning/imports-closure/blank-node reasoning/SHACL/ZIP import/rdfs:domain-range as TBox fields.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "98753-98756",
+                "excerpt": "889-dev-p3-c7 open_questions: 'COMPANION AMENDMENT -- section 14.2: ...Should a follow-on single-file task amend section 14.2...?'; 'COMPANION AMENDMENT -- IMPLEMENTATION_PLAN section 3.1: ...Should a follow-on task amend section 3.1...?'"
+              },
+              {
+                "file": "demo/PHASE-3-chain-6-large-import-degraded.md",
+                "lines": "84-89",
+                "excerpt": "NOT yet in scope: IMPLEMENTATION_PLAN section 3.4 global scope filter; SPEC section 5.6 amendment for ecm:degraded [now closed by Chain 7]; OED-303 waived; N3.js packaging risk; Playwright specs not in npm test; out-of-phase OWL surface."
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "591-604",
+                "excerpt": "### 3.4 Term Search and Filter UI (P2) ... Scope filter: 'All,' 'Project-created only,' 'Imported only.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "Phase 3 Exit Gate items from IMPLEMENTATION_PLAN \u00c2\u00a73 satisfied at build_ref=60044f7: item 1 (Turtle import unit tests), item 2 (imported terms read-only Playwright), item 3 (LARGE_IMPORT warning), item 4 (50 MB hard-reject), item 6 (import-ontology CLI), item 10 (npm test zero failures), item 11 (Risk 2 mitigation). Item 5 (term search/filter) partially satisfied (per-section search; global scope filter not shipped). Items 7/8/9 (OED-303 closure effects) waived under H2 preventive-deferral.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "98064-98073",
+                "excerpt": "884-recon F22 (inference): Phase 3 Exit Gate items 1-4, 6, 10, 11 satisfied; item 5 partially satisfied; items 7/8/9 waived under H2 preventive-deferral."
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "627-640",
+                "excerpt": "Phase 3 Exit Gate: 1. Turtle import unit tests pass... 2. Imported terms are read-only... 3. LARGE_IMPORT warning fires... 5. Term search and filter functional... 7. OED-303 closed..."
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F13",
+            "claim": "Phase 3 PLO state at build_ref=60044f7 is 'demo-released' (second demo-released transition on phase-3; first was for Chain 6 at 9b604b8, second is Chain 7 at 60044f7); PLO has NOT advanced to po-satisfied.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100301-100313",
+                "excerpt": "911-apply-p3-c7-v4 history: phase_state_changed phase-3 implementing -> demo-released, build_ref=60044f7, declared_by=operator, ts=2026-06-04T16:53:02Z"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "Eight prior Phase 3 demo docs exist in demo/: PHASE-3-CHAIN-1-TURTLE-IMPORT.md, PHASE-3-chain-2-cli-integration.md, PHASE-3-chain-3-subtask-a-remap-kernel.md, PHASE-3-chain-3.2-ui-immutability-remap.md, PHASE-3-chain-4-browser-import.md, PHASE-3-chain-4.1-annotation-property.md, PHASE-3-chain-5-polish.md, PHASE-3-chain-6-large-import-degraded.md. The target for Chain 7 is demo/PHASE-3-chain-7-spec-amendment.md (per 913-author inputs.target_filename).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100349",
+                "excerpt": "\"target_filename\": \"demo/PHASE-3-chain-7-spec-amendment.md\""
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "The Chain 7 amendment's verification trail passed three verifiable acceptance tests: (1) SPEC.md \u00c2\u00a75.6 in the post-amendment file now contains the closed-enumeration prose block with both values; (2) 165/165 npm tests green at build_ref=60044f7; (3) architect ruling=ratified citing verification-ritual + Cat 9 LLM pass for both cited-content references (\u00c2\u00a714.2 and IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4).",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "445-449",
+                "excerpt": "`ecm:importStatus` is a closed enumeration with two permitted values: `\"ecm:parsed\"` ... `\"ecm:degraded\"` ..."
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "100167",
+                "excerpt": "\"ruling\": \"ratified\", \"editorial_verdict\": \"editorial\""
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "Chain 7 (anchor urn:fnsr:task:911-apply-p3-c7-v4, build_ref=60044f7) is a single-file documentation-alignment amendment to project/SPEC.md \u00c2\u00a75.6. The change adds a closed-enumeration prose block defining the two permitted values of ecm:importStatus: 'ecm:parsed' (normal import, term count at or below LARGE_IMPORT_THRESHOLD per \u00c2\u00a714.2) and 'ecm:degraded' (user chose Continue in degraded mode, per IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4). No code was changed; 165/165 npm tests stayed green. The amendment was triggered by Aaron's Q3 REVISE verdict on the Chain 6 sign-off, which had shipped the TypeScript union but left the SPEC normative example incomplete. The Pass 2a chain followed the v2.8.0 canonical shape (reconnaissance 888 -> verification-ritual 906 -> verification-ritual-llm Cat 9 909 -> architect ratification 910); both Cat 9 citations were verified consistent; ruling=ratified, editorial_verdict=editorial. Two companion amendments (\u00c2\u00a714.2 cross-reference to \u00c2\u00a75.6; IMPLEMENTATION_PLAN \u00c2\u00a73.1 caller-override note) were deferred as open questions. Cumulatively, Phase 3 (Chains 1-7) delivered the full IMPLEMENTATION_PLAN \u00c2\u00a73 surface (minus \u00c2\u00a73.4 global scope filter and waived OED-303 items), growing from 106 tests at Phase 2 close to 165/165 across 22 test files, with three Playwright specs authored separately. PLO state is demo-released (not yet po-satisfied).",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "state.jsonld",
+          "demo/PHASE-3-chain-6-large-import-degraded.md",
+          "src/import/turtle-import.ts",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/ui/TermSidebar.tsx"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.3 AC4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:888-recon-p3-c7",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:889-dev-p3-c7",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:906-verify-p3-c7-v3",
+            "field": "outputs.per_category_result"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:909-verify-llm-p3-c7-v4",
+            "field": "outputs.overall_status"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:910-rat-p3-c7-v4",
+            "field": "outputs.ruling"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:911-apply-p3-c7-v4",
+            "field": "outputs.applied"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:884-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          }
+        ],
+        "open_questions": [
+          "The Chain 7 demo-doc is scoped to the \u00c2\u00a75.6 amendment alone. Should the sign-off prompt in demo/PHASE-3-chain-7-spec-amendment.md also surface the two still-deferred companion amendments (\u00c2\u00a714.2 cross-reference to \u00c2\u00a75.6; IMPLEMENTATION_PLAN \u00c2\u00a73.1 caller-override note for ecm:degraded) as explicit Q items for the PO, or are those operator-visible from prior task outputs and not worth repeating?",
+          "Phase 3 PLO state is demo-released (not po-satisfied). Does this demo-doc cover Chain 7 specifically, or should it also serve as a cumulative Phase 3 progress summary for the PO ahead of a po-satisfied declaration? The target filename 'demo/PHASE-3-chain-7-spec-amendment.md' suggests Chain 7 scope only, but the architect ratification task (914) purpose mentions 'phase phase-3 chain at build_ref=60044f7', which is consistent with Chain 7 scope.",
+          "The Chain 7 amendment references 'src/import/turtle-import.ts (`ImportedOntologyRecord`)' as a non-canonical code citation inside the normative SPEC.md prose. This is outside Cat 9 canonical-doc scope (per 909-verify-llm summary) and was not vetoed. The demo-doc author should note this citation style is unusual for SPEC prose but was ratified as-is."
+        ],
+        "scope_assessment": "Investigated state.jsonld task chain from Phase 3 start (task 489) through anchor task 911 and the surrounding demo-doc chain (912-915), with focused reads of project/SPEC.md \u00c2\u00a75.6, project/IMPLEMENTATION_PLAN.md \u00c2\u00a73 (all sub-sections), project/DECISIONS.md (all 9 ADRs), and the prior Chain 6 demo doc; did not investigate the full ROADMAP.md text, individual test fixture files, or Playwright spec file contents."
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T16:57:29Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:913-author-demo-doc-phase-3",
+      "agent": "demo-doc-author",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:912-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=60044f7)",
+        "anchor_task": "urn:fnsr:task:911-apply-p3-c7-v4",
+        "build_ref": "60044f7",
+        "target_filename": "demo/PHASE-3-chain-7-spec-amendment.md",
+        "purpose": "Author stakeholder-facing demo doc for phase-3 chain at build_ref=60044f7. Read reconnaissance findings from UPSTREAM. Produce a single changes[] entry creating demo/PHASE-3-chain-7-spec-amendment.md per the demo-doc-author agent contract. ASCII-only. Consumer audience (PO / stakeholder review).",
+        "constraint": "Per agent contract: ASCII-only content; cite only SPEC / ADR refs documented in upstream recon; one file change per dispatch."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "demo/PHASE-3-chain-7-spec-amendment.md",
+            "rationale": "Initial consumer-audience demo doc for Phase 3 Chain 7 landing on build_ref=60044f7; covers the project/SPEC.md section 5.6 closed-enumeration amendment for ecm:importStatus and surfaces the still-deferred companion items for PO sign-off.",
+            "before": null,
+            "after": "# Phase 3 Chain 7 Demo -- SPEC section 5.6 amendment for ecm:degraded\n\n## Stakeholder framing\n\nThis chain is a documentation-only follow-up to Chain 6. Your Q3 REVISE verdict on the Chain 6 sign-off flagged that the TypeScript `ecm:importStatus` union had been widened to `'ecm:parsed' | 'ecm:degraded'` but the normative example in `project/SPEC.md` section 5.6 still showed only `'ecm:parsed'`. Chain 7 closes that doc-vs-code gap with a single edit. Phase 3 PLO state at build_ref=60044f7 is `demo-released` (second `demo-released` transition on phase-3; first was Chain 6 at 9b604b8).\n\n## What this chain delivers\n\nA single edit to `project/SPEC.md` section 5.6 adding a closed-enumeration prose block immediately after the existing `ecm:content` sentence. The block names both permitted values of `ecm:importStatus` with semantic definitions:\n\n- `\"ecm:parsed\"` -- normal import; extracted term count at or below `LARGE_IMPORT_THRESHOLD` (10,000 terms; see section 14.2).\n- `\"ecm:degraded\"` -- user selected \"Continue in degraded mode\" at the import warning dialog (IMPLEMENTATION_PLAN section 3.3 AC4); the ontology record is stored with partial extraction and search-only navigation applies.\n\nThe block also cites `src/import/turtle-import.ts` (`ImportedOntologyRecord`) as the type-defining location.\n\nNo code files changed. No new tests added. 165/165 npm tests stay green.\n\n## Acceptance criteria\n\n| AC | What proves it | Reference |\n|---|---|---|\n| SPEC section 5.6 documents both `ecm:importStatus` values | Post-amendment `project/SPEC.md` lines 445-449 contain the closed-enumeration block | project/SPEC.md section 5.6 |\n| Citations in the amendment are consistent with canonical sources | verification-ritual-llm Cat 9 judge: section 14.2 `LARGE_IMPORT_THRESHOLD` value verified consistent; IMPLEMENTATION_PLAN section 3.3 AC4 wording verified consistent; `overall_status: pass` | task 909-verify-llm-p3-c7-v4 |\n| Pass 2a ratification clean | architect ruling `ratified`, editorial_verdict `editorial` | task 910-rat-p3-c7-v4 |\n| No regression introduced | 165/165 npm tests pass at build_ref=60044f7; no code files touched | task 911-apply-p3-c7-v4 PLO notes |\n\nAll four criteria are green.\n\n## How to verify\n\n```\ngit fetch\ngit checkout 60044f7\nnpm install\nnpm test\n```\n\nExpected output tail: `Tests  165 passed (165)` across 22 test files. Then open `project/SPEC.md` and scroll to section 5.6; confirm the closed-enumeration block listing `ecm:parsed` and `ecm:degraded` immediately follows the `ecm:content` sentence.\n\n## What works end-to-end right now\n\nCumulatively Phase 3 (Chains 1 through 7) delivers:\n\n- Turtle import engine: `importOntology()` at `src/import/turtle-import.ts` (Chain 1)\n- CLI `import-ontology` command (Chain 2)\n- Kernel `remapReferences()` function + UI immutability + RemapDialog (Chain 3 / 3.2-UI)\n- Browser `ImportOntologyDialog` with imported-term read-only UI (Chain 4)\n- `owl:AnnotationProperty` extraction (Chain 4.1)\n- SKOS preservation + per-section sidebar search + enriched Inspector metadata (Chain 5)\n- `LARGE_IMPORT_THRESHOLD` warning + hand-rolled virtualized degraded mode (Chain 6)\n- SPEC section 5.6 `ecm:importStatus` enumeration documentation now matches the shipped TypeScript surface (Chain 7)\n\nTest progression across Phase 3 (npm test only; Playwright runs separately): 137 -> 140 -> 148 -> 148 -> 159 -> 160 -> 162 -> 165 -> 165.\n\n## What is NOT yet in scope\n\n- **IMPLEMENTATION_PLAN section 3.4 global scope filter** (`All` / `Project-created only` / `Imported only`). Chain 5 shipped per-section search only; the global scope filter has not been queued.\n- **SPEC section 14.2 companion amendment** adding a cross-reference to section 5.6's `ecm:importStatus` enumeration. Deferred per developer-889 open question 1.\n- **IMPLEMENTATION_PLAN section 3.1 caller-override note** documenting how the UI applies `\"ecm:degraded\"` as a spread-override after `importOntology()` returns. Deferred per developer-889 open question 2.\n- **OED-303 validation report retention** -- waived under H2 preventive-deferral; Exit Gate items 7/8/9 are waived rather than satisfied.\n- **N3.js devDependencies packaging risk** -- forward-tracked to Phase 4/5.\n- **Playwright specs** (`imported-term-read-only.spec.ts`, `ontology-import.spec.ts`, `large-import-warning.spec.ts`) -- authored but NOT exercised by `npm test`; require separate `npx playwright test` invocation.\n- **Out-of-phase OWL surface**: restrictions, property chains, cardinality, equivalent-class reasoning, imports-closure, blank-node reasoning, SHACL, ZIP import, `rdfs:domain` / `rdfs:range` as TBox fields. All deferred to later phases per ROADMAP.\n\nPhase 3 Exit Gate items 1, 2, 3, 4, 6, 10, 11 are satisfied; item 5 (term search and filter) is partially satisfied (per-section search; no global scope filter); items 7/8/9 are waived.\n\n## Sign-off prompt\n\n1. **Q1.** Does the SPEC section 5.6 closed-enumeration block close the doc-vs-code gap your Chain 6 Q3 REVISE verdict flagged? (If yes, the surfaced REVISE is resolved.)\n2. **Q2.** Are the two deferred companion amendments (SPEC section 14.2 cross-reference; IMPLEMENTATION_PLAN section 3.1 caller-override note) acceptable to leave for a follow-on single-file chain, or should one or both be queued before `po-satisfied`?\n3. **Q3.** With Phase 3 Exit Gate items 1-4, 6, 10, 11 satisfied and item 5 partially satisfied (per-section search only; no global scope filter), is Phase 3 ready for a `po-satisfied` declaration now, or do you want IMPLEMENTATION_PLAN section 3.4 (global scope filter) queued first?\n\nDecision surface: **pass** (declare `phase po-satisfied phase-3`), **revise** (queue specified companion amendments or the section 3.4 scope filter and re-emit `demo-released` after they land), or **pivot** (redirect Phase 3 in a different direction before sign-off).\n\n## For the substrate-audit-curious\n\nThe Chain 7 Pass 2a chain followed the v2.8.0 canonical shape: reconnaissance (888) -> verification-ritual deterministic (906) -> verification-ritual-llm Cat 9 (909) -> architect ratification (910) -> applier commit-finalize (911). Cat 9 verified two citations (SPEC section 14.2 `LARGE_IMPORT_THRESHOLD` value; IMPLEMENTATION_PLAN section 3.3 AC4 verbatim wording) as `overall_status: pass`; zero vetoes, so no adversarial-critic second-pass fired. One stylistic note for future doc-amendment chains: the section 5.6 block includes a non-canonical code citation to `src/import/turtle-import.ts` (`ImportedOntologyRecord`) inside SPEC prose. This is outside Cat 9 canonical-doc scope and was ratified as-is; it is unusual for SPEC prose but harmless.",
+            "scope": "moderate"
+          }
+        ],
+        "summary": "Initial demo doc for Phase 3 Chain 7 at build_ref=60044f7. Frames the chain as a documentation-only follow-up that closes Chain 6's Q3 REVISE verdict: SPEC.md section 5.6 now carries a closed-enumeration prose block defining both `ecm:parsed` and `ecm:degraded` values of `ecm:importStatus`. Notes zero code changes, 165/165 npm tests still green, and a clean Pass 2a chain (recon 888 -> verify 906 -> Cat 9 LLM 909 pass -> architect 910 ratified-editorial -> applier 911). Sign-off prompt asks the PO whether to declare phase-3 po-satisfied now, queue the two still-deferred companion amendments (SPEC section 14.2 cross-reference; IMPLEMENTATION_PLAN section 3.1 caller-override), or queue the section 3.4 global scope filter before sign-off. ASCII-only; no demo/INDEX.md amendment in this dispatch.",
+        "self_assessment": "confident",
+        "surface_audience": "consumer"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T16:58:39Z",
+          "event": "completed",
+          "payload": {
+            "agent": "demo-doc-author"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3e2900296dafe1360c0128abde37baea0e5a194ad8aada0bca0ea262b8134b3e"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:914-rat-demo-doc-phase-3",
+      "agent": "architect",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:913-author-demo-doc-phase-3",
+        "urn:fnsr:task:912-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=60044f7) - Pass 2a ratification",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the auto-generated demo doc at demo/PHASE-3-chain-7-spec-amendment.md. Read demo-doc-author proposal + reconnaissance evidence from UPSTREAM. Produce six-field ruling. Demo doc is consumer-audience; verify the doc matches stakeholder-review shape (deliverables, acceptance, verification, scope, sign-off); verify no invented citations.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Architect refusal contract",
+          "CLAUDE.md \u00a77.14 demo-doc auto-generation"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposal creates a new consumer-audience artifact (demo/PHASE-3-chain-7-spec-amendment.md) with original framing, acceptance criteria, scope statements, and a sign-off decision surface; it is not terminology tightening, citation formatting, or typo repair, so it falls outside editorial-correction scope and is judged substantive \u00e2\u20ac\u201d and reconnaissance is present in UPSTREAM (task 912), so the substantive classification does not trigger the refusal contract.",
+        "rationale": "Pass 2a ratification under FNSR Spec 03 with both prerequisites present in UPSTREAM: a reconnaissance task (912-recon-demo-doc-phase-3) that grounds every load-bearing claim in state.jsonld evidence and file/line citations, and a demo-doc-author proposal (913-author-demo-doc-phase-3) producing a single moderate-scope C1 change creating demo/PHASE-3-chain-7-spec-amendment.md per the v3.5.0 demo-doc auto-generation contract. Structural conformance to the demo-doc-author contract (CLAUDE.md \u00c2\u00a77.15) is complete: stakeholder framing, what-delivered, acceptance-criteria table (4 ACs all green), how-to-verify with git/npm steps, what-works-end-to-end cumulative summary across Chains 1\u00e2\u20ac\u201c7, NOT-in-scope enumeration, and a three-Q sign-off prompt with pass/revise/pivot decision surface. surface_audience: 'consumer' is correctly declared (per surface-audience primitive \u00c2\u00a77.13). ASCII-only with no non-ASCII characters in the after content. Citation integrity verified against reconnaissance findings: SPEC \u00c2\u00a75.6, \u00c2\u00a714.2, \u00c2\u00a712.2 (implicit via Chain 7 chain); IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4, \u00c2\u00a73.1, \u00c2\u00a73.4; task references 888, 889, 906, 909, 910, 911 all match recon F1\u00e2\u20ac\u201cF15 and the referenced_evidence list. The test-progression series '137 \u00e2\u2020\u2019 140 \u00e2\u2020\u2019 148 \u00e2\u2020\u2019 148 \u00e2\u2020\u2019 159 \u00e2\u2020\u2019 160 \u00e2\u2020\u2019 162 \u00e2\u2020\u2019 165 \u00e2\u2020\u2019 165' matches recon F9 exactly across Chains 1, 2, 3, 3.2-UI, 4, 4.1, 5, 6, 7. The acceptance-criteria table cites only verified upstream tasks (909 Cat 9 pass; 910 ruling=ratified/editorial; 911 applier output). No ADR-NNN citations are introduced; the demo doc is not a canonical-doc path, so the ADR-citation CPS check does not gate this commit, but the absence is consistent with \u00c2\u00a75.6 (recon F7 noted \u00c2\u00a75.6 has zero ADR cross-references). The NOT-in-scope section correctly carries the still-deferred items (\u00c2\u00a73.4 global scope filter; \u00c2\u00a714.2 cross-reference; \u00c2\u00a73.1 caller-override note; OED-303 H2-waived; N3.js forward-track; Playwright not in npm test; out-of-phase OWL surface) from recon F11. Exit Gate accounting (items 1/2/3/4/6/10/11 satisfied; item 5 partial; items 7/8/9 waived) matches recon F12. The 'substrate-audit-curious' epilogue transparently surfaces the non-canonical code citation caveat from recon open_question[2] without elevating it into the normative body \u00e2\u20ac\u201d appropriate handling of an outside-Cat-9-scope stylistic note. PLO state at build_ref=60044f7 is demo-released (recon F13), so this is the correct surface for the operator's PO-sign-off review. The proposal is approved for Pass 2b applier dispatch.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:912-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:912-recon-demo-doc-phase-3",
+            "field": "outputs.referenced_evidence"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:913-author-demo-doc-phase-3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:913-author-demo-doc-phase-3",
+            "field": "outputs.surface_audience"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:888-recon-p3-c7",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:906-verify-p3-c7-v3",
+            "field": "outputs.per_category_result"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:909-verify-llm-p3-c7-v4",
+            "field": "outputs.overall_status"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:910-rat-p3-c7-v4",
+            "field": "outputs.ruling"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:911-apply-p3-c7-v4",
+            "field": "outputs.applied"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:884-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.3 AC4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.15 Demo-Doc Auto-Generation",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a77.13 Surface Audience",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a7Architect refusal contract",
+            "source": "FNSR Spec 03"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "The v3.5.0 demo-doc auto-generation chain (reconnaissance \u00e2\u2020\u2019 demo-doc-author \u00e2\u2020\u2019 architect \u00e2\u2020\u2019 applier) executed cleanly on its second observed dispatch (Chain 7 follow-up to Chain 6's Q3 REVISE). The reconnaissance task 912 produced 15 grounded findings sized appropriately for the consumer-audience artifact (cumulative Phase 3 summary + Chain-7-specific deliverables + still-deferred items + Exit Gate accounting), and demo-doc-author 913 consumed all four content domains without inventing claims or eliding the NOT-in-scope enumeration \u00e2\u20ac\u201d evidence that the contract's stakeholder-review structure is reproducible across substantively different chain shapes (Chain 6: code+UI+tests; Chain 7: documentation-only amendment)."
+          },
+          {
+            "id": "B2",
+            "category": "discipline-correction",
+            "content": "The demo doc explicitly surfaces a substrate-edge observation from reconnaissance open_question[2] \u00e2\u20ac\u201d the Chain 7 amendment included a non-canonical code citation (`src/import/turtle-import.ts (ImportedOntologyRecord)`) inside SPEC.md \u00c2\u00a75.6 prose, which is outside Cat 9 canonical-doc scope and was ratified as-is. The demo doc places this caveat in the 'For the substrate-audit-curious' epilogue rather than in the normative body, demonstrating a clean separation between PO-facing acceptance content and substrate-self-reflection content within a single consumer artifact. This pattern is worth observing because future demo-docs will face similar 'this was ratified despite being unusual' edges and the epilogue-disclosure convention preserves PO-attention discipline without hiding the audit trail."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T16:59:45Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:915-apply-demo-doc-phase-3",
+      "agent": "applier",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:914-rat-demo-doc-phase-3",
+        "urn:fnsr:task:913-author-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=60044f7) - applier",
+        "purpose": "Pass 2b commit-finalize: apply demo-doc-author's changes to land demo/PHASE-3-chain-7-spec-amendment.md. Event 11 gating ensures dispatch only when ratification == ratified.",
+        "source_task": "urn:fnsr:task:913-author-demo-doc-phase-3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "demo\\PHASE-3-chain-7-spec-amendment.md",
+            "mode": "create",
+            "bytes_written": 6646,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T16:59:45Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-06-04T17:38:50Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "implementing",
+            "transition_kind": "implementing",
+            "declared_by": "operator",
+            "reason": "Aaron 2026-06-04 PM Q3 REVISE verdict: queue \u00a73.4 scope filter + degraded-mode contract (sub-tasks 2 and 3) as Chain 8. After Chain 8 lands \u2192 po-satisfied; Q2-batch chain follows post-po-satisfied as clean follow-on."
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "886f3a762b70daa12bfdf3c6e708c0072ac0da070859dad395e1d354f6f126f2"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:916-recon-p3-c8",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 -- IMPLEMENTATION_PLAN \u00a73.4 scope filter + degraded-mode search-only contract (Aaron 2026-06-04 PM Q3 REVISE verdict)",
+        "purpose": "Reconnaissance for Phase 3 Chain 8. Closes IMPLEMENTATION_PLAN \u00a73.4 (Term Search and Filter UI; P2) sub-tasks 2 and 3: (sub-task 2) Scope filter 'All' / 'Project-created only' / 'Imported only'; (sub-task 3) In degraded mode, search is the only navigation mechanism. Sub-task 1 (search input) shipped per Chain 5. The chain must answer TWO PRE-DEV ANALYST QUESTIONS from Aaron 2026-06-04 before recommending the dev decomposition: (Q-CONFIRM-1 sub-task 3 scope) Is degraded-mode 'search-only navigation' ALREADY satisfied by Chain 6 sub-task C virtualization (DOM \u2264200; commit 9b604b8) or does \u00a73.4 sub-task 3 require ADDITIONAL UI affordances? Read the Chain 6 commit diff for src/ui/TermSidebar.tsx + the IMPLEMENTATION_PLAN \u00a73.4 AC text. Possible additional affordances: (a) disabling/collapsing the term list scroll handle in degraded mode (forcing user through search); (b) hiding section header collapse buttons; (c) surfacing a degraded-mode banner; (d) rendering an empty-list state with 'Search to find terms' when no search term entered. The contract phrasing 'search is the only navigation mechanism' is strict \u2014 virtualization alone (which still allows scroll-through) may not satisfy it. Report your verdict + concrete recommendation. (Q-CONFIRM-2 state lifting cost) Should the scope filter state live at TermSidebar root, at App.tsx (lifted), or per-section? DO NOT pre-commit to App-level lifting. Identify the existing search state location (Chain 5 placed per-section search state in TermSidebar.tsx) + the UX implication of per-section vs global scope filter. Most natural UX is GLOBAL (one toggle affecting all four sections) but per-section is structurally simpler. Let the dev-task decide based on UX preference + persistence requirements; report the trade-off so the developer can choose. ALSO investigate: (1) Chain 5 per-section search state shape in src/ui/TermSidebar.tsx; (2) FR-U005 source-indicator-visual-distinction wiring (already shipped per Chain 3.2-UI imported badge); (3) the imported vs project-created distinction in the project document (ecm:source field set by Chain 4 browser import + Chain 2 CLI); (4) existing tests/playwright/ scaffold for the AC2 Playwright assertion. Output findings shaped for one OR two downstream dev tasks (recon recommends decomposition based on Q-CONFIRM-1 verdict).",
+        "files_to_read": [
+          "src/ui/TermSidebar.tsx",
+          "src/ui/App.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/import/turtle-import.ts",
+          "tests/playwright/large-import.spec.ts",
+          "tests/playwright/imported-term-read-only.spec.ts",
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN \u00a73.4 sub-tasks 2 and 3",
+          "FR-U005",
+          "SPEC \u00a714.2 degraded mode"
+        ],
+        "pre_dev_analyst_questions": [
+          "Q-CONFIRM-1: Is \u00a73.4 sub-task 3 'search-only navigation' already satisfied by Chain 6 virtualization, or does it require additional UI affordances (disable scroll / hide collapse / banner / empty-list-state)?",
+          "Q-CONFIRM-2: Should scope filter state live at TermSidebar root, App.tsx, or per-section? Do NOT pre-commit to App-level lifting; recommend based on UX (global vs per-section) and persistence requirements."
+        ],
+        "scope_origin": "Aaron 2026-06-04 PM Q3 REVISE on Chain 7 demo + IMPLEMENTATION_PLAN \u00a73.4 P2 sub-tasks 2 + 3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "\u00c2\u00a73.4 sub-task 1 (search input) shipped in Chain 5; per-section searchQuery state lives inside the TermSection component, not at TermSidebar root or App.tsx.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "171",
+                "excerpt": "const [searchQuery, setSearchQuery] = useState(\"\");"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "175-185",
+                "excerpt": "const filteredTerms = searchQuery.trim() === \"\" ? terms : terms.filter((term) => { const q = searchQuery.toLowerCase(); ... });"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "253-261",
+                "excerpt": "<input type=\"search\" className=\"gw-term-section-search\" placeholder={`Search ${title.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} aria-label={`Search ${title}`} data-testid={searchTestId} />"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "\u00c2\u00a73.4 sub-task 2 (scope filter 'All' / 'Project-created only' / 'Imported only') has no implementation anywhere in the src/ui/ layer.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "311-479",
+                "excerpt": "TermSidebar export function contains no scopeFilter state, no scope-filter prop, no filter UI element; only addDialogType, propertyDialogType, editTerm state variables at root level."
+              },
+              {
+                "file": "src/ui/App.tsx",
+                "lines": "91-101",
+                "excerpt": "App useState declarations: project, migrationBannerText, selectedRelationId, selectedInstanceId, selectedTermId, projectSettingsOpen, newProjectDialogOpen, importOntologyDialogOpen, validationReport -- no scopeFilter state."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "Chain 6 (commit 9b604b8) shipped DOM virtualization: the useVirt flag activates when isDegraded && filteredTerms.length > VIRT_THRESHOLD (200), rendering a scrollable div with overflowY: 'auto' and spacer divs above/below the visible ul.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "88-98",
+                "excerpt": "const VIRT_ITEM_HEIGHT = 28; const VIRT_OVERSCAN = 5; const VIRT_THRESHOLD = 200;"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "188",
+                "excerpt": "const useVirt = isDegraded && filteredTerms.length > VIRT_THRESHOLD;"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "280-299",
+                "excerpt": "<div className=\"gw-term-section-list\" data-testid=\"gw-term-section-virtualized\" style={{ height: \"12rem\", overflowY: \"auto\" }} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}>"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "The virtualized container (overflowY: 'auto') in degraded mode remains fully scrollable regardless of whether a search query is entered; no code disables or locks scrolling when searchQuery is empty.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "280-299",
+                "excerpt": "style={{ height: \"12rem\", overflowY: \"auto\" }} -- no disabled/locked scroll logic; onScroll handler is always active."
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "175-185",
+                "excerpt": "const filteredTerms = searchQuery.trim() === \"\" ? terms : terms.filter(...); -- when searchQuery is empty, filteredTerms = full terms array; virtualized list is rendered with all terms."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "When isDegraded is true and searchQuery is empty, TermSection renders the full virtualized term list; there is no 'search to find terms' empty-list state for the no-query-entered case in degraded mode.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "276-305",
+                "excerpt": "{filteredTerms.length === 0 && searchQuery.trim() !== \"\" ? (<p className=\"gw-term-empty\">No matches...</p>) : filteredTerms.length === 0 ? (<p className=\"gw-term-empty\">No {title.toLowerCase()} yet</p>) : useVirt ? (<div ... virtualized list) : (<ul ... full list)}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "No degraded-mode banner or affordance exists within TermSidebar.tsx itself; the only user-facing 'search-only navigation' communication lives inside ImportOntologyDialog.tsx, visible only during the import flow.",
+            "evidence": [
+              {
+                "file": "src/ui/ImportOntologyDialog.tsx",
+                "lines": "303-306",
+                "excerpt": "\"The UI will render in degraded (virtualized) mode for performance. Search-only navigation will be available.\""
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "398-479",
+                "excerpt": "TermSidebar return block: four TermSection renders + three Dialog renders; no degraded-mode banner element."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "SPEC \u00c2\u00a714.2 uses the phrase 'search-only, virtualized list' as the degraded-mode contract; the IMPLEMENTATION_PLAN \u00c2\u00a73.4 sub-task 3 states 'search is the only navigation mechanism'; Chain 6 virtualization satisfies the DOM \u00e2\u2030\u00a4 200 part but not the 'only' qualifier.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1117",
+                "excerpt": "offers continue in degraded mode (search-only, virtualized list, partial extraction);"
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "598",
+                "excerpt": "In degraded mode, search is the only navigation mechanism."
+              },
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "603",
+                "excerpt": "Degraded mode: zero non-virtualized term DOM nodes beyond the visible viewport. Playwright node-count assertion."
+              }
+            ],
+            "kind": "inference"
+          },
+          {
+            "id": "F8",
+            "claim": "The TermEntry interface in TermSidebar.tsx already declares 'ecm:source'?: string (line 26); term-level code reads ecm:source to drive clickability and isImported logic, making it the ready discriminator for a scope filter.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "20-27",
+                "excerpt": "interface TermEntry { id: string; type: string; \"rdfs:label\"?...; \"rdfs:comment\"?...; \"ecm:source\"?: string; }"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "209-213",
+                "excerpt": "const isClickable = onTermClick !== undefined && term[\"ecm:source\"] === \"ecm:project-created\"; const isImported = term[\"ecm:source\"] === \"ecm:imported-ontology\";"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "FR-U005 (visual distinction of imported/project-created/starter-example terms) is fully implemented via the SourceBadge component with CSS classes gw-badge--imported, gw-badge--project-created, gw-badge--starter and corresponding aria-label values; Playwright coverage exists in term-sidebar.spec.ts.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "119-142",
+                "excerpt": "function SourceBadge({ source }) { ... cssModifier = source === \"ecm:imported-ontology\" ? \"gw-badge--imported\" : ... return <span className={`gw-badge ${cssModifier}`} aria-label={source}>{label}</span>; }"
+              },
+              {
+                "file": "tests/playwright/term-sidebar.spec.ts",
+                "lines": "44-56",
+                "excerpt": "const badge = page.locator('[aria-label=\"ecm:project-created\"]').first(); await expect(badge).toBeVisible(); await expect(badge).toHaveClass(/gw-badge--project-created/);"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "TermSection contains no section-collapse button; the section header only has a title h3 and an optional '+' add-term button; there are no collapse affordances to hide or disable for a degraded-mode 'hide collapse' requirement.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "262-275",
+                "excerpt": "<div className=\"gw-term-section-header\"><h3 className=\"gw-term-section-title\">{title}</h3>{onAddTerm !== undefined && (<button ... className=\"gw-btn-add-term\">+</button>)}</div>"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "Per-section search state (Chain 5) lives at TermSection level; a scope filter at that same level would create four independent filter controls. A scope filter at TermSidebar root level would require one new state variable and passing it as a prop to each TermSection. No state or prop for scope filter currently exists at either level.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "149-170",
+                "excerpt": "function TermSection({ title, terms, testId, onAddTerm, addTestId, onTermClick, onImportedTermClick, searchTestId, isDegraded = false }: ...) -- no scopeFilter prop in current signature."
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "311-321",
+                "excerpt": "export function TermSidebar({ project, onTermsChange, onImportedTermClick }: TermSidebarProps) { const [addDialogType, ...] = useState(...); const [propertyDialogType, ...] = useState(...); const [editTerm, ...] = useState(...); -- no scopeFilter state at root level."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "No existing Playwright test asserts the scope filter behavior (AC2 of \u00c2\u00a73.4: 'Project-created only filter hides all imported terms'). The closest test file, term-sidebar.spec.ts, covers only partition counts (AC1) and source badge display (AC2 of \u00c2\u00a72.2).",
+            "evidence": [
+              {
+                "file": "tests/playwright/term-sidebar.spec.ts",
+                "lines": "1-57",
+                "excerpt": "test.describe(\"TermSidebar (task 2.2)\") -- two tests: AC1 partition counts, AC2 ecm:project-created badge. No scope filter test."
+              },
+              {
+                "file": "tests/playwright/large-import.spec.ts",
+                "lines": "1-268",
+                "excerpt": "Covers \u00c2\u00a73.3 AC2-AC5 (large import warning + degraded virtualization). No scope filter assertion."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "\u00c2\u00a73.4 AC3 Playwright assertion ('zero non-virtualized term DOM nodes beyond visible viewport') is substantively already covered by Chain 6's large-import.spec.ts AC5 test (gw-term-item count \u00e2\u2030\u00a4 200).",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "601-603",
+                "excerpt": "Degraded mode: zero non-virtualized term DOM nodes beyond the visible viewport. Playwright node-count assertion."
+              },
+              {
+                "file": "tests/playwright/large-import.spec.ts",
+                "lines": "227-267",
+                "excerpt": "const termItemCount = await page.locator('[data-testid=\"gw-term-item\"]').count(); expect(termItemCount, ...).toBeLessThanOrEqual(200);"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "The ecm:source field is set on imported terms by ImportOntologyDialog merge logic (not by turtle-import.ts itself); ImportedTermObject returned by importOntology does not carry ecm:source.",
+            "evidence": [
+              {
+                "file": "src/ui/ImportOntologyDialog.tsx",
+                "lines": "173-177",
+                "excerpt": "const augmented = pending.terms.map((t) => ({ ...t, \"ecm:source\": \"ecm:imported-ontology\" as const, \"ecm:ontologyId\": pending.ontology.id, }));"
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "75-81",
+                "excerpt": "export interface ImportedTermObject { readonly id: string; readonly type: ImportedTermType; readonly \"rdfs:label\"?...; -- no ecm:source field in the interface."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "The IMPLEMENTATION_PLAN \u00c2\u00a73.4 AC1 ('Typing person shows only terms with person in label') maps to existing per-section search already in TermSection; this AC was partially covered before Chain 8 because the search input is already live.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "601",
+                "excerpt": "Typing \"person\" shows only terms with \"person\" in label (case-insensitive). Playwright test."
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "175-185",
+                "excerpt": "const filteredTerms = searchQuery.trim() === \"\" ? terms : terms.filter((term) => { const q = searchQuery.toLowerCase(); const rawLabel = resolveTermLabel(term[\"rdfs:label\"]); return rawLabel.toLowerCase().includes(q) || term.id.toLowerCase().includes(q); });"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The TermSidebarProps interface has no persistence mechanism; it accepts only project, onTermsChange, and onImportedTermClick; scope filter state placed at TermSidebar root would be per-session in-memory state with no persistence unless explicitly lifted to App.tsx.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "29-41",
+                "excerpt": "interface TermSidebarProps { project: Record<string, unknown> | null; onTermsChange?: (project: Record<string, unknown>) => void; onImportedTermClick?: (term: TermEntry) => void; }"
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "Chain 8 reconnaissance covers \u00c2\u00a73.4 sub-tasks 2 and 3. Sub-task 1 (search input) shipped in Chain 5 with per-section state at TermSection level (TermSidebar.tsx:171). Sub-task 2 (scope filter) has zero implementation: no state, no UI element, no prop anywhere in src/ui/. Sub-task 3 ('search is the only navigation mechanism') is the critical open question (Q-CONFIRM-1): Chain 6 shipped DOM virtualization (VIRT_THRESHOLD=200, overflowY:auto container) which satisfies \u00c2\u00a73.3 AC5 (DOM \u00e2\u2030\u00a4 200) and is fully tested in large-import.spec.ts. However, the virtualized container is a freely scrollable div \u00e2\u20ac\u201d a user can scroll through all 10,001 terms without typing a search query, which violates the 'only' qualifier in IMPL \u00c2\u00a73.4:598 and the user-facing promise in ImportOntologyDialog.tsx:305-306. To satisfy 'search-only', an additional affordance is required; the most structurally minimal gap is the absence of an empty-list state when isDegraded && searchQuery.trim() === '' (option d). No section-collapse buttons exist to hide (F10). For Q-CONFIRM-2, scope filter state most naturally lives at TermSidebar root (not per-section, not App-level): global UX is appropriate because 'Imported only' filters all four sections simultaneously, no outside component needs to read the value, and per-session in-memory scope is sufficient. FR-U005 source-indicator wiring is complete (SourceBadge, Chain 3.2-UI). The ecm:source field on TermEntry is the ready discriminator for filter logic. No Playwright scaffold exists yet for scope filter AC2. \u00c2\u00a73.4 AC3 Playwright assertion duplicates Chain 6's existing large-import.spec.ts AC5 coverage.",
+        "evidence_paths": [
+          "src/ui/TermSidebar.tsx",
+          "src/ui/App.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/import/turtle-import.ts",
+          "tests/playwright/large-import.spec.ts",
+          "tests/playwright/imported-term-read-only.spec.ts",
+          "tests/playwright/term-sidebar.spec.ts",
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U005",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.3",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "open_questions": [
+          "Q-CONFIRM-1 VERDICT: Chain 6 virtualization satisfies DOM \u00e2\u2030\u00a4 200 (\u00c2\u00a73.3 AC5) but does NOT satisfy \u00c2\u00a73.4 sub-task 3 'search is the only navigation mechanism' because the virtualized div (overflowY:auto) remains freely scrollable when searchQuery is empty. Additional affordances are required. The structurally minimal option is (d): add an empty-list state in TermSection when isDegraded && searchQuery.trim() === '' that renders 'Search to find terms' instead of the list \u00e2\u20ac\u201d this prevents scroll-based navigation while preserving all existing Chain 6 code. Options (a) disabling/locking scroll and (c) a persistent degraded-mode banner are secondary. Does the operator confirm that option (d) empty-list state is the intended degraded-mode gate, or is scroll-through in degraded mode acceptable (i.e., 'search-only' is aspirational copy only)?",
+          "Q-CONFIRM-2 VERDICT: Based on UX (one toggle for all four sections) and scope (no outside component reads filter state), scope filter state should live at TermSidebar root level \u00e2\u20ac\u201d one useState in TermSidebar (TermSidebar.tsx:311) passed as a prop to each TermSection. Per-section scope filter would require four independent toggles (poor UX). App-level lifting adds structural cost with no functional benefit (no persistence requirement, no cross-component sharing). Does the operator confirm TermSidebar-root-level placement, or is there a persistence requirement that would justify App-level lifting?",
+          "Should the \u00c2\u00a73.4 AC1 Playwright test ('Typing person shows only terms with person in label') be written as a new test in a new term-search-filter.spec.ts, or appended to existing term-sidebar.spec.ts? Chain 5 never committed a Playwright test for this AC.",
+          "\u00c2\u00a73.4 AC3 ('Degraded mode: zero non-virtualized term DOM nodes beyond visible viewport') is already covered by large-import.spec.ts AC5. Should Chain 8 add a separate Playwright test for \u00c2\u00a73.4 AC3, or reference the existing Chain 6 test as satisfying this criterion?"
+        ],
+        "scope_assessment": "Investigated all nine files specified in INPUTS.files_to_read plus tests/playwright/term-sidebar.spec.ts (referenced by findings); did not investigate CanvasView.tsx, AddTermDialog.tsx, PropertyCreationDialog.tsx, EditTermDialog.tsx, label-resolution.ts, or other UI components not directly relevant to \u00c2\u00a73.4 scope filter and degraded-mode search-only."
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:42:39Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:917-dev-p3-c8",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:916-recon-p3-c8"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 -- \u00a73.4 scope filter + degraded-mode search-only navigation contract",
+        "purpose": "Implement IMPLEMENTATION_PLAN \u00a73.4 sub-tasks 2 (scope filter) and 3 (degraded-mode search-only contract) per recon 916's verdicts on Q-CONFIRM-1 and Q-CONFIRM-2. Concrete shape contingent on recon: (a) if Q-CONFIRM-1 verdict is 'Chain 6 virtualization sufficient', sub-task 3 is verification-only (Playwright test in the downstream test task; no code change here); (b) if 'additional UI needed', this dev task lands the affordance recon recommended (likely collapse/hide list + render empty-state until user searches in degraded mode); (c) Q-CONFIRM-2 verdict determines whether state lives in TermSidebar (per-section or root) or App.tsx (lifted). Scope filter UI shape: a small select/dropdown with options 'All' / 'Project-created only' / 'Imported only' near each section header (per-section) OR above the search input (global). When 'Project-created only' is active, terms with ecm:source = 'ecm:imported-ontology' are filtered out; when 'Imported only' is active, terms WITHOUT that ecm:source are filtered out. Composes with the Chain 5 per-section search (filter terms first by scope, then by search substring). Test-ids: gw-term-section-scope-filter-{classes|object-properties|datatype-properties|annotation-properties} for per-section; gw-term-scope-filter-global for global. Per CLAUDE.md \u00a79 layer boundaries: src/ui/ is Layer 2. If recon surfaces task_too_broad concerns (sub-tasks 2 and 3 are too much for single dev task), surface awaiting_operator_decision with split options.",
+        "files_in_scope": [
+          "src/ui/TermSidebar.tsx (modify: scope filter UI + filter logic + maybe degraded-mode empty-state)",
+          "src/ui/App.tsx (modify IF Q-CONFIRM-2 verdict is App-level lift; recon-determined)",
+          "src/ui/App.css (modify: styling for new scope filter dropdown + degraded-mode empty state)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN \u00a73.4 sub-tasks 2 and 3",
+          "IMPLEMENTATION_PLAN \u00a73.4 acceptance criteria AC2",
+          "FR-U005"
+        ],
+        "constraint": "Multi-file change permitted but minimized. NO pre-commit to App-level state lifting (Aaron 2026-06-04 explicit directive); decide based on Q-CONFIRM-2 recon verdict. Composes cleanly with Chain 5 search (filter first by scope, then by search). Preserve all existing gw-* test-ids. Per CLAUDE.md \u00a79 layer boundaries.",
+        "pre_dev_analyst_dependencies": [
+          "Q-CONFIRM-1 verdict from recon 916",
+          "Q-CONFIRM-2 verdict from recon 916"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add ScopeFilter discriminated union type (needed by both TermSection prop and TermSidebar state, so defined once before the TermSection function). Add optional scopeFilter prop to TermSection with default 'all' so all existing call sites compile unchanged until C5 threads the live value through.",
+            "before": "/**\n * One type-section: header (with optional Add button) + item list or empty-state.\n * onAddTerm is only passed when a project is open and onTermsChange is wired.\n * onTermClick fires only for project-created terms (FR-U009; Chain B).\n */\nfunction TermSection({\n  title,\n  terms,\n  testId,\n  onAddTerm,\n  addTestId,\n  onTermClick,\n  onImportedTermClick,\n  searchTestId,\n  isDegraded = false,\n}: {\n  title: string;\n  terms: TermEntry[];\n  testId: string;\n  onAddTerm?: () => void;\n  addTestId?: string;\n  onTermClick?: (term: TermEntry) => void;\n  onImportedTermClick?: (term: TermEntry) => void;\n  searchTestId: string;\n  /** When true and filteredTerms.length > VIRT_THRESHOLD, activates windowing. */\n  isDegraded?: boolean;\n}) {",
+            "after": "/** Scope-filter values for the global source filter (IMPL \u00a73.4 sub-task 2). */\ntype ScopeFilter = \"all\" | \"project-created\" | \"imported\";\n\n/**\n * One type-section: header (with optional Add button) + item list or empty-state.\n * onAddTerm is only passed when a project is open and onTermsChange is wired.\n * onTermClick fires only for project-created terms (FR-U009; Chain B).\n */\nfunction TermSection({\n  title,\n  terms,\n  testId,\n  onAddTerm,\n  addTestId,\n  onTermClick,\n  onImportedTermClick,\n  searchTestId,\n  isDegraded = false,\n  scopeFilter = \"all\",\n}: {\n  title: string;\n  terms: TermEntry[];\n  testId: string;\n  onAddTerm?: () => void;\n  addTestId?: string;\n  onTermClick?: (term: TermEntry) => void;\n  onImportedTermClick?: (term: TermEntry) => void;\n  searchTestId: string;\n  /** When true and filteredTerms.length > VIRT_THRESHOLD, activates windowing. */\n  isDegraded?: boolean;\n  /** Source-scope filter passed from TermSidebar root (default: \"all\"). */\n  scopeFilter?: ScopeFilter;\n}) {",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "IMPL \u00c2\u00a73.4 sub-task 2 filter logic: introduce scopeFilteredTerms computed from the raw terms array before the existing search filter. 'project-created' excludes ecm:imported-ontology terms (as specified: terms WITH ecm:source=ecm:imported-ontology are filtered out). 'imported' keeps only ecm:imported-ontology. 'all' is identity. filteredTerms then filters scopeFilteredTerms by search query, preserving the Chain 5 search logic exactly. useVirt continues to key off filteredTerms.length unchanged.",
+            "before": "  const filteredTerms =\n    searchQuery.trim() === \"\"\n      ? terms\n      : terms.filter((term) => {\n          const q = searchQuery.toLowerCase();\n          const rawLabel = resolveTermLabel(term[\"rdfs:label\"]);\n          return (\n            rawLabel.toLowerCase().includes(q) ||\n            term.id.toLowerCase().includes(q)\n          );\n        });",
+            "after": "  // Scope filter: apply before search to narrow the candidate set (IMPL \u00a73.4 sub-task 2).\n  const scopeFilteredTerms =\n    scopeFilter === \"project-created\"\n      ? terms.filter((t) => t[\"ecm:source\"] !== \"ecm:imported-ontology\")\n      : scopeFilter === \"imported\"\n      ? terms.filter((t) => t[\"ecm:source\"] === \"ecm:imported-ontology\")\n      : terms;\n\n  const filteredTerms =\n    searchQuery.trim() === \"\"\n      ? scopeFilteredTerms\n      : scopeFilteredTerms.filter((term) => {\n          const q = searchQuery.toLowerCase();\n          const rawLabel = resolveTermLabel(term[\"rdfs:label\"]);\n          return (\n            rawLabel.toLowerCase().includes(q) ||\n            term.id.toLowerCase().includes(q)\n          );\n        });",
+            "scope": "minimal"
+          },
+          {
+            "id": "C3",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "IMPL \u00c2\u00a73.4 sub-task 3 (Q-CONFIRM-1 option d): add a degraded-mode search gate as the first branch of the render ternary. When isDegraded && searchQuery is empty, render 'Search to find terms' instead of the list \u00e2\u20ac\u201d this prevents scroll-based navigation without a query, satisfying the 'search is the only navigation mechanism' contract (IMPL \u00c2\u00a73.4:598). The gate fires before the empty-list and useVirt branches, so the virtualized scroll div is never rendered without a query in degraded mode. Existing branches and virtualization code are unchanged.",
+            "before": "      {filteredTerms.length === 0 && searchQuery.trim() !== \"\" ? (\n        <p className=\"gw-term-empty\">No matches for \"{searchQuery}\"</p>\n      ) : filteredTerms.length === 0 ? (\n        <p className=\"gw-term-empty\">No {title.toLowerCase()} yet</p>\n      ) : useVirt ? (",
+            "after": "      {isDegraded && searchQuery.trim() === \"\" ? (\n        <p className=\"gw-term-empty gw-term-degraded-hint\">Search to find terms</p>\n      ) : filteredTerms.length === 0 && searchQuery.trim() !== \"\" ? (\n        <p className=\"gw-term-empty\">No matches for \"{searchQuery}\"</p>\n      ) : filteredTerms.length === 0 ? (\n        <p className=\"gw-term-empty\">No {title.toLowerCase()} yet</p>\n      ) : useVirt ? (",
+            "scope": "minimal"
+          },
+          {
+            "id": "C4",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add scopeFilter state at TermSidebar root per Q-CONFIRM-2 verdict: one useState for all four sections, no App-level lifting. Per-session in-memory state is sufficient (no persistence requirement identified in recon F16). Default 'all' preserves existing behavior for all existing tests.",
+            "before": "  /** OWL type of the term being added; null when the Add dialog is closed. */\n  const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);\n  /** Property type being created; null when PropertyCreationDialog is closed (FR-U033). */\n  const [propertyDialogType, setPropertyDialogType] =\n    useState<PropertyCreationType | null>(null);\n  /** Term being edited; null when the Edit dialog is closed (FR-U009). */\n  const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);",
+            "after": "  /** OWL type of the term being added; null when the Add dialog is closed. */\n  const [addDialogType, setAddDialogType] = useState<AddTermType | null>(null);\n  /** Property type being created; null when PropertyCreationDialog is closed (FR-U033). */\n  const [propertyDialogType, setPropertyDialogType] =\n    useState<PropertyCreationType | null>(null);\n  /** Term being edited; null when the Edit dialog is closed (FR-U009). */\n  const [editTerm, setEditTerm] = useState<Record<string, unknown> | null>(null);\n  /** Global source-scope filter applied to all four sections (IMPL \u00a73.4 sub-task 2). */\n  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>(\"all\");",
+            "scope": "minimal"
+          },
+          {
+            "id": "C5",
+            "file": "src/ui/TermSidebar.tsx",
+            "rationale": "Add the global scope filter <select> UI element (data-testid=gw-term-scope-filter-global) before the first TermSection, and thread scopeFilter={scopeFilter} into all four TermSection renders. Single control for all sections is the correct UX per Q-CONFIRM-2 (four independent toggles would be poor UX). All existing TermSection props and dialog renders are preserved verbatim.",
+            "before": "  return (\n    <>\n      <TermSection\n        title=\"Classes\"\n        terms={classes}\n        testId=\"gw-term-section-classes\"\n        onAddTerm={canEdit ? () => setAddDialogType(\"owl:Class\") : undefined}\n        addTestId=\"gw-btn-add-class\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-classes\"\n        isDegraded={isDegraded}\n      />\n      <TermSection\n        title=\"Object Properties\"\n        terms={objectProperties}\n        testId=\"gw-term-section-object-properties\"\n        onAddTerm={\n          canEdit ? () => setAddDialogType(\"owl:ObjectProperty\") : undefined\n        }\n        addTestId=\"gw-btn-add-object-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-object-properties\"\n        isDegraded={isDegraded}\n      />\n      <TermSection\n        title=\"Datatype Properties\"\n        terms={datatypeProperties}\n        testId=\"gw-term-section-datatype-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:DatatypeProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-datatype-properties\"\n        isDegraded={isDegraded}\n      />\n      <TermSection\n        title=\"Annotation Properties\"\n        terms={annotationProperties}\n        testId=\"gw-term-section-annotation-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:AnnotationProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-annotation-properties\"\n        isDegraded={isDegraded}\n      />\n      {addDialogType !== null && project !== null && (\n        <AddTermDialog\n          termType={addDialogType}\n          project={project}\n          onConfirm={handleAddConfirm}\n          onClose={() => setAddDialogType(null)}\n        />\n      )}\n      {propertyDialogType !== null && project !== null && (\n        <PropertyCreationDialog\n          initialType={propertyDialogType}\n          project={project}\n          onConfirm={handlePropertyConfirm}\n          onClose={() => setPropertyDialogType(null)}\n        />\n      )}\n      {editTerm !== null && project !== null && (\n        <EditTermDialog\n          term={editTerm}\n          project={project}\n          onConfirm={handleEditConfirm}\n          onClose={() => setEditTerm(null)}\n        />\n      )}\n    </>\n  );\n}",
+            "after": "  return (\n    <>\n      <div className=\"gw-scope-filter\">\n        <select\n          value={scopeFilter}\n          onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}\n          className=\"gw-scope-filter-select\"\n          aria-label=\"Filter by source\"\n          data-testid=\"gw-term-scope-filter-global\"\n        >\n          <option value=\"all\">All</option>\n          <option value=\"project-created\">Project-created only</option>\n          <option value=\"imported\">Imported only</option>\n        </select>\n      </div>\n      <TermSection\n        title=\"Classes\"\n        terms={classes}\n        testId=\"gw-term-section-classes\"\n        onAddTerm={canEdit ? () => setAddDialogType(\"owl:Class\") : undefined}\n        addTestId=\"gw-btn-add-class\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-classes\"\n        isDegraded={isDegraded}\n        scopeFilter={scopeFilter}\n      />\n      <TermSection\n        title=\"Object Properties\"\n        terms={objectProperties}\n        testId=\"gw-term-section-object-properties\"\n        onAddTerm={\n          canEdit ? () => setAddDialogType(\"owl:ObjectProperty\") : undefined\n        }\n        addTestId=\"gw-btn-add-object-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-object-properties\"\n        isDegraded={isDegraded}\n        scopeFilter={scopeFilter}\n      />\n      <TermSection\n        title=\"Datatype Properties\"\n        terms={datatypeProperties}\n        testId=\"gw-term-section-datatype-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:DatatypeProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-datatype-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-datatype-properties\"\n        isDegraded={isDegraded}\n        scopeFilter={scopeFilter}\n      />\n      <TermSection\n        title=\"Annotation Properties\"\n        terms={annotationProperties}\n        testId=\"gw-term-section-annotation-properties\"\n        onAddTerm={\n          canEdit\n            ? () => setPropertyDialogType(\"owl:AnnotationProperty\")\n            : undefined\n        }\n        addTestId=\"gw-btn-add-annotation-property\"\n        onTermClick={canEdit ? handleTermClick : undefined}\n        onImportedTermClick={onImportedTermClick}\n        searchTestId=\"gw-term-section-search-annotation-properties\"\n        isDegraded={isDegraded}\n        scopeFilter={scopeFilter}\n      />\n      {addDialogType !== null && project !== null && (\n        <AddTermDialog\n          termType={addDialogType}\n          project={project}\n          onConfirm={handleAddConfirm}\n          onClose={() => setAddDialogType(null)}\n        />\n      )}\n      {propertyDialogType !== null && project !== null && (\n        <PropertyCreationDialog\n          initialType={propertyDialogType}\n          project={project}\n          onConfirm={handlePropertyConfirm}\n          onClose={() => setPropertyDialogType(null)}\n        />\n      )}\n      {editTerm !== null && project !== null && (\n        <EditTermDialog\n          term={editTerm}\n          project={project}\n          onConfirm={handleEditConfirm}\n          onClose={() => setEditTerm(null)}\n        />\n      )}\n    </>\n  );\n}",
+            "scope": "moderate"
+          },
+          {
+            "id": "C6",
+            "file": "src/ui/App.css",
+            "rationale": "Add CSS rules for the global scope filter control (.gw-scope-filter wrapper + .gw-scope-filter-select with matching visual style to .gw-term-section-search) and the degraded-mode search gate hint (.gw-term-degraded-hint overrides .gw-term-empty's italic to signal an instruction rather than an absence). Inserted immediately after the existing search-input focus rule to keep the Term Sidebar section contiguous.",
+            "before": ".gw-term-section-search:focus {\n  border-color: #3b82f6;\n  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);\n}",
+            "after": ".gw-term-section-search:focus {\n  border-color: #3b82f6;\n  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);\n}\n\n/* Scope filter (IMPL \u00a73.4 sub-task 2) */\n.gw-scope-filter {\n  margin-bottom: 0.5rem;\n}\n\n.gw-scope-filter-select {\n  width: 100%;\n  border: 1px solid #d1d5db;\n  border-radius: 3px;\n  font-size: 0.75rem;\n  padding: 0.25rem 0.375rem;\n  background: #ffffff;\n  color: #1e293b;\n  outline: none;\n  cursor: pointer;\n}\n\n.gw-scope-filter-select:focus {\n  border-color: #3b82f6;\n  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);\n}\n\n/* Degraded-mode search gate (IMPL \u00a73.4 sub-task 3) */\n.gw-term-degraded-hint {\n  font-style: normal;\n  color: #475569;\n}",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/term-sidebar.spec.ts",
+            "describe": "AC2 scope filter \u00e2\u20ac\u201d with a project containing both project-created and imported terms: (a) selecting 'Project-created only' hides all items with aria-label='ecm:imported-ontology' and shows items with aria-label='ecm:project-created'; (b) selecting 'Imported only' shows only imported-ontology items; (c) selecting 'All' restores both. Assert via [data-testid='gw-term-scope-filter-global'] + [data-testid='gw-term-item'] count. Preserve all existing gw-* test-ids."
+          },
+          {
+            "file": "tests/playwright/term-sidebar.spec.ts",
+            "describe": "AC1 search + scope compose \u00e2\u20ac\u201d with 'Project-created only' active, typing a query shows only project-created terms matching the query; no imported-ontology terms appear in results. Assert count and badge classes."
+          },
+          {
+            "file": "tests/playwright/large-import.spec.ts",
+            "describe": "Degraded-mode search gate \u00e2\u20ac\u201d after a large import triggers isDegraded, each TermSection with terms > 0 shows 'Search to find terms' (gw-term-degraded-hint) when search input is empty. After typing a query, the virtualized list renders. Assert [data-testid='gw-term-section-virtualized'] is absent when searchQuery is empty; present after typing."
+          },
+          {
+            "file": "tests/playwright/term-sidebar.spec.ts",
+            "describe": "AC1 search (IMPL \u00c2\u00a73.4) \u00e2\u20ac\u201d typing 'person' in the Classes search input shows only terms whose label contains 'person' (case-insensitive). This AC was not Playwright-covered by Chain 5."
+          }
+        ],
+        "open_questions": [
+          "\u00c2\u00a73.4 AC3 Playwright assertion ('zero non-virtualized term DOM nodes beyond visible viewport') is already covered by large-import.spec.ts AC5 (gw-term-item count <= 200, recon F13). Should Chain 8 add a duplicate test or reference the existing Chain 6 test as satisfying this criterion?",
+          "Should \u00c2\u00a73.4 AC1 search Playwright test be added to existing term-sidebar.spec.ts (recommended \u00e2\u20ac\u201d same fixture) or a new term-search-filter.spec.ts?",
+          "scrollTop state in TermSection is not reset when the degraded gate activates. A user who scrolled mid-list, then cleared their search query, would have a stale scrollTop stored \u00e2\u20ac\u201d but the list is not rendered (gate fires), so it only matters when they next enter a query. The stale offset could produce a mis-windowed initial render. Worth a setScrollTop(0) call in the gate branch, or acceptable at this AC level?",
+          "The file-level JSDoc at TermSidebar.tsx:1\u00e2\u20ac\u201c9 does not reference Chain 8 / IMPL \u00c2\u00a73.4. Should the header comment be updated to mention the scope filter extension?"
+        ],
+        "summary": "Implements IMPL \u00c2\u00a73.4 sub-tasks 2 and 3 in two files. Sub-task 2 (scope filter): adds ScopeFilter type, a single scopeFilter useState at TermSidebar root (Q-CONFIRM-2 verdict: no App-level lift), a global <select> with data-testid=gw-term-scope-filter-global, and per-TermSection scopeFilteredTerms pre-filtering before the existing Chain 5 search logic. Sub-task 3 (degraded search-only gate, Q-CONFIRM-1 option d): adds a leading ternary branch that renders 'Search to find terms' when isDegraded && searchQuery is empty, blocking scroll-based navigation. App.css gains three new rules for the select control and the gate hint. App.tsx is untouched (no App-level lift). All existing gw-* test-ids and prop shapes are preserved.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:51:10Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:918-rat-p3-c8",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:917-dev-p3-c8",
+        "urn:fnsr:task:916-recon-p3-c8"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 8 -- Pass 2a ratification (scope filter + degraded-mode contract)",
+        "purpose": "Pass 2a ratification per FNSR Spec 03. Verify: (1) Q-CONFIRM-1 and Q-CONFIRM-2 verdicts from recon 916 are correctly reflected in 917's implementation choices; (2) scope filter UI correctly distinguishes All / Project-created only / Imported only by reading ecm:source from term records; (3) \u00a73.4 AC2 ('Project-created only filter hides all imported terms') is satisfied; (4) composition with Chain 5 search filter preserves both behaviors; (5) if 917 lifted state to App.tsx, the lift was Q-CONFIRM-2-justified per recon's recommendation; (6) degraded-mode search-only contract honored per Q-CONFIRM-1 verdict; (7) FR-U005 visual distinction (imported badge from Chain 3.2-UI) NOT removed.",
+        "spec_refs": [
+          "FNSR Spec 03 Architect refusal contract",
+          "IMPLEMENTATION_PLAN \u00a73.4",
+          "FR-U005"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Adds new UI affordance (global scope-filter <select>), new component state (scopeFilter at TermSidebar root), new prop on TermSection, new filtering logic on the term render path, and changes degraded-mode render behavior to gate scroll-based navigation; this is behavioral spec content, not formatting or terminology.",
+        "rationale": "The Chain 8 implementation faithfully executes both Q-CONFIRM verdicts surfaced by recon 916 and satisfies the IMPL \u00c2\u00a73.4 sub-task 2 and sub-task 3 contracts. (1) Q-CONFIRM-1 verdict \u00e2\u20ac\u201d option (d), empty-list state when isDegraded && searchQuery is empty \u00e2\u20ac\u201d is implemented exactly in C3 as the leading ternary branch ('Search to find terms' via .gw-term-degraded-hint); this prevents the virtualized div (overflowY:auto, recon F4) from rendering without a query, closing the 'search-only navigation' gap flagged in recon F7. (2) Q-CONFIRM-2 verdict \u00e2\u20ac\u201d TermSidebar-root-level scope-filter state, not App.tsx-lifted \u00e2\u20ac\u201d is implemented exactly in C4 (single useState<ScopeFilter>('all') at TermSidebar root, lines 311\u00e2\u20ac\u201c321) and threaded as a prop into all four TermSection renders in C5; the developer's summary explicitly confirms 'App.tsx is untouched.' (3) The scope filter reads term['ecm:source'] directly (C2), the documented discriminator per recon F8; ScopeFilter is a closed discriminated union ('all' | 'project-created' | 'imported'). (4) IMPL \u00c2\u00a73.4 AC2 literal text \u00e2\u20ac\u201d 'Project-created only filter hides all imported terms' \u00e2\u20ac\u201d is satisfied: the 'project-created' branch filters out terms where ecm:source === 'ecm:imported-ontology', so no imported badge can survive. (5) Composition with Chain 5 search filter is preserved: C2 computes scopeFilteredTerms first, then applies the existing search filter to scopeFilteredTerms, keeping the Chain 5 filter logic byte-identical inside the new outer composition; useVirt still keys off filteredTerms.length, so Chain 6 virtualization is unaffected. (6) Degraded-mode contract honored as described above; the gate fires before the useVirt branch, so the virtualized scrollable container is never instantiated without a query. (7) FR-U005 visual distinction is fully preserved: SourceBadge code (TermSidebar.tsx:115\u00e2\u20ac\u201c142) is untouched; renderTermItem is untouched; no existing gw-* test-id, aria-label, or CSS class is removed or renamed; the CSS additions in C6 are purely new classes (.gw-scope-filter, .gw-scope-filter-select, .gw-term-degraded-hint) inserted after the existing search-input focus rule without disturbing any surrounding declarations. All five `before` snippets resolve cleanly against the current TermSidebar.tsx at the cited line ranges (verified by direct read). Reconnaissance evidence is present in UPSTREAM (urn:fnsr:task:916-recon-p3-c8) per Spec 03 \u00c2\u00a7'Reconnaissance requirement.' Proceed to Pass 2b.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:916-recon-p3-c8",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:917-dev-p3-c8",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.4 sub-tasks 2 and 3 (AC1, AC2, AC3)",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC5 (DOM \u00e2\u2030\u00a4 200)",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "SPEC \u00c2\u00a714.2 (degraded mode: 'search-only, virtualized list')",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U005 (source visual distinction: imported / project-created / starter)",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "Spec 03 \u00c2\u00a7'Reconnaissance requirement' / Architect refusal contract",
+            "source": "FNSR Protocol Spec 03"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Label-semantic gap between filter UI text and predicate intent. SourceBadge (TermSidebar.tsx:115\u00e2\u20ac\u201c142, verified by direct read) recognizes three ecm:source values: ecm:imported-ontology, ecm:project-created, and ecm:system-starter-example. The 'Project-created only' filter predicate is `t['ecm:source'] !== 'ecm:imported-ontology'`, which keeps both ecm:project-created AND ecm:system-starter-example terms. The literal AC2 text ('Project-created only filter hides all imported terms') is satisfied because the predicate is framed negatively \u00e2\u20ac\u201d what's hidden \u00e2\u20ac\u201d but the user-facing dropdown label 'Project-created only' is narrower than what the predicate actually returns when starter-example terms are present. The pattern is: an AC written as a negative containment (hides X) was implemented as a positive complement (everything \u00e2\u2030\u00a0 X), and the UI label was named after the positive side rather than the negative side. This is not a blocker because (a) AC2's literal contract is met and (b) the most common operational case has no starter-example terms visible alongside imported terms in a given section. Worth surfacing for a later AC-text vs label tightening pass \u00e2\u20ac\u201d either rename the option to 'Hide imported' or change the predicate to a positive `=== 'ecm:project-created'` (which would then hide starter terms, a separate UX call)."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Degraded-mode search gate competes with the empty-section render in a section-empty edge case. The new C3 branch fires as the FIRST ternary branch: `isDegraded && searchQuery.trim() === ''` \u00e2\u2021\u2019 'Search to find terms'. When a section has zero terms and isDegraded is true (e.g., a 10,001-term import lands only as classes, leaving Annotation Properties empty), the user sees 'Search to find terms' rather than the previously-shown 'No annotation properties yet'. This is a minor UX regression for an edge case: there is nothing to search for in an empty section, so the hint is misleading. A future tightening \u00e2\u20ac\u201d gate predicate `isDegraded && searchQuery.trim() === '' && terms.length > 0` \u00e2\u20ac\u201d would preserve the search-only contract for non-empty sections while restoring the accurate empty-section message. Not blocking at AC level; the gate's structural purpose (prevent scroll-based navigation when terms exist) is satisfied."
+          },
+          {
+            "id": "B3",
+            "category": "discipline-correction",
+            "content": "Q-CONFIRM verdicts surfaced in recon `open_questions` and incorporated into the developer's implementation rationale is a clean Spec 03 reconnaissance-to-ratification handoff pattern. Recon 916 raised Q-CONFIRM-1 and Q-CONFIRM-2 as explicit VERDICT-prefixed open_questions with structural recommendation embedded; developer 917's per-change rationale fields cite both verdicts by name when justifying placement (C3 cites 'Q-CONFIRM-1 option d'; C4 cites 'Q-CONFIRM-2 verdict'). This makes the ratification audit trivial \u00e2\u20ac\u201d the architect can verify verdict-to-implementation alignment by reading the rationale fields, not by re-derivinng the analysis. Worth banking as a discipline that scales: when recon raises a Q-CONFIRM with embedded verdict, developer rationale should cite the verdict by short-name, and ratification can then verify-by-citation rather than re-reason from first principles."
+          },
+          {
+            "id": "B4",
+            "category": "methodology-refinement-candidate",
+            "content": "Three Playwright AC tests are recommended in developer 917's tests_recommended but not yet implemented in the changes[] payload; ratification is for the source change, not the test addition. The Pass 2b applier will land C1\u00e2\u20ac\u201cC6 but the \u00c2\u00a73.4 AC1, AC2, and degraded-gate Playwright assertions remain forward-tracked. Developer's open_question about whether to add tests to existing term-sidebar.spec.ts vs new term-search-filter.spec.ts is a Chain 8.x follow-up. Worth banking as: AC tests recommended by developer should normally be a separate task in the chain (developer-tests after applier), and the chain composition should reflect that. For Chain 8 the operator may want to queue a `developer-tests` follow-up before declaring \u00c2\u00a73.4 complete, otherwise the implementation ships without acceptance-level Playwright coverage for AC1 and AC2."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:53:04Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:919-apply-p3-c8",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:918-rat-p3-c8",
+        "urn:fnsr:task:917-dev-p3-c8"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 -- applier (Pass 2b commit-finalize)",
+        "purpose": "Pass 2b commit-finalize for the scope filter + degraded-mode work.",
+        "source_task": "urn:fnsr:task:917-dev-p3-c8"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 269
+          },
+          {
+            "id": "C2",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 382
+          },
+          {
+            "id": "C3",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 138
+          },
+          {
+            "id": "C4",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 160
+          },
+          {
+            "id": "C5",
+            "path": "src\\ui\\TermSidebar.tsx",
+            "mode": "edit",
+            "delta_bytes": 647
+          },
+          {
+            "id": "C6",
+            "path": "src\\ui\\App.css",
+            "mode": "edit",
+            "delta_bytes": 546
+          }
+        ],
+        "failed": [],
+        "summary": "6 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:53:05Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:920-dev-p3-c8-pw",
+      "agent": "developer",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:916-recon-p3-c8",
+        "urn:fnsr:task:919-apply-p3-c8"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 sub-task PW -- Playwright AC2 for scope filter",
+        "purpose": "Author Playwright AC for \u00a73.4 AC2 ('Project-created only filter hides all imported terms'). New file tests/playwright/term-scope-filter.spec.ts. Test setup: load a project document with at least 1 imported term (ecm:source = 'ecm:imported-ontology') AND at least 1 project-created term; assert that selecting 'Project-created only' filter hides the imported term from the sidebar AND that selecting 'Imported only' hides the project-created term. Use a programmatic fixture or the existing tests/playwright/fixtures/imported-term.jsonld (per Chain 3.2-UI). If Q-CONFIRM-1 verdict required additional degraded-mode UI affordance (sub-task 3 work), ALSO add a test asserting that affordance behavior. Follow the structural pattern of tests/playwright/imported-term-read-only.spec.ts (Chain 3.2-UI) and tests/playwright/large-import.spec.ts (Chain 6).",
+        "files_in_scope": [
+          "tests/playwright/term-scope-filter.spec.ts (new)"
+        ],
+        "spec_refs": [
+          "IMPLEMENTATION_PLAN \u00a73.4 acceptance criteria AC2"
+        ],
+        "constraint": "Single new file. Use existing fixtures where possible; programmatic fixture generation only if needed."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "tests/playwright/term-scope-filter.spec.ts",
+            "rationale": "New Playwright test file for \u00c2\u00a73.4 AC2 ('Project-created only filter hides all imported terms'). Tests AC2a (project-created only hides imported term), AC2b (imported only hides project-created term), AC2c (all restores both terms), and ACd (degraded-mode Q-CONFIRM-1 affordance: 'Search to find terms' renders in place of term list when isDegraded && searchQuery === ''). Reuses the existing imported-term.jsonld fixture for AC2a\u00e2\u20ac\u201cAC2c (it already has one owl:Class imported + one owl:Class project-created term). Uses a programmatic in-memory buffer for ACd following the large-import.spec.ts pattern. Structural shape follows imported-term-read-only.spec.ts and large-import.spec.ts.",
+            "before": null,
+            "after": "import { test, expect } from \"@playwright/test\";\nimport path from \"path\";\n\n/**\n * Phase 3 Chain 8 sub-task PW -- Scope Filter Playwright acceptance tests.\n *\n * Covers IMPLEMENTATION_PLAN section 3.4 AC2:\n * \"Project-created only filter hides all imported terms.\"\n *\n * Tests:\n * AC2a: Selecting \"Project-created only\" removes the imported term from the\n *       Classes section and leaves the project-created term visible.\n * AC2b: Selecting \"Imported only\" removes the project-created term from the\n *       Classes section and leaves the imported term visible.\n * AC2c: Switching back to \"All\" after \"Project-created only\" restores both\n *       terms in the Classes section.\n * ACd:  Degraded-mode affordance (Q-CONFIRM-1 verdict; IMPL section 3.4\n *       sub-task 3): when isDegraded is true and the per-section search query\n *       is empty, TermSection renders \"Search to find terms\" in place of the\n *       term list, preventing scroll-based navigation.\n *\n * Fixture strategy for AC2a-AC2c:\n *   Reuses tests/playwright/fixtures/imported-term.jsonld (Chain 3.2-UI).\n *   That fixture contains exactly one owl:Class imported term (\"Imported Class\",\n *   ecm:source: \"ecm:imported-ontology\") and one owl:Class project-created term\n *   (\"Local Class\", ecm:source: \"ecm:project-created\"). Both land in the Classes\n *   section, providing the minimal deterministic setup for the filter assertion.\n *\n * Fixture strategy for ACd:\n *   Programmatic in-memory JSON-LD with ecm:importStatus: \"ecm:degraded\" on its\n *   ecm:ontologies entry and a single owl:Class term. Generated as a Buffer and\n *   passed to setInputFiles -- mirrors the large-import.spec.ts in-memory pattern.\n *   hasDegradedOntology() in TermSidebar.tsx reads ecm:importStatus directly from\n *   the parsed JSON, so a full JSON-LD expansion is not required at runtime.\n *\n * SPEC refs: FR-U005, section 14.2.\n * IMPL refs: IMPLEMENTATION_PLAN section 3.4 AC2, sub-task 2, sub-task 3.\n */\n\n// ---------------------------------------------------------------------------\n// Fixtures\n// ---------------------------------------------------------------------------\n\nconst IMPORTED_TERM_FIXTURE = path.join(\n  process.cwd(),\n  \"tests\",\n  \"playwright\",\n  \"fixtures\",\n  \"imported-term.jsonld\",\n);\n\n/**\n * Minimal JSON-LD project document whose ecm:ontologies entry carries\n * ecm:importStatus: \"ecm:degraded\". hasDegradedOntology() in TermSidebar.tsx\n * returns true for this document, so TermSection renders the degraded hint\n * (\"Search to find terms\") when searchQuery is empty.\n *\n * One owl:Class term is included so the Classes section is non-empty; the\n * degraded hint renders regardless of term count because the isDegraded branch\n * fires before the filteredTerms.length check.\n */\nconst DEGRADED_FIXTURE_JSON = JSON.stringify({\n  \"@context\": {\n    ecm: \"https://edgecanonical.org/ns/modeler#\",\n    \"ecm:instances\": { \"@container\": \"@set\" },\n    \"ecm:layouts\": { \"@container\": \"@set\" },\n    \"ecm:literalAssertions\": { \"@container\": \"@set\" },\n    \"ecm:ontologies\": { \"@container\": \"@set\" },\n    \"ecm:relations\": { \"@container\": \"@set\" },\n    \"ecm:serializations\": { \"@container\": \"@set\" },\n    \"ecm:snapshots\": { \"@container\": \"@set\" },\n    \"ecm:terms\": { \"@container\": \"@set\" },\n    id: \"@id\",\n    owl: \"http://www.w3.org/2002/07/owl#\",\n    rdfs: \"http://www.w3.org/2000/01/rdf-schema#\",\n    type: \"@type\",\n  },\n  id: \"urn:uuid:00000000-0000-0000-0000-000000000099\",\n  type: [\"ecm:OntologyDesignPattern\", \"ecm:Project\"],\n  \"ecm:specVersion\": \"0.4\",\n  \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n  \"ecm:name\": \"Degraded Scope Filter Test Fixture\",\n  \"ecm:instances\": [],\n  \"ecm:layouts\": [],\n  \"ecm:literalAssertions\": [],\n  \"ecm:ontologies\": [\n    {\n      id: \"urn:uuid:00000000-0000-0000-0000-000000000098\",\n      \"ecm:importStatus\": \"ecm:degraded\",\n    },\n  ],\n  \"ecm:relations\": [],\n  \"ecm:serializations\": [],\n  \"ecm:snapshots\": [],\n  \"ecm:terms\": [\n    {\n      id: \"https://example.org/degraded/TestClass\",\n      type: \"owl:Class\",\n      \"rdfs:label\": { text: \"Degraded Test Class\", lang: \"en\" },\n      \"ecm:source\": \"ecm:imported-ontology\",\n      \"ecm:ontologyId\": null,\n      \"ecm:createdAt\": \"2026-01-01T00:00:00Z\",\n      \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n    },\n  ],\n  \"ecm:updatedAt\": \"2026-01-01T00:00:00Z\",\n});\n\n/**\n * Returns a Playwright setInputFiles buffer payload for the degraded fixture.\n * Using an in-memory Buffer avoids writing a temp file and keeps CI hermetic.\n * The file name uses the .jsonld extension expected by the gw-file-input handler.\n */\nfunction degradedFixturePayload(): {\n  name: string;\n  mimeType: string;\n  buffer: Buffer;\n} {\n  return {\n    name: \"degraded-scope-filter.jsonld\",\n    mimeType: \"application/ld+json\",\n    buffer: Buffer.from(DEGRADED_FIXTURE_JSON, \"utf-8\"),\n  };\n}\n\n// ---------------------------------------------------------------------------\n// Tests\n// ---------------------------------------------------------------------------\n\ntest.describe(\n  \"Scope Filter (IMPL section 3.4 AC2; SPEC FR-U005)\",\n  () => {\n    test(\n      \"AC2a: 'Project-created only' filter removes imported term from Classes section; project-created term remains visible\",\n      async ({ page }) => {\n        await page.goto(\"/\");\n        await page\n          .getByTestId(\"gw-file-input\")\n          .setInputFiles(IMPORTED_TERM_FIXTURE);\n        await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n        const classesSec = page.getByTestId(\"gw-term-section-classes\");\n        const importedItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Imported Class\" });\n        const localItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Local Class\" });\n\n        // Baseline: both terms visible before any filter is applied.\n        await expect(importedItem).toBeVisible();\n        await expect(localItem).toBeVisible();\n\n        // Select \"Project-created only\" via the global scope filter.\n        await page\n          .getByTestId(\"gw-term-scope-filter-global\")\n          .selectOption(\"project-created\");\n\n        // AC2a: imported term must be absent from the DOM (scopeFilter filters\n        // out ecm:imported-ontology terms before React renders the list).\n        await expect(importedItem).toHaveCount(0);\n        // AC2a: project-created term must remain visible.\n        await expect(localItem).toBeVisible();\n      },\n    );\n\n    test(\n      \"AC2b: 'Imported only' filter removes project-created term from Classes section; imported term remains visible\",\n      async ({ page }) => {\n        await page.goto(\"/\");\n        await page\n          .getByTestId(\"gw-file-input\")\n          .setInputFiles(IMPORTED_TERM_FIXTURE);\n        await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n        const classesSec = page.getByTestId(\"gw-term-section-classes\");\n        const importedItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Imported Class\" });\n        const localItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Local Class\" });\n\n        // Select \"Imported only\" via the global scope filter.\n        await page\n          .getByTestId(\"gw-term-scope-filter-global\")\n          .selectOption(\"imported\");\n\n        // AC2b: project-created term must be absent from the DOM.\n        await expect(localItem).toHaveCount(0);\n        // AC2b: imported term must remain visible.\n        await expect(importedItem).toBeVisible();\n      },\n    );\n\n    test(\n      \"AC2c: Switching back to 'All' after 'Project-created only' restores both terms in the Classes section\",\n      async ({ page }) => {\n        await page.goto(\"/\");\n        await page\n          .getByTestId(\"gw-file-input\")\n          .setInputFiles(IMPORTED_TERM_FIXTURE);\n        await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n        const classesSec = page.getByTestId(\"gw-term-section-classes\");\n        const importedItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Imported Class\" });\n        const localItem = classesSec\n          .getByTestId(\"gw-term-item\")\n          .filter({ hasText: \"Local Class\" });\n\n        // Apply \"Project-created only\" to hide imported term.\n        await page\n          .getByTestId(\"gw-term-scope-filter-global\")\n          .selectOption(\"project-created\");\n        await expect(importedItem).toHaveCount(0);\n\n        // Reset to \"All\".\n        await page\n          .getByTestId(\"gw-term-scope-filter-global\")\n          .selectOption(\"all\");\n\n        // AC2c: both terms must be visible again after the reset.\n        await expect(importedItem).toBeVisible();\n        await expect(localItem).toBeVisible();\n      },\n    );\n\n    test(\n      \"ACd: Degraded mode + empty search shows 'Search to find terms' in place of term list (IMPL section 3.4 sub-task 3; Q-CONFIRM-1 affordance)\",\n      async ({ page }) => {\n        await page.goto(\"/\");\n\n        // Load degraded fixture via in-memory buffer (mirrors large-import.spec.ts pattern).\n        // hasDegradedOntology() in TermSidebar.tsx reads ecm:importStatus: \"ecm:degraded\"\n        // from ecm:ontologies and sets isDegraded = true.\n        await page\n          .getByTestId(\"gw-file-input\")\n          .setInputFiles(degradedFixturePayload());\n        await expect(page.getByTestId(\"gw-btn-save\")).toBeEnabled();\n\n        const classesSec = page.getByTestId(\"gw-term-section-classes\");\n\n        // ACd: When isDegraded === true and searchQuery is empty, TermSection renders\n        // the degraded hint (IMPL section 3.4 sub-task 3; TermSidebar.tsx isDegraded branch).\n        await expect(\n          classesSec.getByText(\"Search to find terms\"),\n        ).toBeVisible();\n\n        // ACd: No gw-term-item nodes should be rendered in the Classes section;\n        // the list is suppressed in favour of the degraded navigation hint.\n        await expect(\n          classesSec.getByTestId(\"gw-term-item\"),\n        ).toHaveCount(0);\n      },\n    );\n  },\n);\n",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [
+          {
+            "file": "tests/playwright/term-scope-filter.spec.ts",
+            "describe": "Run `npx playwright test tests/playwright/term-scope-filter.spec.ts` against the dev server. AC2a/AC2b/AC2c verify the scope filter select drives DOM inclusion/exclusion via the gw-term-scope-filter-global testid and the gw-term-item locators scoped to gw-term-section-classes. ACd verifies the degraded-mode 'Search to find terms' hint and the absence of gw-term-item nodes when isDegraded is true and searchQuery is empty."
+          }
+        ],
+        "open_questions": [
+          "The DEGRADED_FIXTURE_JSON uses a Buffer payload via setInputFiles on gw-file-input. This pattern has not been exercised for the project-document file input (existing tests use static file paths for gw-file-input; large-import.spec.ts uses the buffer path only for gw-import-file-input). If the app's FileReader handler does not accept buffer payloads on that input for some Playwright version-specific reason, the ACd test would fail at setInputFiles. Fallback: promote DEGRADED_FIXTURE_JSON to a static committed fixture file at tests/playwright/fixtures/degraded-scope-filter.jsonld and use setInputFiles(path.join(...)) instead.",
+          "The imported-term.jsonld fixture has ecm:ontologyId: null on both terms. If a future fixture migration sets ecm:ontologyId to a real value, the filter logic (keyed on ecm:source, not ecm:ontologyId) is unaffected, but the test comment about fixture shape should be updated."
+        ],
+        "summary": "Single new file: tests/playwright/term-scope-filter.spec.ts. Four tests: AC2a ('Project-created only' hides imported term, count=0), AC2b ('Imported only' hides project-created term, count=0), AC2c ('All' restores both), and ACd (degraded-mode 'Search to find terms' hint visible + no gw-term-item rendered). Uses the existing imported-term.jsonld fixture for AC2a-AC2c (already contains both term kinds as owl:Class). Uses an in-memory Buffer payload for ACd to avoid committing a second static fixture. Follows the structural pattern of imported-term-read-only.spec.ts (describe/test shape, setInputFiles + toBeEnabled wait) and large-import.spec.ts (in-memory buffer generation).",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:57:29Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:921-rat-p3-c8-pw",
+      "agent": "architect",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:920-dev-p3-c8-pw",
+        "urn:fnsr:task:916-recon-p3-c8"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 8 -- Pass 2a ratification (Playwright AC2)",
+        "purpose": "Pass 2a ratification for the Playwright AC. Verify: (1) test covers \u00a73.4 AC2 verbatim; (2) fixture has imported + project-created terms; (3) assertion shape distinguishes hidden vs visible by data-testid presence; (4) if Q-CONFIRM-1 required sub-task 3 affordance, the additional test asserts the affordance behavior.",
+        "spec_refs": [
+          "FNSR Spec 03",
+          "IMPLEMENTATION_PLAN \u00a73.4"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "Adding a new Playwright spec file that establishes behavioral acceptance coverage for \u00c2\u00a73.4 AC2 and the Q-CONFIRM-1 degraded-mode affordance is substantive content (new test contract over new UI behavior), not an editorial / formatting / terminology-tightening change.",
+        "rationale": "The proposal satisfies all four ratification gates declared in INPUTS.purpose. (1) \u00c2\u00a73.4 AC2 verbatim coverage: AC2a maps directly to the plan text 'Project-created only filter hides all imported terms' (IMPLEMENTATION_PLAN.md:602), with AC2b and AC2c providing the inverse and reset confirmations that lock the filter's bidirectional semantics. (2) Fixture has both kinds: tests/playwright/fixtures/imported-term.jsonld is confirmed to contain one owl:Class imported term ('Imported Class', ecm:source: 'ecm:imported-ontology') and one owl:Class project-created term ('Local Class', ecm:source: 'ecm:project-created') \u00e2\u20ac\u201d both land in the Classes section, giving the minimum-deterministic setup for the AC2 assertion. (3) Assertion shape distinguishes hidden vs visible via data-testid presence: each candidate term is located via the gw-term-item testid scoped under gw-term-section-classes and filtered by text; hidden is asserted by toHaveCount(0) (DOM exclusion, not CSS visibility) and visible by toBeVisible() \u00e2\u20ac\u201d this is the structurally correct shape because the recon's intended scope-filter design filters before render (per F8/F11 discussion). (4) Q-CONFIRM-1 affordance: the recon's Q-CONFIRM-1 verdict was option (d) \u00e2\u20ac\u201d empty-list state rendering 'Search to find terms' when isDegraded && searchQuery.trim() === ''; the ACd test asserts both halves of that contract (the hint text visible + zero gw-term-item under the section) using a degraded fixture whose ecm:ontologies entry carries ecm:importStatus: 'ecm:degraded', which hasDegradedOntology() in TermSidebar.tsx:104-110 reads to set isDegraded = true. The test deliberately encodes behavior not yet present in src/ui/ (the gw-term-scope-filter-global control and the 'Search to find terms' empty state) \u00e2\u20ac\u201d this is acceptance-test-first discipline: the test will fail until the implementation chain lands, which is the intended Pass-2b gating mechanism. The developer's open question about Buffer setInputFiles on gw-file-input is a real but bounded risk with a stated fallback (promote to a static fixture file); not a ratification blocker. Reconnaissance is present in UPSTREAM (916-recon-p3-c8) per the Spec 03 refusal contract.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:916-recon-p3-c8",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:920-dev-p3-c8-pw",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "SPEC \u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U005",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "fixture",
+            "id": "tests/playwright/fixtures/imported-term.jsonld",
+            "source": "tests/playwright/fixtures/imported-term.jsonld"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Acceptance-test-first contract artifact pattern: the Pass-2a-ratified Playwright spec encodes the data-testid contract (gw-term-scope-filter-global) and the Q-CONFIRM-1 affordance shape ('Search to find terms' empty state) BEFORE the corresponding UI implementation lands. The spec serves as the executable contract that the subsequent implementation chain must satisfy, and the failing-test state between Chain 8 PW landing and Chain 8 impl landing is the gating mechanism that prevents implementation drift from the ratified design verdict. This is a substrate-visible discipline: a single chain produces both the contract artifact and the implementation against it, with ratification of the contract preceding ratification of the implementation."
+          },
+          {
+            "id": "B2",
+            "category": "methodology-refinement-candidate",
+            "content": "In-memory Buffer fixtures via setInputFiles on UI file inputs have asymmetric coverage in the Playwright suite: large-import.spec.ts uses the buffer pattern for gw-import-file-input, but no prior test uses it for gw-file-input (the project-document loader). The developer's own open_question flagged this risk with a stated fallback (promote to a static fixture). Worth tracking as a future candidacy: either (a) standardize the in-memory-buffer pattern for all file inputs once exercised, or (b) commit static fixtures uniformly. The decision depends on whether the gw-file-input handler accepts the buffer payload without a real File object \u00e2\u20ac\u201d observable on first test run."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:58:50Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:922-apply-p3-c8-pw",
+      "agent": "applier",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:921-rat-p3-c8-pw",
+        "urn:fnsr:task:920-dev-p3-c8-pw"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 -- applier (Playwright AC)",
+        "purpose": "Pass 2b commit-finalize for the Playwright AC test file.",
+        "source_task": "urn:fnsr:task:920-dev-p3-c8-pw"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "tests\\playwright\\term-scope-filter.spec.ts",
+            "mode": "create",
+            "bytes_written": 10043,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:58:50Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:923-test-p3-c8",
+      "agent": "test-runner",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "urn:fnsr:task:919-apply-p3-c8",
+        "urn:fnsr:task:922-apply-p3-c8-pw"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 8 -- final test-runner",
+        "cmd": "\"C:/Program Files/nodejs/npm.cmd\" test",
+        "parser": "npm",
+        "purpose": "Verify Chain 8 did not regress; existing 165 tests stay green. Playwright AC at tests/playwright/term-scope-filter.spec.ts authored but NOT exercised by npm test default (operator runs npx playwright test separately for AC validation; v3.6.1 candidate would extend test-runner cmd_set per bank-883-test-p3-c6-2)."
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "all_pass",
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0,
+        "duration_s": 14.527617931365967,
+        "first_n_failures": [],
+        "raw_stdout_tail": " PASS: project type sorted lexicographically even when input is unordered (\u00c2\u00a75.4)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on @id/@type input (AC2)\n  \u00e2\u0153\u201c PASS: serializeVmp idempotent on non-canonical input (AC2)\n  \u00e2\u0153\u201c PASS: round-trip: serialize(parse(canonical)) === canonical (AC1 stub; golden files gated on OED-313)\n  \u00e2\u0153\u201c PASS: output ends with exactly one terminating LF newline (\u00c2\u00a75.3 rule 6)\n\nAC2-PBT: Canonical idempotency property-based test (fast-check, 100 samples)\n  \u00e2\u0153\u201c PASS: canonical idempotency: 100 samples pass (AC2-PBT, SPEC section 21.1; fast-check seed 0xcafef00d)\n\n  12 passed, 0 failed\n\n=== Summary ===\n  PASSED: /canonical-reserved-name-collision.test.js (121ms)\n  PASSED: /cli-import-ontology.test.js (1418ms)\n  PASSED: /cli-integration.test.js (1897ms)\n  PASSED: /delete-instance.test.js (102ms)\n  PASSED: /determinism.test.js (90ms)\n  PASSED: /emitters.test.js (223ms)\n  PASSED: /import-turtle.test.js (428ms)\n  PASSED: /iri-generation.test.js (119ms)\n  PASSED: /iri-refactor.test.js (172ms)\n  PASSED: /iri-uuid-injection.test.js (150ms)\n  PASSED: /legacy-migration.test.js (127ms)\n  PASSED: /manifest-entries.test.js (133ms)\n  PASSED: /no-network.test.js (103ms)\n  PASSED: /normalize-on-load.test.js (125ms)\n  PASSED: /remap-references.test.js (116ms)\n  PASSED: /semantic-projection.test.js (144ms)\n  PASSED: /sha256.test.js (110ms)\n  PASSED: /snapshot.test.js (170ms)\n  PASSED: /starter-terms.test.js (216ms)\n  PASSED: /structural-validator.test.js (295ms)\n  PASSED: /tbox-bundle.test.js (304ms)\n  PASSED: /vmp-serializer.test.js (1096ms)\n\n  Files: 22/22 passed\n  Tests: 165/165 passed\n\n(node:30568) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:25104) [DEP0174] DeprecationWarning: Calling promisify on a function that returns a Promise is likely a mistake.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "exit_code": 0,
+        "summary": "all_pass: 0 passed 0 failed 0 skipped (0 total in 14.53s)",
+        "parser_used": "npm"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T17:59:05Z",
+          "event": "completed",
+          "payload": {
+            "agent": "test-runner"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
         }
       ]
     }
