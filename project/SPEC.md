@@ -442,6 +442,11 @@ The `ecm:determinism` block is new in v0.3 and controls how creation-time IRIs a
 
 `ecm:content` may be omitted if the ontology source is included as a separate artifact in a ZIP package.
 
+`ecm:importStatus` is a closed enumeration with two permitted values:
+
+- `"ecm:parsed"`: normal import; the extracted term count is at or below `LARGE_IMPORT_THRESHOLD` (10,000 terms; see section 14.2).
+- `"ecm:degraded"`: the user selected "Continue in degraded mode" at the import warning dialog (IMPLEMENTATION_PLAN section 3.3 AC4); the ontology record is stored with partial extraction and search-only navigation applies. Defined in `src/import/turtle-import.ts` (`ImportedOntologyRecord`).
+
 ### 5.7 Term Object
 
 A term represents a class, object property, datatype property, or annotation property.
