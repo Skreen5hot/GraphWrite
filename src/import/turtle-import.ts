@@ -7,8 +7,9 @@
  * importOntology(turtleSource, fileName, projectId, createdAt): ImportResult
  *
  * Extracts owl:Class, rdfs:Class (â†’ owl:Class), owl:ObjectProperty,
- * owl:DatatypeProperty from Turtle. Preserves rdfs:label, rdfs:comment,
- * rdfs:subClassOf, rdfs:subPropertyOf verbatim (named-node targets only).
+ * owl:DatatypeProperty, owl:AnnotationProperty from Turtle. Preserves
+ * rdfs:label, rdfs:comment, rdfs:subClassOf, rdfs:subPropertyOf verbatim
+ * (named-node targets only).
  * Produces ecm:ImportedOntology record per Â§5.6.
  *
  * Security (Â§12.2): hard-rejects source > 50 MB before parsing;
@@ -41,6 +42,7 @@ const OWL_CLASS       = "http://www.w3.org/2002/07/owl#Class";
 const RDFS_CLASS      = "http://www.w3.org/2000/01/rdf-schema#Class";
 const OWL_OBJECT_PROP = "http://www.w3.org/2002/07/owl#ObjectProperty";
 const OWL_DATA_PROP   = "http://www.w3.org/2002/07/owl#DatatypeProperty";
+const OWL_ANNOTATION_PROP = "http://www.w3.org/2002/07/owl#AnnotationProperty";
 const RDFS_LABEL      = "http://www.w3.org/2000/01/rdf-schema#label";
 const RDFS_COMMENT    = "http://www.w3.org/2000/01/rdf-schema#comment";
 const RDFS_SUB_CLASS  = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
@@ -54,7 +56,8 @@ const RDFS_SUB_PROP   = "http://www.w3.org/2000/01/rdf-schema#subPropertyOf";
 export type ImportedTermType =
   | "owl:Class"
   | "owl:ObjectProperty"
-  | "owl:DatatypeProperty";
+  | "owl:DatatypeProperty"
+  | "owl:AnnotationProperty";
 
 /**
  * A term extracted from an imported Turtle ontology (Â§14.1).
@@ -194,6 +197,8 @@ export function importOntology(
         termTypes.set(subj, "owl:ObjectProperty");
       } else if (obj === OWL_DATA_PROP && !termTypes.has(subj)) {
         termTypes.set(subj, "owl:DatatypeProperty");
+      } else if (obj === OWL_ANNOTATION_PROP && !termTypes.has(subj)) {
+        termTypes.set(subj, "owl:AnnotationProperty");
       }
       // Other rdf:type values (e.g. owl:Ontology) are not extracted.
       // owl:imports objects never receive a target-type triple in the supplied

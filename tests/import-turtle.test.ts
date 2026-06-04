@@ -10,6 +10,7 @@
  *   AC4: ecm:contentHash = "sha256-" + SHA-256 of input bytes. Unit test.
  *   AC5: 51 MB input returns error result without parsing. Unit test.
  *   AC6: owl:imports NOT followed; only supplied-file terms extracted. Unit test.
+ *   AC7: owl:AnnotationProperty extracted as a term (AC1-bonus). Unit test.
  *
  * Pattern: hand-rolled per tests/run-tests.ts; no framework; node:assert;
  * process.exit(1) on failure. Follows tests/manifest-entries.test.ts.
@@ -71,6 +72,16 @@ const OWL_IMPORTS_TTL = [
   "  owl:imports <https://example.org/ExternalOntology> .",
   "",
   "<https://example.org/LocalClass> a owl:Class .",
+  "",
+].join("\n");
+
+/** Minimal ontology for AC7: one owl:AnnotationProperty with rdfs:label. */
+const ANNOTATION_PROP_TTL = [
+  "@prefix owl:  <http://www.w3.org/2002/07/owl#> .",
+  "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
+  "",
+  "<http://example.org/note> a owl:AnnotationProperty ;",
+  '  rdfs:label "Note"@en .',
   "",
 ].join("\n");
 
@@ -211,6 +222,27 @@ try {
   pass("owl:imports not followed; only supplied-file terms extracted (AC6)");
 } catch (e) {
   fail("owl:imports must not be followed; only supplied-file terms extracted (AC6)", e);
+}
+
+// ---------------------------------------------------------------------------
+// AC7: owl:AnnotationProperty must be extracted as a term (AC1-bonus)
+// ---------------------------------------------------------------------------
+console.log("\nAC7: owl:AnnotationProperty extracted as a term");
+
+try {
+  const result = importOntology(ANNOTATION_PROP_TTL, "annotprop.ttl", PROJECT_ID, CREATED_AT);
+  ok(result.ok, "importOntology must succeed on annotation property Turtle");
+  if (!result.ok) throw new Error("result.ok is false");
+  const annotProps = result.terms.filter((t) => t.type === "owl:AnnotationProperty");
+  ok(annotProps.length >= 1, `Expected >= 1 owl:AnnotationProperty term; got ${annotProps.length}`);
+  strictEqual(
+    annotProps[0].id,
+    "http://example.org/note",
+    "Extracted annotation property must have the subject IRI as id",
+  );
+  pass("owl:AnnotationProperty extracted as a term (AC7)");
+} catch (e) {
+  fail("owl:AnnotationProperty must be extracted as a term (AC7)", e);
 }
 
 // ---------------------------------------------------------------------------
