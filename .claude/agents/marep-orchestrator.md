@@ -15,7 +15,7 @@ length_budgets:
   proposed_transition: 300
   current_phase_status: 1500
   rationale: 1500
-  summary: 1500
+  summary: 2500
   conflicts_surfaced[*]/subject: 250
   conflicts_surfaced[*]/synthesis_attempt: 1000
   recommended_resolution_paths[*]/rationale: 800
