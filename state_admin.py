@@ -1542,6 +1542,75 @@ def cmd_retro_phase_transition(args: argparse.Namespace) -> int:
     return 0
 
 
+def _compute_issue_status_from_votes(
+    votes_for_issue: list[dict],
+) -> str:
+    """v3.8.3: Per MAREP v2.2 §15.3 status transition graph.
+
+    | From | To | Trigger |
+    |---|---|---|
+    | proposed | confirmed | >=1 confirm AND no contest votes |
+    | proposed | rejected  | >=1 reject AND no confirm votes |
+    | proposed | contested | confirm AND reject both present |
+    | proposed | contested | any contest vote |
+
+    Returns the computed status string. No-op (returns 'proposed') when
+    votes_for_issue is empty. Pure function over a votes list; called
+    from cmd_retro_vote and the retro-applier so both paths produce
+    consistent status. Closes the substrate gap where the 04-consensus
+    spec described deterministic status computation but no code path
+    implemented it (surfaced during Phase 3 exit retro: 21 confirm votes
+    cast left issue/risk statuses at 'no-status'; MAREP-orchestrator
+    correctly returned transition_kind=stay because decisions[] couldn't
+    populate without status fields).
+    """
+    if not votes_for_issue:
+        return "proposed"
+    has_confirm = any(v.get("vote") == "confirm" for v in votes_for_issue)
+    has_reject = any(v.get("vote") == "reject" for v in votes_for_issue)
+    has_contest = any(v.get("vote") == "contest" for v in votes_for_issue)
+    # Contest is asymmetric — any contest vote forces contested.
+    if has_contest:
+        return "contested"
+    # Mixed confirm + reject (no contest) is also contested.
+    if has_confirm and has_reject:
+        return "contested"
+    if has_confirm:
+        return "confirmed"
+    if has_reject:
+        return "rejected"
+    return "proposed"
+
+
+def _recompute_all_issue_statuses(state: dict) -> int:
+    """v3.8.3: Walk every issue and risk in retro state; compute its
+    status from the votes[] array using _compute_issue_status_from_votes.
+    Mutates state in place. Returns count of items whose status changed.
+
+    Status is computed per-item from votes whose `issue_id` matches the
+    item's id. Items without votes default to 'proposed' (legacy items
+    that carried 'no-status' get coerced to 'proposed' to match the
+    canonical schema)."""
+    votes = state.get("votes") or []
+    by_issue: dict[str, list[dict]] = {}
+    for v in votes:
+        iid = v.get("issue_id")
+        if iid:
+            by_issue.setdefault(iid, []).append(v)
+    changed = 0
+    for section in ("issues", "risks", "actions"):
+        for item in state.get(section, []) or []:
+            iid = item.get("id") or item.get("@id")
+            if iid is None:
+                continue
+            new_status = _compute_issue_status_from_votes(
+                by_issue.get(iid, []))
+            if item.get("status") != new_status:
+                item["status"] = new_status
+                changed += 1
+    return changed
+
+
 def cmd_retro_vote(args: argparse.Namespace) -> int:
     """Record an operator-mediated vote on a retro issue per MAREP
     v2.2 §15.
@@ -1588,9 +1657,15 @@ def cmd_retro_vote(args: argparse.Namespace) -> int:
     if args.rationale:
         payload["rationale"] = args.rationale.strip()
     _append_retro_audit(state, "vote_recorded", payload)
+    # v3.8.3: deterministic status recomputation per MAREP v2.2 §15.3.
+    # Walk all issues/risks; update status from votes[]. Substrate gap
+    # closed: spec required it; no code path implemented it.
+    changed = _recompute_all_issue_statuses(state)
     _save_retro_state(state_path, state)
     print(f"vote recorded: {vote_id}  issue={args.issue_id}  "
           f"voter={args.voter}  vote={args.vote}")
+    if changed:
+        print(f"  status recomputed: {changed} item(s) updated")
     return 0
 
 

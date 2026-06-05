@@ -320,6 +320,90 @@ class TestStateAdminRetroFamily(unittest.TestCase):
         self.assertEqual(v["vote"], "confirm")
         self.assertEqual(state["audit"][-1]["event"], "vote_recorded")
 
+    def test_v383_compute_status_from_votes_helper(self):
+        """v3.8.3: pure helper. Per MAREP v2.2 §15.3 transition graph."""
+        from state_admin import _compute_issue_status_from_votes as f
+        # No votes -> proposed
+        self.assertEqual(f([]), "proposed")
+        # Single confirm -> confirmed
+        self.assertEqual(f([{"vote": "confirm"}]), "confirmed")
+        # Multiple confirms -> confirmed
+        self.assertEqual(f([{"vote": "confirm"}, {"vote": "confirm"}]),
+                          "confirmed")
+        # Single reject -> rejected
+        self.assertEqual(f([{"vote": "reject"}]), "rejected")
+        # confirm + reject -> contested
+        self.assertEqual(f([{"vote": "confirm"}, {"vote": "reject"}]),
+                          "contested")
+        # Any contest -> contested
+        self.assertEqual(f([{"vote": "contest"}]), "contested")
+        # Contest with confirm -> contested
+        self.assertEqual(f([{"vote": "confirm"}, {"vote": "contest"}]),
+                          "contested")
+
+    def test_v383_vote_updates_issue_status_in_place(self):
+        """v3.8.3: when a vote is cast via state_admin retro vote,
+        the issue's status MUST be recomputed and updated in retro
+        state. Closes substrate gap surfaced during Phase 3 exit retro
+        (04-consensus spec required deterministic status computation;
+        no code path implemented it)."""
+        self._retro_init("r1")
+        # Seed retro state with one issue
+        import json as _json
+        retro_path = (self.retros_dir / "r1" / "RETRO_STATE.jsonld")
+        state = _json.loads(retro_path.read_text(encoding="utf-8"))
+        state.setdefault("issues", []).append({
+            "id": "QA-1",
+            "title": "Test coverage gap",
+            "status": "proposed",
+        })
+        retro_path.write_text(_json.dumps(state, indent=2),
+                              encoding="utf-8")
+        # Cast a confirm vote
+        rc = self._run([
+            "--state-path", str(self.state_path),
+            "retro", "vote", "r1",
+            "--issue-id", "QA-1",
+            "--voter", "@QA",
+            "--vote", "confirm",
+            "--retros-dir", str(self.retros_dir),
+        ])
+        self.assertEqual(rc, 0)
+        # Issue status MUST now be 'confirmed'
+        state = self._load_retro("r1")
+        issue = next(i for i in state["issues"] if i["id"] == "QA-1")
+        self.assertEqual(issue["status"], "confirmed",
+                          "v3.8.3 vote-driven status update must fire")
+
+    def test_v383_subsequent_reject_promotes_to_contested(self):
+        """v3.8.3: confirm + reject combination produces contested."""
+        self._retro_init("r1")
+        import json as _json
+        retro_path = (self.retros_dir / "r1" / "RETRO_STATE.jsonld")
+        state = _json.loads(retro_path.read_text(encoding="utf-8"))
+        state.setdefault("issues", []).append({
+            "id": "DM-1", "title": "x", "status": "proposed",
+        })
+        retro_path.write_text(_json.dumps(state, indent=2),
+                              encoding="utf-8")
+        # First a confirm
+        self._run([
+            "--state-path", str(self.state_path),
+            "retro", "vote", "r1", "--issue-id", "DM-1",
+            "--voter", "@DM", "--vote", "confirm",
+            "--retros-dir", str(self.retros_dir),
+        ])
+        # Then a reject -> contested
+        self._run([
+            "--state-path", str(self.state_path),
+            "retro", "vote", "r1", "--issue-id", "DM-1",
+            "--voter", "@Skeptic", "--vote", "reject",
+            "--retros-dir", str(self.retros_dir),
+        ])
+        state = self._load_retro("r1")
+        issue = next(i for i in state["issues"] if i["id"] == "DM-1")
+        self.assertEqual(issue["status"], "contested")
+
     def test_vote_contest_requires_rationale(self):
         self._retro_init("r1")
         import argparse
