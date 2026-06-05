@@ -365,6 +365,80 @@ class TestAutoQueueFixerPair(unittest.TestCase):
         # No new tasks appended
         self.assertEqual(len(state["tasks"]), 2)
 
+    def test_v374_awaiting_dispatcher_prevents_double_dispatch(self):
+        """v3.7.4: when a prior Fixer has completed (status=done) but the
+        spawned recovery-dispatcher is still awaiting_operator_decision
+        for the same anchor, the daemon MUST NOT queue another (fixer,
+        dispatcher) pair. Pre-v3.7.4 the check only walked Fixer tasks;
+        Fixers complete fast to status=done so the check passed and a
+        cascade of redundant decisions accumulated. Closes bank-977-...-1
+        second-instance pattern (four substrate-calibration cycles on
+        anchor 977 each spawning a redundant dispatcher)."""
+        state = {"tasks": [
+            {
+                "@id": "urn:fnsr:task:100-stalled",
+                "status": "blocked",
+                "outputs": {"error": "apply_partial_failure"},
+                "history": [_make_history_entry("cps_veto")],
+            },
+            {
+                "@id": "urn:fnsr:task:101-fixer-completed",
+                "agent": "fixer",
+                "status": "done",
+                "depends_on": [],
+                "inputs": {"anchor_task": "urn:fnsr:task:100-stalled"},
+            },
+            {
+                "@id": "urn:fnsr:task:102-dispatcher-awaiting",
+                "agent": "recovery-dispatcher",
+                "status": "awaiting_operator_decision",
+                "depends_on": ["urn:fnsr:task:101-fixer-completed"],
+                "inputs": {
+                    "source_task": "urn:fnsr:task:101-fixer-completed",
+                    "anchor_task": "urn:fnsr:task:100-stalled",
+                },
+            },
+        ]}
+        result = d._try_auto_fixer_dispatch(state)
+        self.assertIsNone(result, "must not queue while dispatcher awaits")
+        self.assertEqual(len(state["tasks"]), 3, "no new tasks appended")
+
+    def test_v374_completed_dispatcher_does_not_block_dispatch(self):
+        """v3.7.4 must not over-block: if the prior dispatcher resolved
+        to done, a fresh Fixer dispatch should proceed (the operator
+        chose an option and the substrate moved past it). The skip-set
+        ('done', 'abandoned') covers this; this test guards against
+        accidental skip-set inversion."""
+        state = {"tasks": [
+            {
+                "@id": "urn:fnsr:task:100-stalled",
+                "status": "blocked",
+                "outputs": {"error": "apply_partial_failure"},
+                "history": [_make_history_entry("cps_veto")],
+            },
+            {
+                "@id": "urn:fnsr:task:101-fixer-completed",
+                "agent": "fixer",
+                "status": "done",
+                "depends_on": [],
+                "inputs": {"anchor_task": "urn:fnsr:task:100-stalled"},
+            },
+            {
+                "@id": "urn:fnsr:task:102-dispatcher-resolved",
+                "agent": "recovery-dispatcher",
+                "status": "done",
+                "depends_on": ["urn:fnsr:task:101-fixer-completed"],
+                "inputs": {
+                    "source_task": "urn:fnsr:task:101-fixer-completed",
+                    "anchor_task": "urn:fnsr:task:100-stalled",
+                },
+            },
+        ]}
+        result = d._try_auto_fixer_dispatch(state)
+        self.assertIsNotNone(result, "must queue when prior chain resolved")
+        self.assertEqual(len(state["tasks"]), 5,
+                         "fresh fixer + dispatcher appended")
+
 
 class TestRecoveryDispatcher(unittest.TestCase):
     """_recovery_dispatcher system agent: validates + append-tasks."""

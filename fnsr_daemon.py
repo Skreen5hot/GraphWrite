@@ -3946,11 +3946,22 @@ def _try_auto_fixer_dispatch(state: dict[str, Any]) -> Optional[tuple[str, str]]
         attempts = _count_fixer_attempts(state, anchor_id)
         if attempts >= FIXER_RECURSION_BOUND:
             continue  # Recursion bound; operator territory
-        # Check we haven't already dispatched a fixer that's still pending
-        # (avoid double-dispatch in same idle cycle)
+        # Check we haven't already dispatched a fixer-pair that's still
+        # pending operator attention. v3.7.4: previously checked only
+        # `agent == "fixer"` — but Fixer tasks complete fast to status=done,
+        # so the check passed even when the resulting recovery-dispatcher
+        # was sitting in `awaiting_operator_decision`. Result: every daemon
+        # cycle the anchor stayed blocked queued ANOTHER (fixer, dispatcher)
+        # pair, producing a cascade of operator decisions. Now extends the
+        # filter to include recovery-dispatcher too; the existing
+        # status-in-(done, abandoned) skip lets `awaiting_operator_decision`
+        # match (that's exactly the case we want to detect).
+        # Closes bank-977-...-1 second-instance pattern: four substrate-
+        # calibration cycles on a single anchor in <3h each spawning a
+        # redundant dispatcher.
         already_pending = False
         for t in state.get("tasks", []) or []:
-            if t.get("agent") != "fixer":
+            if t.get("agent") not in ("fixer", "recovery-dispatcher"):
                 continue
             if t.get("status") in ("done", "abandoned"):
                 continue
