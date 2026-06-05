@@ -333,9 +333,19 @@ def _agent_required_outputs(
 # permitted (vote casts, conflict positions, ownership annotations).
 # Per MAREP §17.1 + Aaron's CP3 observation: persona theater is
 # @<agent> patterns OUTSIDE these designated fields.
+#
+# v3.7.1 (bank-977-marep-orch-conflict-detection-03-analysis-1):
+# `source_agent` (marep-orchestrator conflict-detection mode,
+# conflicts_surfaced[*].positions[*].source_agent) and `voter`
+# (proposed_votes[*].voter per surfaces/retro/phases/03-analysis.md
+# vote schema) are explicit agent-reference field names in the
+# substrate's declared schemas. They MUST be in this allowlist or the
+# persona-theater check false-fires on every conflict-detection
+# dispatch that surfaces real cross-role conflicts.
 _DESIGNATED_REFERENCE_FIELDS = (
     "confirmed_by", "contested_by", "owner",
     "supporting_sources", "dissenting_sources",
+    "source_agent", "voter",
 )
 _PERSONA_ADDR_RE = re.compile(r"@[A-Z][a-zA-Z0-9_-]*")
 

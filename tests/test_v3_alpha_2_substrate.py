@@ -127,6 +127,49 @@ class TestAntiPatternPersonaTheater(unittest.TestCase):
             d._check_no_persona_theater({"agent": "qa"}, outputs)
         self.assertIn("persona_theater_detected", str(ctx.exception))
 
+    def test_v371_source_agent_field_allows_addresses(self):
+        """v3.7.1: source_agent is the marep-orchestrator conflict-
+        detection schema's agent-reference field
+        (conflicts_surfaced[*].positions[*].source_agent). Must be
+        in _DESIGNATED_REFERENCE_FIELDS so persona-theater check
+        skips it. Closes bank-977-marep-orch-conflict-detection-
+        03-analysis-1 (977 vetoed despite schema-correct output)."""
+        outputs = {
+            "conflicts_surfaced": [{
+                "id": "C1",
+                "subject": "Cross-role characterization of Chain 9 failure",
+                "positions": [
+                    {"source_agent": "@QA",
+                     "claim": "Chain 9 recurred the verification-ritual gap.",
+                     "evidence": "QA-6 rationale citing Chain 7 pattern."},
+                    {"source_agent": "@DeliveryManager",
+                     "claim": "Chain 9 is operator-composition tax.",
+                     "evidence": "DM-2 rationale framing the same."},
+                ],
+                "synthesis_attempt": "Both positions agree on the substrate "
+                                     "gap; divergence is taxonomic only."
+            }],
+            "summary": "One cross-role conflict surfaced; positions converge."
+        }
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v371_voter_field_allows_addresses(self):
+        """v3.7.1: voter is the proposed_votes schema's agent-reference
+        field per surfaces/retro/phases/03-analysis.md. Must be
+        allowlisted."""
+        outputs = {
+            "proposed_votes": [
+                {"@id": "vote-1", "issue_id": "QA-1",
+                 "voter": "@QA", "vote": "confirm"},
+                {"@id": "vote-2", "issue_id": "DM-3",
+                 "voter": "@DeliveryManager", "vote": "contest",
+                 "rationale": "Coordination overhead framing too broad."}
+            ],
+            "summary": "Two votes cast.",
+        }
+        d._check_no_persona_theater({"agent": "qa"}, outputs)
+
 
 class TestAntiPatternRedundantAffirmation(unittest.TestCase):
     def test_no_prior_turn_is_no_op(self):
