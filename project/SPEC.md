@@ -1118,6 +1118,8 @@ If an ontology exceeds the warning threshold, the system:
 - offers cancel;
 - preserves partial import status explicitly in the import report.
 
+The `ecm:importStatus` field of the resulting `ecm:ImportedOntology` record is set to `"ecm:degraded"` when the user selects continue in degraded mode; see §5.6 for the closed enumeration of permitted `ecm:importStatus` values.
+
 ### 14.3 Canvas Scale Targets
 
 The visual canvas prioritizes understandable modeling, not bulk graph visualization.

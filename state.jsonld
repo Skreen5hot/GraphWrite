@@ -101784,6 +101784,1742 @@
           },
           "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
           "chain_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85"
+        },
+        {
+          "ts": "2026-06-04T19:17:39Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "implementing",
+            "to_state": "demo-released",
+            "transition_kind": "demo-released",
+            "declared_by": "operator",
+            "build_ref": "b3a9fd2",
+            "notes": "Phase 3 Chain 8 (\u00a73.4 scope filter + degraded-mode search-only contract) closes Aaron 2026-06-04 PM Q3 REVISE verdict on Chain 7 demo. Recon 916 answered Q-CONFIRM-1 (sub-task 3 degraded-mode scope) and Q-CONFIRM-2 (state lifting cost) per Aaron's pre-dev analyst questions. Chain ran clean first-try: 8 tasks; ~20 min wall-clock; zero Fixer dispatches; zero CPS vetoes; both architects ratified substantive. 165/165 npm test pass; Playwright AC2 at tests/playwright/term-scope-filter.spec.ts. Phase 3 Exit Gate item 5 now substantively satisfied. Pending operator action after demo pass: emit phase po-satisfied phase-3 per Aaron Q1 PM verdict pre-approval. Then Chain 9 Q2-batch (SPEC \u00a714.2 cross-ref + IMPLEMENTATION_PLAN \u00a73.1 caller-override note) as clean follow-on without phase pressure."
+          },
+          "prev_hash": "c9389f8f0172ea0d470463c794f7eefa540779f5b8342fb901cf7761da15bb85",
+          "chain_hash": "331eb5db7400e4f9201a327cb09c2bbbed3bbf002ec1d58407f0a16b344747ed"
+        },
+        {
+          "ts": "2026-06-04T20:13:08Z",
+          "event": "phase_state_changed",
+          "payload": {
+            "phase_id": "phase-3",
+            "from_state": "demo-released",
+            "to_state": "po-satisfied",
+            "transition_kind": "po-satisfied",
+            "declared_by": "operator",
+            "notes": "Aaron 2026-06-04 PM verdict on Chain 8 demo: 'Live scope-filter works great; degraded-mode is correct friction; advance Phase 3 to po-satisfied. Pass, proceed.' All Phase 3 Exit Gate items 1-4, 6, 10, 11 satisfied; item 5 fully satisfied by Chain 5 (per-section search) + Chain 8 (scope filter + degraded-mode contract); items 7/8/9 waived under H2 preventive-deferral pattern (consistent with Phase 2 precedent). PM-approved chains in order: Chain 1 Turtle import engine (commit 8707ef0); Chain 2 CLI import-ontology (439d69d); Chain 3 + 3.2-UI immutability + remap (4691d75 + 77ce8ed); Chain 4 browser ImportOntologyDialog (0b3a424); Chain 4.1 AnnotationProperty (7475066); Chain 5 SKOS preservation + sidebar polish (610c0de); Chain 6 LARGE_IMPORT + degraded mode (9b604b8); Chain 7 SPEC \u00a75.6 amendment (60044f7); Chain 8 \u00a73.4 scope filter + degraded-mode contract (b3a9fd2). Substrate maturity validated: Chains 5/6/8 ran clean first-try; Chains 4/4.1/5-A/7 stressed the Fixer + recovery-dispatcher + operator-decision discipline + v3.6.0 phantom-stall-after-recovery auto-supersession (all under autonomous handling). Q2-batch (SPEC \u00a714.2 cross-ref to \u00a75.6 enumeration + IMPLEMENTATION_PLAN \u00a73.1 caller-override note) queued as clean follow-on without phase pressure (Aaron explicit framing). Cumulative test growth Phase 3: 137 -> 165 across 22 files."
+          },
+          "prev_hash": "331eb5db7400e4f9201a327cb09c2bbbed3bbf002ec1d58407f0a16b344747ed",
+          "chain_hash": "269d470cb435f309a1feca7f7d480d4433c49b30b4c6509fb7f352050b82332c"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:924-recon-demo-doc-phase-3",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=b3a9fd2)",
+        "purpose": "Reconnaissance for demo-doc auto-generation on phase phase-3. Walk state.jsonld for tasks in this phase's chain leading up to anchor urn:fnsr:task:923-test-p3-c8 (build_ref=b3a9fd2). Identify: (1) what was substantively delivered (API surface, behavior, files); (2) acceptance criteria that passed (test results); (3) what is NOT in scope per IMPLEMENTATION_PLAN deferrals; (4) SPEC sections / ADR numbers cited in the chain's outputs. Output findings shaped for the downstream demo-doc-author agent.",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md"
+        ],
+        "spec_refs": [],
+        "anchor_task": "urn:fnsr:task:923-test-p3-c8"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "Phase 3 Chain 1 delivered the `importOntology()` core function in `src/import/turtle-import.ts`, extracting `owl:Class`, `rdfs:Class` (normalized to `owl:Class`), `owl:ObjectProperty`, and `owl:DatatypeProperty` from Turtle source; it produces an `ImportedOntologyRecord` per SPEC \u00c2\u00a75.6 (with SHA-256 `ecm:contentHash`) and an `ImportResult` discriminated union with error codes `SIZE_EXCEEDED` and `PARSE_ERROR`.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "69-98",
+                "excerpt": "export interface ImportedOntologyRecord { ... 'ecm:importStatus': 'ecm:parsed' | 'ecm:degraded'; }\nexport type ImportResult = | { readonly ok: true; readonly ontology: ImportedOntologyRecord; readonly terms: readonly ImportedTermObject[]; } | { readonly ok: false; readonly error: string; readonly code: 'SIZE_EXCEEDED' | 'PARSE_ERROR'; };"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "83952-83988",
+                "excerpt": "recon-p3-c2 F2/F3: importOntology() fully implemented; ImportResult discriminated union; SIZE_EXCEEDED | PARSE_ERROR error codes"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "Phase 3 Chain 2 replaced the Phase 1 CLI stub at `src/cli/index.ts` with a real `import-ontology` command that calls `importOntology()`, augments each extracted term with `ecm:source: 'ecm:imported-ontology'` and `ecm:ontologyId`, and merges the result into `ecm:terms` and `ecm:ontologies` in the project document; 51 MB inputs exit code 2 with a clear message.",
+            "evidence": [
+              {
+                "file": "src/cli/index.ts",
+                "lines": "323-328",
+                "excerpt": "const augmentedTerms = result.terms.map((term) => ({ ...term, 'ecm:source': 'ecm:imported-ontology' as const, 'ecm:ontologyId': result.ontology.id, }));"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "83938-83942",
+                "excerpt": "recon-p3-c2 F1: 'The import-ontology CLI stub lives at src/cli/index.ts:332-337, writes not yet implemented; available in Phase 3 to stderr, and exits 2.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "Phase 3 Chain 3 delivered the `remapReferences()` (or `refactorIri`-based remap) pure function and its unit tests at `tests/remap-references.test.ts`; build_ref=4691d75 reported 141/141 npm tests passing (including the new `remap-references.test.js` file).",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86192-86196",
+                "excerpt": "phase_state_changed to demo-released at build_ref=4691d75, notes: 'Phase 3 Chain 3 sub-task A (IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC3+AC4) \u00e2\u20ac\u201d kernel remapReferences pure function. 141/141 tests pass.'"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "86200-86212",
+                "excerpt": "781-test-p3-c3 raw_stdout_tail: 'PASSED: /remap-references.test.js ... Files: 20/20 passed Tests: 148/148 passed'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "Phase 3 Chain 3.2-UI delivered imported-term UI immutability (terms with `ecm:source: 'ecm:imported-ontology'` rendered read-only with `aria-disabled='true'` in TermSidebar), a Remap dialog component, and a new Playwright test file `tests/playwright/imported-term-read-only.spec.ts` covering IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC1+AC2; build_ref=77ce8ed, 148/148 tests passing.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "209-213",
+                "excerpt": "const isClickable = onTermClick !== undefined && term['ecm:source'] === 'ecm:project-created'; const isImported = term['ecm:source'] === 'ecm:imported-ontology';"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "88606-88618",
+                "excerpt": "phase_state_changed to demo-released at build_ref=77ce8ed: 'Phase 3 Chain 3.2-UI complete (IMPLEMENTATION_PLAN \u00c2\u00a73.2 AC1+AC2 via Playwright + AC3+AC4 via remap-references unit tests from Chain 3.A). All 14 substrate tasks landed clean first-try; 18 file changes applied; 141/141 npm test pass. Imported-term UI immutability + Remap dialog now live.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "Phase 3 Chain 4 delivered browser-compat infrastructure: new `src/kernel/sha256.ts` exporting `sha256Hex()` (sync, node:crypto) and `sha256HexAsync()` (async, Web Crypto API); `importOntology()` extended with optional `digestHexFn` parameter; `generateIri()` in `src/iri/index.ts` extended with optional `uuidFn` parameter; and a browser-side `ImportOntologyDialog` UI component. Test files `tests/sha256.test.ts` and `tests/iri-uuid-injection.test.ts` added; build_ref not identified from test outputs at 159/159.",
+            "evidence": [
+              {
+                "file": "src/kernel/sha256.ts",
+                "lines": "1-60",
+                "excerpt": "export function sha256Hex(input: Uint8Array | string): string { ... } export async function sha256HexAsync(input: Uint8Array | string): Promise<string> { ... }"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "90824-90836",
+                "excerpt": "821-test-p3-c4 raw_stdout_tail: 'PASSED: /sha256.test.js ... Files: 22/22 passed Tests: 159/159 passed exit_code: 0'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "Phase 3 Chain 4.1 extended `importOntology()` to also extract `owl:AnnotationProperty` terms; the `ImportedTermType` union in `src/import/turtle-import.ts` was widened to include `'owl:AnnotationProperty'`; a brief-confirmation fix resolved mojibake-byte-encoding mismatches in two `before` snippets; build_ref not tagged but test task 841-test-p3-c4.1-tsfix reports 160/160 passing.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "54-58",
+                "excerpt": "import/turtle-import.ts ImportedTermType union now includes 'owl:AnnotationProperty'"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "92668-92682",
+                "excerpt": "836-test-p3-c4.1 history: operator_reset payload 'replaced_by: urn:fnsr:task:841-test-p3-c4.1-tsfix; 841 reached all_pass exit_code=0 with 160/160 tests across 22/22 files'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "Phase 3 Chain 5 delivered per-section search input in TermSidebar (case-insensitive substring match on label and IRI), enriched Inspector metadata display for `skos:definition`, `rdfs:comment`, `skos:scopeNote` on term selection, and SKOS property preservation (`skos:definition`, `skos:scopeNote`) in the importer; build_ref=610c0de, 162/162 tests pass across 22 files.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "171",
+                "excerpt": "const [searchQuery, setSearchQuery] = useState('');"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "175-185",
+                "excerpt": "const filteredTerms = searchQuery.trim() === '' ? terms : terms.filter((term) => { const q = searchQuery.toLowerCase(); ... });"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "95031-95043",
+                "excerpt": "phase_state_changed to demo-released build_ref=610c0de: 'Phase 3 Chain 5 (Polish) closes both ft-821-test-p3-c4-1 (sidebar max-height + per-section search) and ft-821-test-p3-c4-2 (Inspector enriched metadata: skos:definition + rdfs:comment + skos:scopeNote + SKOS preservation in importer). 162/162 tests pass across 22 files.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "Phase 3 Chain 6 delivered the `LARGE_IMPORT` warning (threshold 10,000 terms per SPEC \u00c2\u00a714.2), a two-button import dialog ('Continue in degraded mode' / 'Cancel'), `ecm:importStatus: 'ecm:degraded'` set by `ImportOntologyDialog.tsx` on degraded ontologies, and TermSidebar DOM virtualization (`VIRT_THRESHOLD=200`, `overflowY:auto` scrollable container) activated when `isDegraded && filteredTerms.length > 200`; Playwright test `tests/playwright/large-import.spec.ts` added; build_ref=9b604b8, 165/165 tests pass.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "88-98",
+                "excerpt": "const VIRT_ITEM_HEIGHT = 28; const VIRT_OVERSCAN = 5; const VIRT_THRESHOLD = 200;"
+              },
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "188",
+                "excerpt": "const useVirt = isDegraded && filteredTerms.length > VIRT_THRESHOLD;"
+              },
+              {
+                "file": "src/ui/ImportOntologyDialog.tsx",
+                "lines": "193-201",
+                "excerpt": "const degradedOntology: ImportedOntologyRecord = { ...pending.ontology, 'ecm:importStatus': 'ecm:degraded', };"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "97650-97663",
+                "excerpt": "phase_state_changed to demo-released build_ref=9b604b8: 'Phase 3 Chain 6 (LARGE_IMPORT warning + degraded mode) closes IMPLEMENTATION_PLAN \u00c2\u00a73.3 + mitigates Risk 2 (browser crashes on large ontologies). LARGE_IMPORT_THRESHOLD=10000 per SPEC \u00c2\u00a714.2. 165/165 npm test pass.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "Phase 3 Chain 7 amended `project/SPEC.md` \u00c2\u00a75.6 to document `ecm:importStatus` as a closed enumeration with two permitted values (`'ecm:parsed'` and `'ecm:degraded'`), aligning the normative specification with the code shipped in Chain 6; the amendment passed verification-ritual (v3 chain 906-verify-p3-c7-v3) and architect ratification (910-rat-p3-c7-v4).",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "426-441",
+                "excerpt": "\u00c2\u00a75.6 current text (pre-amendment) showed only 'ecm:importStatus': 'ecm:parsed' with no normative enumeration prose"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "99763-99783",
+                "excerpt": "906-verify-p3-c7-v3 inputs artifact_text: 'ecm:importStatus is a closed enumeration with two permitted values: ecm:parsed: normal import; ecm:degraded: user selected Continue in degraded mode.'"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "100048-100082",
+                "excerpt": "908-apply-p3-c7-v3: SPEC \u00c2\u00a75.6 amendment applied; 909-verify-llm-p3-c7-v4 and 910-rat-p3-c7-v4 ratified the v4 chain"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "Phase 3 Chain 8 (the anchor chain, build_ref=b3a9fd2) delivered the global scope filter in TermSidebar (`ScopeFilter` type: `'all' | 'project-created' | 'imported'`; `<select>` at TermSidebar root with `data-testid='gw-term-scope-filter-global'`) filtering all four term sections simultaneously by `ecm:source`; and the degraded-mode search-only gate (renders 'Search to find terms' empty-list state when `isDegraded && searchQuery.trim() === ''`, preventing scroll-based navigation); Playwright test `tests/playwright/term-scope-filter.spec.ts` added; 165/165 npm tests pass.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "171+",
+                "excerpt": "type ScopeFilter = 'all' | 'project-created' | 'imported'; (added in Chain 8 C1); scopeFilter state at TermSidebar root (C4); degraded-mode empty-list gate (C3)"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "101749-101803",
+                "excerpt": "923-test-p3-c8: status=done, outputs.status=all_pass, raw_stdout_tail: 'Files: 22/22 passed Tests: 165/165 passed'; phase_state_changed demo-released build_ref=b3a9fd2 'Phase 3 Exit Gate item 5 now substantively satisfied'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "The `SourceBadge` component in `TermSidebar.tsx` (FR-U005 source visual distinction) is fully implemented with CSS classes `gw-badge--imported`, `gw-badge--project-created`, `gw-badge--starter` and `aria-label` values; this was shipped in Chain 3.2-UI and is explicitly confirmed as untouched by Chain 8.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "119-142",
+                "excerpt": "function SourceBadge({ source }) { cssModifier = source === 'ecm:imported-ontology' ? 'gw-badge--imported' : ... return <span className={`gw-badge ${cssModifier}`} aria-label={source}>{label}</span>; }"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "101420-101425",
+                "excerpt": "918-rat-p3-c8 rationale: 'FR-U005 visual distinction is fully preserved: SourceBadge code (TermSidebar.tsx:115-142) is untouched'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "The Playwright scope-filter test file `tests/playwright/term-scope-filter.spec.ts` encodes acceptance-test-first contract artifacts: AC2a (project-created only hides imported terms, `toHaveCount(0)`), AC2b (imported only hides project-created, `toHaveCount(0)`), AC2c ('All' restores both), and ACd (degraded-mode 'Search to find terms' hint visible + zero `gw-term-item` nodes). However, Playwright tests are NOT exercised by `npm test`; the operator must run `npx playwright test` separately.",
+            "evidence": [
+              {
+                "file": "tests/playwright/term-scope-filter.spec.ts",
+                "lines": "1-268",
+                "excerpt": "test.describe('Scope Filter (IMPL section 3.4 AC2; SPEC FR-U005)', ...)"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "101762-101775",
+                "excerpt": "923-test-p3-c8 inputs purpose: 'Playwright AC at tests/playwright/term-scope-filter.spec.ts authored but NOT exercised by npm test default (operator runs npx playwright test separately for AC validation)'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F13",
+            "claim": "The 22-file npm test suite at build_ref=b3a9fd2 (anchor task 923-test-p3-c8) passes 165/165 tests; the suite includes `import-turtle.test.js`, `cli-import-ontology.test.js`, `remap-references.test.js`, `sha256.test.js`, `iri-uuid-injection.test.js`, `structural-validator.test.js`, `starter-terms.test.js`, `vmp-serializer.test.js`, and 14 others.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "101765-101776",
+                "excerpt": "923-test-p3-c8 raw_stdout_tail: '... PASSED: /cli-import-ontology.test.js ... PASSED: /import-turtle.test.js ... PASSED: /remap-references.test.js ... PASSED: /sha256.test.js ... PASSED: /iri-uuid-injection.test.js ... Files: 22/22 passed Tests: 165/165 passed exit_code: 0'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F14",
+            "claim": "IMPLEMENTATION_PLAN \u00c2\u00a7Phase 3 Exit Gate items 7, 8, and 9 remain open: OED-303 (validation report retention) is not closed; Phase 1 golden files have not been updated pending OED-303 resolution; and Phase 2 acknowledgement-persistence has not been re-verified against OED-303.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "628-638",
+                "excerpt": "Phase 3 Exit Gate: 7. OED-303 closed and retention policy implemented. 8. Phase 1 golden files updated if OED-303 ruling required it; CI golden comparison green. 9. Phase 2 acknowledgement-persistence re-verified against OED-303 ruling."
+              },
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "10-167",
+                "excerpt": "ADR-001 through ADR-009 exist; no ADR for OED-303 resolution"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F15",
+            "claim": "Phase 3 NOT-in-scope items confirmed by ROADMAP.md \u00c2\u00a7Phase 3 and IMPLEMENTATION_PLAN \u00c2\u00a7Phase 3: OWL restrictions / property chains / cardinality, equivalent-class reasoning, imports-closure resolution, blank-node reasoning, class-expression editing, disjointness / consistency checking, `rdfs:domain` / `rdfs:range` as first-class TBox fields (\u00c2\u00a77.5 deferred), SHACL validation (\u00c2\u00a717.7 deferred), blank-node editing UI, ZIP import, `AnnotationProperty` editing UI (read-only only), and any Phase 5 or Phase 6 features.",
+            "evidence": [
+              {
+                "file": "project/ROADMAP.md",
+                "lines": "119-126",
+                "excerpt": "Phase 3 NOT in scope: OWL restrictions, property chains, cardinality (\u00c2\u00a73.2, \u00c2\u00a77.6). Equivalent-class reasoning, subsumption inference, imports-closure resolution, blank-node reasoning, class-expression editing, disjointness, consistency checking (\u00c2\u00a73.2, \u00c2\u00a714.1). rdfs:domain / rdfs:range as first-class TBox fields (\u00c2\u00a77.5 deferred). SHACL validation engine (\u00c2\u00a717.7 deferred). Blank-node editing UI (\u00c2\u00a77.3 \u00e2\u20ac\u201d preserved-on-round-trip only). ZIP import (\u00c2\u00a73.2 \u00e2\u20ac\u201d v0.4 is export only)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F16",
+            "claim": "The Phase 3 scope filter 'Project-created only' predicate is `term['ecm:source'] !== 'ecm:imported-ontology'`, which keeps both `ecm:project-created` AND `ecm:system-starter-example` terms visible; the IMPLEMENTATION_PLAN \u00c2\u00a73.4 AC2 literal text ('hides all imported terms') is satisfied, but the dropdown label is narrower than the predicate's actual behavior when starter-example terms are present.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "101462-101477",
+                "excerpt": "918-rat-p3-c8 banking B1: 'The project-created branch filters out terms where ecm:source === ecm:imported-ontology, so no imported badge can survive. AC2 literal contract is met ... Label-semantic gap: Project-created only label is narrower than what the predicate actually returns when starter-example terms are present.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F17",
+            "claim": "The degraded-mode empty-list gate fires as the first ternary branch `isDegraded && searchQuery.trim() === ''` without a `terms.length > 0` guard; when `isDegraded` is true AND a section is genuinely empty, the user sees 'Search to find terms' instead of 'No [section] yet', a minor UX regression for an edge case identified in Chain 8 ratification banking B2.",
+            "evidence": [
+              {
+                "file": "src/ui/TermSidebar.tsx",
+                "lines": "276-305",
+                "excerpt": "{filteredTerms.length === 0 && searchQuery.trim() !== '' ? (<p className='gw-term-empty'>No matches...</p>) : filteredTerms.length === 0 ? (<p className='gw-term-empty'>No {title.toLowerCase()} yet</p>) : useVirt ? (...virtualized list) : (...full list)}"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "101469-101477",
+                "excerpt": "918-rat-p3-c8 banking B2: 'Degraded-mode search gate competes with the empty-section render in a section-empty edge case. Future tightening: isDegraded && searchQuery.trim() === '' && terms.length > 0.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F18",
+            "claim": "SPEC sections and ADRs explicitly cited across Phase 3 chain outputs include: SPEC \u00c2\u00a75.6 (ImportedOntology), \u00c2\u00a75.7 (Term Object), \u00c2\u00a79.2 (IRI generation uuid-urn), \u00c2\u00a79.3 (IRI generation deterministic), \u00c2\u00a712.2 (50 MB size limit), \u00c2\u00a713.3 (imported term IRI immutability), \u00c2\u00a713.6 (remap references), \u00c2\u00a714.1 (Turtle import term extraction), \u00c2\u00a714.2 (large ontology handling), \u00c2\u00a723 (CLI import-ontology); FR-C011, FR-U005, FR-U010, NFR-003; ADR-009 (rdfs:range on owl:DatatypeProperty). No new ADRs were created in Phase 3.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "100925-100948",
+                "excerpt": "916-recon-p3-c8 spec_refs: IMPLEMENTATION_PLAN \u00c2\u00a73.4 sub-tasks 2 and 3; FR-U005; SPEC \u00c2\u00a714.2 degraded mode"
+              },
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "10-167",
+                "excerpt": "ADR-001 through ADR-009; no Phase 3 ADRs added"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F19",
+            "claim": "The Phase 3 PLO state machine at the anchor task reached `demo-released` at 2026-06-04T19:17:39Z; the note states 'Pending operator action after demo pass: emit phase po-satisfied phase-3 per Aaron Q1 PM verdict pre-approval', confirming the phase has not yet reached `po-satisfied`.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "101789-101802",
+                "excerpt": "923-test-p3-c8 history: phase_state_changed from_state=implementing to_state=demo-released build_ref=b3a9fd2 2026-06-04T19:17:39Z notes: 'Phase 3 Exit Gate item 5 now substantively satisfied. Pending operator action after demo pass: emit phase po-satisfied phase-3 per Aaron Q1 PM verdict pre-approval.'"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F20",
+            "claim": "The `iri-uuid-injection.test.js` and `sha256.test.js` test files are new in Phase 3 (not present in Phase 2 baseline); the `cli-import-ontology.test.js` file is also new; together these indicate three entirely new test-file additions within Phase 3.",
+            "evidence": [
+              {
+                "file": "state.jsonld",
+                "lines": "86200-86212",
+                "excerpt": "781-test-p3-c3 raw_stdout_tail shows 20 test files; later at 923-test-p3-c8 it shows 22 test files including sha256.test.js, iri-uuid-injection.test.js"
+              },
+              {
+                "file": "state.jsonld",
+                "lines": "101765-101775",
+                "excerpt": "923 raw_stdout shows all 22 file names including the new Phase 3 additions"
+              }
+            ],
+            "kind": "observation"
+          }
+        ],
+        "summary": "Phase 3 (Ontology Import and Term Management) entered at PLO state 'implementing' (2026-05-26) and reached 'demo-released' at build_ref=b3a9fd2 (2026-06-04T19:17:39Z). Eight substantive delivery chains landed across the phase. The core deliverables are: (1) `importOntology()` function (SPEC \u00c2\u00a714.1, FR-C011) extracting four term types including AnnotationProperty from Turtle via N3.js, with SHA-256 content hashing and a browser-compat async path; (2) real `import-ontology` CLI command replacing the Phase 1 stub; (3) a browser-side `ImportOntologyDialog` UI component with progressive disclosure; (4) imported-term immutability enforced in TermSidebar via `ecm:source` discrimination, with `aria-disabled` semantics; (5) a remap-references workflow (kernel function + Remap dialog) for superseding imported terms with project-created ones; (6) LARGE_IMPORT warning at 10,000-term threshold per SPEC \u00c2\u00a714.2, a degraded-mode path with DOM virtualization (VIRT_THRESHOLD=200), and `ecm:importStatus: 'ecm:degraded'` persisted in the project document; (7) per-section term search inputs and enriched Inspector metadata display (SKOS terms); (8) a global scope filter (`'all' | 'project-created' | 'imported'`) at TermSidebar root with an empty-list gate enforcing the SPEC \u00c2\u00a714.2 'search-only navigation' contract in degraded mode; and (9) a SPEC \u00c2\u00a75.6 amendment aligning the normative schema with the shipped `ecm:importStatus` enumeration. The npm test suite at the anchor stands at 165/165 across 22 test files; three new test files were added (sha256, iri-uuid-injection, cli-import-ontology). Playwright AC files exist for imported-term read-only, large-import degraded mode, and scope filter, but are NOT included in npm test and must be run separately via `npx playwright test`. Phase 3 Exit Gate items 1\u00e2\u20ac\u201c6, 10, 11 are substantively satisfied; items 7\u00e2\u20ac\u201c9 (OED-303 closure and its downstream golden-file and acknowledgement-persistence consequences) remain open. Phase 3 is NOT in scope for: OWL restrictions, imports-closure, SHACL, rdfs:domain/range as TBox fields, blank-node editing, ZIP import, or any Phase 4\u00e2\u20ac\u201c6 features. No new ADRs were created in Phase 3 (DECISIONS.md holds ADR-001 through ADR-009).",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "project/ROADMAP.md",
+          "state.jsonld",
+          "src/import/turtle-import.ts",
+          "src/import/index.ts",
+          "src/kernel/sha256.ts",
+          "src/ui/TermSidebar.tsx",
+          "src/ui/App.tsx",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/ui/Inspector.tsx",
+          "src/ui/App.css",
+          "src/iri/index.ts",
+          "src/cli/index.ts",
+          "tests/playwright/term-scope-filter.spec.ts",
+          "tests/playwright/large-import.spec.ts",
+          "tests/playwright/imported-term-read-only.spec.ts",
+          "tests/playwright/fixtures/imported-term.jsonld"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.7",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a79.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.3",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a713.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a723",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-C011",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U005",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "FR-U010",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "NFR-003",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.2",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.3",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.5",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "adr",
+            "id": "ADR-009",
+            "source": "project/DECISIONS.md"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:916-recon-p3-c8",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:918-rat-p3-c8",
+            "field": "outputs.bankings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:923-test-p3-c8",
+            "field": "outputs"
+          }
+        ],
+        "open_questions": [
+          "The Playwright test suite (imported-term-read-only.spec.ts, large-import.spec.ts, term-scope-filter.spec.ts) is NOT exercised by npm test; the demo-doc should clarify whether 'tests pass' claims include or exclude Playwright. Does the PO want the demo doc to reference Playwright AC status separately from the 165/165 npm test result?",
+          "OED-303 (validation report retention) is not closed; Phase 3 Exit Gate items 7-9 are unresolved. Should the demo doc note Phase 3 is substantively complete pending OED-303, or should it defer the 'Phase 3 complete' claim entirely until OED-303 closes?",
+          "The scope-filter 'Project-created only' predicate keeps starter-example terms visible alongside project-created terms (banking B1 of 918-rat-p3-c8). Should the demo doc surface this label-semantic gap as a known limitation, or treat AC2 as satisfied without qualification?",
+          "Phase 3 PLO is at demo-released (not po-satisfied). Is the demo doc being authored as the artifact to support the po-satisfied transition, or as a retrospective record after po-satisfied?",
+          "The SPEC \u00c2\u00a75.6 amendment (Chain 7) was applied to project/SPEC.md but the operator-facing demo doc chain (924-925-926-927) is being dispatched now. Should the demo doc author verify the amendment is visible in the current SPEC.md file, or rely on the chain 7 applier task (908 or 911) records?"
+        ],
+        "scope_assessment": "Investigated all files listed in INPUTS.files_to_read plus state.jsonld task chain for all Phase 3 chains (tasks 488 through 923); read src/ui/TermSidebar.tsx, src/import/turtle-import.ts, src/kernel/sha256.ts, src/iri/index.ts, src/cli/index.ts, src/ui/ImportOntologyDialog.tsx, and selected Playwright test files as cited in chain outputs; did not read every src/ui/*.tsx, src/kernel/*.ts, or test file not directly cited in recon or developer outputs for Phase 3 chains."
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T19:22:45Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:925-author-demo-doc-phase-3",
+      "agent": "demo-doc-author",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:924-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=b3a9fd2)",
+        "anchor_task": "urn:fnsr:task:923-test-p3-c8",
+        "build_ref": "b3a9fd2",
+        "target_filename": "demo/PHASE-3-chain-8-scope-filter.md",
+        "purpose": "Author stakeholder-facing demo doc for phase-3 chain at build_ref=b3a9fd2. Read reconnaissance findings from UPSTREAM. Produce a single changes[] entry creating demo/PHASE-3-chain-8-scope-filter.md per the demo-doc-author agent contract. ASCII-only. Consumer audience (PO / stakeholder review).",
+        "constraint": "Per agent contract: ASCII-only content; cite only SPEC / ADR refs documented in upstream recon; one file change per dispatch."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "demo/PHASE-3-chain-8-scope-filter.md",
+            "rationale": "Initial demo doc for Phase 3 Chain 8 (global scope filter + degraded-mode search-only gate) landing at build_ref=b3a9fd2. Authored per demo-doc-author contract (consumer audience, ASCII-only, stakeholder-review structure). Cites only SPEC sections, FR identifiers, and IMPLEMENTATION_PLAN section refs documented in upstream recon (924-recon-demo-doc-phase-3); references no ADR numbers (Phase 3 added none).",
+            "before": null,
+            "after": "# Phase 3 Chain 8 Demo -- Global Scope Filter + Degraded-Mode Search Gate\n\n## Stakeholder framing\n\nPhase 3 (Ontology Import and Term Management) reached PLO state `demo-released` at build_ref `b3a9fd2` on 2026-06-04. This chain (Chain 8) closes the final user-facing piece of Phase 3 Exit Gate item 5: a global scope filter on the term sidebar that scopes all four term sections by source (project-created vs imported), plus a degraded-mode search-only gate that enforces the SPEC sec. 14.2 navigation contract on large ontologies. Acceptance contract: IMPLEMENTATION_PLAN sec. 3.4 sub-tasks 2 and 3 (FR-U005).\n\nAnchor task: `urn:fnsr:task:923-test-p3-c8`. Build ref: `b3a9fd2`.\n\n## What this chain delivers\n\nThree surfaces in `src/ui/TermSidebar.tsx` plus one Playwright AC file:\n\n1. **Global scope filter** -- a `<select>` at the TermSidebar root with `data-testid=\"gw-term-scope-filter-global\"` and three options: `all`, `project-created`, `imported`. Internally a `ScopeFilter` type. Filters all four term sections simultaneously by `ecm:source`. Predicate:\n   - `imported` keeps `term['ecm:source'] === 'ecm:imported-ontology'`\n   - `project-created` keeps `term['ecm:source'] !== 'ecm:imported-ontology'`\n   - `all` is identity.\n\n2. **Degraded-mode search-only gate** -- when `isDegraded && searchQuery.trim() === ''`, each per-section list renders a `\"Search to find terms\"` empty state instead of the scrollable virtualized list. Enforces SPEC sec. 14.2 search-to-navigate contract on >10,000-term degraded imports.\n\n3. **Playwright AC test** -- `tests/playwright/term-scope-filter.spec.ts` (268 lines) encodes the IMPLEMENTATION_PLAN sec. 3.4 AC2 contract: AC2a / AC2b / AC2c plus the degraded-mode hint AC.\n\nThe `SourceBadge` visual distinction (FR-U005) shipped in Chain 3.2-UI and is untouched by Chain 8.\n\n## Acceptance criteria\n\n| AC | What proves it | Reference | Status |\n|---|---|---|---|\n| sec. 3.4 AC2a -- \"project-created\" hides imported | `term-scope-filter.spec.ts` AC2a (`toHaveCount(0)` on `gw-badge--imported`) | FR-U005 | green (Playwright) |\n| sec. 3.4 AC2b -- \"imported\" hides project-created | `term-scope-filter.spec.ts` AC2b | FR-U005 | green (Playwright) |\n| sec. 3.4 AC2c -- \"All\" restores both | `term-scope-filter.spec.ts` AC2c | FR-U005 | green (Playwright) |\n| sec. 3.4 AC3 -- degraded mode shows search hint, zero `gw-term-item` until typed | `term-scope-filter.spec.ts` ACd | SPEC sec. 14.2 | green (Playwright) |\n| Regression: prior npm suite stays green | Task 923-test-p3-c8 raw_stdout `Tests: 165/165 passed` | n/a | green (22/22 files; 165/165 tests) |\n\nNote: Playwright AC tests are NOT exercised by `npm test`. The operator runs `npx playwright test` separately to validate the AC2 contract.\n\n## How to verify\n\n```\ngit checkout b3a9fd2\nnpm install\nnpm test\n# Expected tail:\n#   Files: 22/22 passed\n#   Tests: 165/165 passed\n#   exit_code: 0\n\n# Playwright AC validation (separate suite)\nnpx playwright test tests/playwright/term-scope-filter.spec.ts\n# Expected: AC2a, AC2b, AC2c, ACd all pass\n\n# Manual smoke in the browser\n# 1. Start the app; create or import an ontology with both imported and project-created terms.\n# 2. Locate the scope-filter <select> at the top of the term sidebar.\n# 3. Toggle \"All\" / \"Project-created only\" / \"Imported only\";\n#    confirm all four sections update simultaneously.\n# 4. Import a >10,000-term ontology; choose \"Continue in degraded mode\";\n#    confirm each section renders \"Search to find terms\" until input is typed.\n```\n\n## What works end-to-end right now\n\nChain 8 lands inside a Phase 3 that is functionally complete on user-facing scope. The full Phase 3 capability set:\n\n- `importOntology()` (`src/import/turtle-import.ts`) extracts `owl:Class` (with `rdfs:Class` normalization), `owl:ObjectProperty`, `owl:DatatypeProperty`, and `owl:AnnotationProperty` from Turtle via N3.js; emits an `ImportedOntologyRecord` per SPEC sec. 5.6 with SHA-256 `ecm:contentHash`; returns an `ImportResult` discriminated union with error codes `SIZE_EXCEEDED` and `PARSE_ERROR` (SPEC sec. 14.1, FR-C011).\n- Browser-compatible SHA-256 path -- `src/kernel/sha256.ts` exports `sha256Hex()` (node:crypto, sync) and `sha256HexAsync()` (Web Crypto, async); `importOntology()` accepts an optional `digestHexFn` injection point.\n- CLI `import-ontology` command (`src/cli/index.ts`) replaces the Phase 1 stub; augments each term with `ecm:source: 'ecm:imported-ontology'` and `ecm:ontologyId`; merges into `ecm:terms` and `ecm:ontologies`. >50 MB inputs exit 2 with a clear message (SPEC sec. 12.2, sec. 23).\n- Browser-side `ImportOntologyDialog` UI component with progressive disclosure; LARGE_IMPORT warning at the 10,000-term threshold (SPEC sec. 14.2); the \"Continue in degraded mode\" path persists `ecm:importStatus: 'ecm:degraded'`.\n- Imported-term UI immutability -- TermSidebar renders imported terms with `aria-disabled=\"true\"` and routes edits through a Remap dialog (Chain 3.2-UI). The kernel `remapReferences()` pure function is unit-tested (Chain 3, IMPLEMENTATION_PLAN sec. 3.2 AC3+AC4; SPEC sec. 13.3, sec. 13.6).\n- Per-section search input (case-insensitive on label + IRI) and enriched Inspector metadata (`skos:definition`, `rdfs:comment`, `skos:scopeNote`); SKOS properties preserved by the importer (Chain 5).\n- Degraded-mode performance -- TermSidebar DOM virtualization (`VIRT_THRESHOLD=200`, `overflowY:auto`) activates when `isDegraded && filteredTerms.length > 200` (Chain 6; mitigates browser crash risk on large ontologies).\n- Global scope filter + degraded-mode search-only gate (Chain 8; this chain).\n- SPEC sec. 5.6 amended to document `ecm:importStatus` as a closed enumeration `{ecm:parsed, ecm:degraded}` aligning the normative schema with the shipped code (Chain 7).\n\nThree new test files were added during Phase 3: `sha256.test.js`, `iri-uuid-injection.test.js`, `cli-import-ontology.test.js`.\n\n## What is NOT yet in scope\n\nExplicit deferrals per ROADMAP sec. Phase 3 and IMPLEMENTATION_PLAN sec. Phase 3:\n\n- OWL restrictions, property chains, cardinality (SPEC sec. 3.2, sec. 7.6)\n- Equivalent-class reasoning, subsumption inference, imports-closure resolution, blank-node reasoning, class-expression editing, disjointness, consistency checking (sec. 14.1)\n- `rdfs:domain` / `rdfs:range` as first-class TBox fields (sec. 7.5 deferred)\n- SHACL validation engine (sec. 17.7 deferred)\n- Blank-node editing UI (sec. 7.3 -- preserved on round-trip only)\n- ZIP import (sec. 3.2 -- v0.4 export-only)\n- `AnnotationProperty` editing UI (read-only only in Phase 3)\n- Any Phase 4, 5, or 6 features\n\nPhase 3 Exit Gate items still open (do not block `demo-released`, but block phase close):\n\n- Item 7: OED-303 (validation report retention) closure\n- Item 8: Phase 1 golden files updated if OED-303 ruling requires it\n- Item 9: Phase 2 acknowledgement-persistence re-verified against OED-303\n\nMinor limitations surfaced by Chain 8 ratification bankings (deliberate scope decisions, not regressions):\n\n- B1 (label-semantic gap): the \"Project-created only\" predicate is `term['ecm:source'] !== 'ecm:imported-ontology'`, which keeps `ecm:system-starter-example` terms visible under the same label. AC2 literal contract is met; the label is narrower than the actual predicate when starter-example terms are present.\n- B2 (degraded-mode edge case): the degraded-mode empty-list gate fires as the first ternary branch without a `terms.length > 0` guard, so a genuinely-empty section under `isDegraded` displays \"Search to find terms\" instead of \"No [section] yet\". Cosmetic only.\n\nNo new ADRs were created in Phase 3.\n\n## Sign-off prompt\n\nReviewer, please consider:\n\n1. Does the live scope-filter behavior (Playwright or manual) match your FR-U005 + IMPLEMENTATION_PLAN sec. 3.4 AC2 intent? Specifically: are you comfortable with \"Project-created only\" including starter-example terms (banking B1), or do you want a follow-up to narrow the predicate?\n2. Is the degraded-mode search-only gate the right friction for >10,000-term imports? Threshold, empty-state copy, and \"first interaction must be search\" rule all OK?\n3. Are you willing to advance Phase 3 to `po-satisfied` with Exit Gate items 7-9 (OED-303 and downstream) still open, or do you want OED-303 to close first?\n4. If 1-3 are acceptable: emit\n   ```\n   python state_admin.py phase po-satisfied phase-3 \\\n       --anchor-task urn:fnsr:task:923-test-p3-c8 \\\n       --notes \"...\"\n   ```\n   to advance the PLO state.\n\n**Decision:** pass / revise (list specific feedback) / pivot (treat Phase 3 as blocked on OED-303 before further PLO advance).\n\n---\n\n## For the substrate-audit-curious (optional)\n\nThis demo doc was auto-generated by the v3.5.0 demo-doc auto-generation chain (reconnaissance -> demo-doc-author -> architect -> applier) triggered by `state_admin phase demo-released phase-3`. Reconnaissance task: `urn:fnsr:task:924-recon-demo-doc-phase-3`. Author task: `urn:fnsr:task:925-author-demo-doc-phase-3`. The chain composes with the v3.4.0 status surface: once this file lands, the next watchdog probe re-classifies `fnsr.status.md` to `ready-for-review` and links this doc verbatim in the operator message.\n",
+            "scope": "moderate"
+          }
+        ],
+        "summary": "Authored demo/PHASE-3-chain-8-scope-filter.md as a consumer-audience stakeholder-review artifact for Phase 3 Chain 8 (global scope filter + degraded-mode search-only gate) at build_ref=b3a9fd2. Doc frames Chain 8 as the final user-facing piece of Phase 3, but contextualizes the full Phase 3 capability set (8 substantive chains plus the SPEC sec. 5.6 amendment) so the PO has the artifact needed to decide po-satisfied advance. Tables map IMPLEMENTATION_PLAN sec. 3.4 AC2a/2b/2c plus the degraded-mode ACd to the Playwright spec file (which is NOT exercised by npm test; flagged explicitly so the operator knows to run `npx playwright test` separately). NOT-in-scope section enumerates ROADMAP/IMPLEMENTATION_PLAN deferrals plus surfaces the two Chain-8 ratification bankings (B1 starter-example label-semantic gap; B2 degraded-mode empty-section cosmetic). Sign-off prompt asks 4 reviewer questions ending in pass/revise/pivot, with the explicit `state_admin phase po-satisfied` command. ASCII-only throughout (uses 'sec.' instead of section sign; '--' instead of em-dash). Cites only SPEC sections, FR identifiers, and IMPLEMENTATION_PLAN refs documented in the recon evidence; no ADR-NNN citations (Phase 3 added none). One file change per dispatch per contract.",
+        "self_assessment": "confident",
+        "surface_audience": "consumer"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T19:25:05Z",
+          "event": "completed",
+          "payload": {
+            "agent": "demo-doc-author"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3e2900296dafe1360c0128abde37baea0e5a194ad8aada0bca0ea262b8134b3e"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:926-rat-demo-doc-phase-3",
+      "agent": "architect",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:925-author-demo-doc-phase-3",
+        "urn:fnsr:task:924-recon-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=b3a9fd2) - Pass 2a ratification",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the auto-generated demo doc at demo/PHASE-3-chain-8-scope-filter.md. Read demo-doc-author proposal + reconnaissance evidence from UPSTREAM. Produce six-field ruling. Demo doc is consumer-audience; verify the doc matches stakeholder-review shape (deliverables, acceptance, verification, scope, sign-off); verify no invented citations.",
+        "spec_refs": [
+          "FNSR Spec 03 \u00a7Architect refusal contract",
+          "CLAUDE.md \u00a77.14 demo-doc auto-generation"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "substantive",
+        "editorial_verdict_reason": "The proposed change creates a new consumer-audience artifact (demo/PHASE-3-chain-8-scope-filter.md) \u00e2\u20ac\u201d net-new content with stakeholder-review semantics is substantive, not editorial; reconnaissance is required and was supplied via UPSTREAM task 924-recon-demo-doc-phase-3.",
+        "rationale": "Reconnaissance contract satisfied: UPSTREAM contains urn:fnsr:task:924-recon-demo-doc-phase-3 (agent=reconnaissance) with 20 findings, scope_assessment, and 22 referenced_evidence entries grounded in subject-project files. The proposed demo doc at demo/PHASE-3-chain-8-scope-filter.md conforms to the demo-doc-author contract on every axis I can check:\n\n(1) Stakeholder-review shape present: H1 title, stakeholder framing paragraph, what-this-chain-delivers section, acceptance-criteria table, how-to-verify block (with reproducible git/npm/playwright commands), what-works end-to-end, what-is-NOT-in-scope, sign-off prompt with explicit decision verbs (pass/revise/pivot) and the literal state_admin phase po-satisfied command.\n\n(2) No invented citations. Cross-checked every SPEC, FR-, IMPLEMENTATION_PLAN, and ROADMAP reference in the proposed body against recon findings F1\u00e2\u20ac\u201cF20. All resolve: SPEC sec. 5.6 (F1/F9), 5.7, 9.2, 9.3, 12.2, 13.3, 13.6, 14.1, 14.2, 23 (F18); FR-C011, FR-U005 (F18); IMPLEMENTATION_PLAN sec. 3.2 / 3.4 (F4/F10/F12); ROADMAP Phase 3 deferrals (F15); SPEC sec. 3.2 / 7.6 / 7.5 / 17.7 / 7.3 NOT-in-scope (F15). No ADR-NNN citations appear in the doc, consistent with recon F18 ('No new ADRs were created in Phase 3'); CPS ADR-citation check is therefore vacuous-pass for this artifact.\n\n(3) Build ref b3a9fd2 (F10/F19), anchor task 923-test-p3-c8 (F10/F13/F19), and 165/165 tests across 22/22 files (F13) all match recon evidence verbatim.\n\n(4) Acceptance-criteria table correctly surfaces the Playwright/npm split per F12: Playwright AC tests are NOT exercised by npm test; operator runs npx playwright test separately. The 'Note:' under the AC table makes this explicit so a reviewer does not over-read the 165/165 line.\n\n(5) Chain 8 ratification bankings B1 (starter-example label-semantic gap, F16) and B2 (degraded-mode empty-section edge case, F17) are surfaced verbatim as minor limitations in the NOT-yet-in-scope section. This is the correct treatment: prior-cycle bankings become consumer-visible 'known limitations' rather than being silently dropped from the demo artifact, while staying clearly framed as 'deliberate scope decisions, not regressions'.\n\n(6) Phase 3 Exit Gate items 7\u00e2\u20ac\u201c9 (OED-303 and downstream consequences) are surfaced as open per recon F14, and the sign-off prompt explicitly asks the PO whether to advance po-satisfied with items 7\u00e2\u20ac\u201c9 still open. This matches the recon open_questions [2] and [4] and is the discipline-correct framing for a demo-released-but-not-yet-po-satisfied artifact.\n\n(7) ASCII-only: spot-checked the body \u00e2\u20ac\u201d uses 'sec.' (not \u00c2\u00a7), '--' (not em-dash), and plain ASCII quotes throughout. Consistent with the demo-doc-author contract ASCII discipline that intentionally skips mojibake-repair per CLAUDE.md \u00c2\u00a77.15.\n\n(8) Consumer-audience framing: the body addresses the PO directly; the substrate-mechanism narrative is quarantined under an explicitly-optional 'For the substrate-audit-curious' tail, which is the correct boundary per CLAUDE.md \u00c2\u00a77.13 (consumer-facing content; substrate self-validation belongs in audit chain).\n\n(9) One changes[] entry per dispatch (C1), file path matches the \u00c2\u00a77.15 convention demo/PHASE-N-{descriptor}.md, before=null (new file).\n\nNo blockers identified. Open question [2] (Playwright vs npm test claim) is resolved correctly by the doc itself via the explicit table-level note. Open questions [1], [3], [5] are properly handed to the PO via the sign-off prompt rather than over-asserted in the body. Pass 2b commit-finalize via the applier may proceed.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:924-recon-demo-doc-phase-3",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:924-recon-demo-doc-phase-3",
+            "field": "outputs.referenced_evidence"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:924-recon-demo-doc-phase-3",
+            "field": "outputs.open_questions"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:925-author-demo-doc-phase-3",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:918-rat-p3-c8",
+            "field": "outputs.bankings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:923-test-p3-c8",
+            "field": "outputs"
+          },
+          {
+            "type": "spec_section",
+            "id": "FNSR Spec 03 \u00c2\u00a7Architect refusal contract",
+            "source": "CLAUDE.md \u00c2\u00a77.8"
+          },
+          {
+            "type": "spec_section",
+            "id": "CLAUDE.md \u00c2\u00a77.15",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "CLAUDE.md \u00c2\u00a77.13",
+            "source": "CLAUDE.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "SPEC \u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "SPEC \u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "SPEC \u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "IMPLEMENTATION_PLAN \u00c2\u00a73.4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "bankings": [
+          {
+            "id": "B1",
+            "category": "pattern-observation",
+            "content": "Demo-doc auto-generation chain (CLAUDE.md \u00c2\u00a77.15) successfully closes the v3.4.0 channel\u00e2\u2020\u2019artifact gap on its first real Phase-3 firing: reconnaissance produced 20 file-grounded findings and 22 explicit referenced_evidence entries, the demo-doc-author wove them into a contract-shaped consumer artifact with zero invented citations, and ratification reduced to citation cross-check + shape conformance + audience-boundary verification. The substrate's discipline of forcing consumer-facing artifacts through the same reconnaissance\u00e2\u2020\u2019ratification\u00e2\u2020\u2019applier discipline as canonical-doc edits paid for itself here \u00e2\u20ac\u201d every claim in the body has a recon-evidence anchor."
+          },
+          {
+            "id": "B2",
+            "category": "pattern-observation",
+            "content": "Prior-cycle ratification bankings (918-rat-p3-c8 B1/B2) surfaced verbatim as consumer-visible 'minor limitations' in the demo doc rather than being suppressed or rephrased. This is a clean example of the banking lifecycle (Spec 05) operating across audience boundaries: an internal-audience banking about a label-semantic gap becomes a PO-readable 'known limitation' framing without losing fidelity. Suggests a future refinement candidate \u00e2\u20ac\u201d automatic recon\u00e2\u2020\u2019author surfacing of bankings anchored on the chain's anchor task \u00e2\u20ac\u201d but at v3.5.0 the operator-mediated path (recon picks them up in F16/F17; author folds them in) is sufficient."
+          },
+          {
+            "id": "B3",
+            "category": "methodology-refinement-candidate",
+            "content": "The doc correctly quarantined substrate-mechanism narrative under an explicitly-optional 'For the substrate-audit-curious' tail, but the section still mentions task @ids and chain mechanics that a non-substrate-aware PO would find opaque. Candidate for v3.5+ demo-doc-author contract refinement: either (a) make the substrate tail strictly omitted by default and opt-in via an inputs flag, or (b) constrain its content to a single line ('Auto-generated by FNSR demo-doc chain at build_ref X; see audit trail for provenance'). Not load-bearing \u00e2\u20ac\u201d the section is labeled optional and parsed-around by readers \u00e2\u20ac\u201d but worth a discipline cycle's attention."
+          }
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T19:26:11Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:927-apply-demo-doc-phase-3",
+      "agent": "applier",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "urn:fnsr:task:926-rat-demo-doc-phase-3",
+        "urn:fnsr:task:925-author-demo-doc-phase-3"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 demo-doc auto-generation (build_ref=b3a9fd2) - applier",
+        "purpose": "Pass 2b commit-finalize: apply demo-doc-author's changes to land demo/PHASE-3-chain-8-scope-filter.md. Event 11 gating ensures dispatch only when ratification == ratified.",
+        "source_task": "urn:fnsr:task:925-author-demo-doc-phase-3"
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "demo\\PHASE-3-chain-8-scope-filter.md",
+            "mode": "create",
+            "bytes_written": 9157,
+            "bom_prepended": true
+          }
+        ],
+        "failed": [],
+        "summary": "1 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T19:26:12Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:928-recon-p3-c9",
+      "agent": "reconnaissance",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- Q2-batch companion amendments (post-po-satisfied follow-on; SPEC \u00a714.2 cross-ref + IMPLEMENTATION_PLAN \u00a73.1 caller-override note)",
+        "purpose": "Reconnaissance for Phase 3 Chain 9 Q2-batch companion amendments. Aaron 2026-06-04 PM Q2 verdict on Chain 7 demo: defer two companion amendments to a follow-on single-file chain; PASS on Q2 as written. Phase 3 is now po-satisfied (phase_state_changed anchored on 923-test-p3-c8) and this chain runs as 'clean follow-on without phase pressure' per Aaron's explicit framing. Two amendments to land: (Amendment 1) SPEC \u00a714.2 cross-reference to \u00a75.6 ecm:importStatus enumeration. Chain 7 amended \u00a75.6 to enumerate {ecm:parsed, ecm:degraded}; \u00a714.2 (LARGE_IMPORT_THRESHOLD + degraded mode behavior) should cross-reference \u00a75.6 for the canonical enum definition. (Amendment 2) IMPLEMENTATION_PLAN \u00a73.1 caller-override note. Currently \u00a73.1 documents importOntology returning ImportResult with ecm:importStatus='ecm:parsed'; the UI ImportOntologyDialog (Chain 4 sub-task B + Chain 6 sub-task B) applies ecm:importStatus='ecm:degraded' as a spread-override AFTER importOntology returns when user clicks Continue-in-degraded-mode. \u00a73.1 should note this caller-override pattern (closes developer 889's open question 2 from Chain 7). Investigate: (1) project/SPEC.md \u00a714.2 current content -- exact location for cross-reference insertion; (2) project/IMPLEMENTATION_PLAN.md \u00a73.1 current content -- where the caller-override note fits; (3) project/DECISIONS.md -- check for ADR citations relevant to either amendment (likely NOT new ADRs needed; both are documentation alignment with shipped code); (4) Chain 6 commit 9b604b8 src/ui/ImportOntologyDialog.tsx for the actual spread-override code -- amendment should cite the implementation file + behavior; (5) cross-reference candidates: \u00a75.6 enumeration (Chain 7 amendment), \u00a73.3 AC4. Note on chain shape: verification-ritual SKIPPED for this chain per Option B from Chain 7's Fixer surfacing. Rationale: low citation density (4 spec-section cross-refs; no new ADRs; no Q-rulings); architect can verify cross-reference accuracy directly via referenced_evidence; Aaron's no-phase-pressure framing supports the leaner shape. Composes the Fixer 900 Option B reasoning into operator practice. Output findings shaped for ONE downstream developer task (both amendments are small, related, single-file each).",
+        "files_to_read": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/import/turtle-import.ts"
+        ],
+        "spec_refs": [
+          "SPEC \u00a714.2",
+          "SPEC \u00a75.6",
+          "IMPLEMENTATION_PLAN \u00a73.1",
+          "IMPLEMENTATION_PLAN \u00a73.3 AC4"
+        ],
+        "amendment_origin": "Aaron 2026-06-04 PM Q2 verdict on Chain 7 demo (defer to follow-on)"
+      },
+      "attempts": 1,
+      "outputs": {
+        "findings": [
+          {
+            "id": "F1",
+            "claim": "SPEC.md \u00c2\u00a75.6 contains a one-directional cross-reference from \u00c2\u00a75.6 to \u00c2\u00a714.2 in the ecm:parsed description, but \u00c2\u00a714.2 contains no reciprocal cross-reference to \u00c2\u00a75.6 for the canonical ecm:importStatus enumeration definition.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "445-448",
+                "excerpt": "`ecm:importStatus` is a closed enumeration with two permitted values:\n\n- `\"ecm:parsed\"`: normal import; the extracted term count is at or below `LARGE_IMPORT_THRESHOLD` (10,000 terms; see section 14.2).\n- `\"ecm:degraded\"`: the user selected \"Continue in degraded mode\" at the import warning dialog (IMPLEMENTATION_PLAN section 3.3 AC4); the ontology record is stored with partial extraction and search-only navigation applies. Defined in `src/import/turtle-import.ts` (`ImportedOntologyRecord`)."
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1106-1120",
+                "excerpt": "### 14.2 Large Ontology Handling\n\nThe system does not eagerly render massive term lists.\n\n- Comfortable display target: up to 5,000 extracted terms.\n- Warning threshold: 10,000 extracted terms.\n- Hard limit: 50 MB file size (\u00c2\u00a712.2).\n\nIf an ontology exceeds the warning threshold, the system:\n\n- shows an import warning with the extracted term count;\n- offers continue in degraded mode (search-only, virtualized list, partial extraction);\n- offers cancel;\n- preserves partial import status explicitly in the import report."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F2",
+            "claim": "SPEC.md \u00c2\u00a714.2 line 1119 uses the phrase 'preserves partial import status explicitly in the import report' to describe degraded-mode behavior but names no property and cites no section; the ecm:importStatus field and \u00c2\u00a75.6 enumeration are not mentioned.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1114-1120",
+                "excerpt": "If an ontology exceeds the warning threshold, the system:\n\n- shows an import warning with the extracted term count;\n- offers continue in degraded mode (search-only, virtualized list, partial extraction);\n- offers cancel;\n- preserves partial import status explicitly in the import report."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F3",
+            "claim": "IMPLEMENTATION_PLAN.md \u00c2\u00a73.1 sub-task line 542 documents importOntology producing ecm:importStatus: \"ecm:parsed\" but contains no mention of a caller-side override pattern that sets ecm:importStatus: \"ecm:degraded\" after the function returns.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "534-544",
+                "excerpt": "### 3.1 Turtle Import via N3.js (P1)\n\n**SPEC refs:** \u00c2\u00a714.1, \u00c2\u00a712.2, FR-C011\n\n**Sub-tasks:**\n- Implement `importOntology(turtleSource, fileName, projectId): ImportResult`.\n...\n- Produce `ecm:ImportedOntology` record (\u00c2\u00a75.6): `id`, `type`, `ecm:projectId`, `ecm:name`, `ecm:sourceFileName`, `ecm:format: \"text/turtle\"`, `ecm:contentHash` (SHA-256 of source bytes), `ecm:content`, `ecm:createdAt`, `ecm:importStatus: \"ecm:parsed\"`.\n- Hard-reject source > 50 MB before parsing (\u00c2\u00a712.2).\n- Do NOT follow `owl:imports` references (\u00c2\u00a712.2)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F4",
+            "claim": "src/import/turtle-import.ts always sets ecm:importStatus to \"ecm:parsed\" in both the synchronous (Node) and asynchronous (browser) execution paths; it never sets \"ecm:degraded\".",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "294-312",
+                "excerpt": "// Async browser path: caller supplies Web Crypto digest function.\n...\nconst ontology: ImportedOntologyRecord = {\n  id: generateIri(\"ecm:uuid-urn\", {}, uuidFn),\n  type: \"ecm:ImportedOntology\",\n  ...\n  \"ecm:importStatus\": \"ecm:parsed\",\n};\nif (terms.length > LARGE_IMPORT_THRESHOLD) {\n  return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: true, warning: \"LARGE_IMPORT\" };\n}\nreturn { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: false };"
+              },
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "315-333",
+                "excerpt": "// Synchronous node path (default; preserves existing behaviour verbatim).\nconst digest = createHash(\"sha256\").update(sourceBytes).digest(\"hex\");\nconst ontology: ImportedOntologyRecord = {\n  id: generateIri(\"ecm:uuid-urn\", {}),\n  ...\n  \"ecm:importStatus\": \"ecm:parsed\",\n};\n\nif (terms.length > LARGE_IMPORT_THRESHOLD) {\n  return { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: true, warning: \"LARGE_IMPORT\" };\n}\nreturn { ok: true, ontology, terms, termCount: terms.length, thresholdExceeded: false };"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F5",
+            "claim": "src/ui/ImportOntologyDialog.tsx function handleContinueDegraded (lines 193\u00e2\u20ac\u201c220) applies a spread-override `{ ...pending.ontology, \"ecm:importStatus\": \"ecm:degraded\" }` after importOntology returns, and its inline comment cites SPEC section 14.2 and IMPLEMENTATION_PLAN section 3.3 but not \u00c2\u00a73.1.",
+            "evidence": [
+              {
+                "file": "src/ui/ImportOntologyDialog.tsx",
+                "lines": "193-220",
+                "excerpt": "function handleContinueDegraded() {\n  if (pending === null) return;\n\n  // Build degraded ontology record (SPEC section 14.2; IMPLEMENTATION_PLAN section 3.3).\n  // Spread-override ecm:importStatus; all other fields are preserved verbatim.\n  const degradedOntology: ImportedOntologyRecord = {\n    ...pending.ontology,\n    \"ecm:importStatus\": \"ecm:degraded\",\n  };\n  const augmented = pending.terms.map((t) => ({\n    ...t,\n    \"ecm:source\": \"ecm:imported-ontology\" as const,\n    \"ecm:ontologyId\": degradedOntology.id,\n  }));\n  ...\n  onConfirm(updatedProject);\n}"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F6",
+            "claim": "IMPLEMENTATION_PLAN.md \u00c2\u00a73.3 sub-task (line 579) and AC4 (line 586) document the degraded-mode ecm:importStatus behavior at the task and test levels but describe only the outcome ('ecm:importStatus: \"ecm:degraded\" in ontology record') with no description of the mechanism (caller-side spread-override vs. a return from importOntology).",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "577-587",
+                "excerpt": "**Sub-tasks:**\n- After parsing, count extracted terms. If > 10,000: emit `LARGE_IMPORT` warning; show import UI with term count; offer \"Continue in degraded mode\" / \"Cancel.\"\n- Degraded mode: virtualized term list (no full DOM render of all terms); search-only navigation; `ecm:importStatus: \"ecm:degraded\"` in ontology record.\n- 50 MB hard-reject handled in 3.1.\n\n**Acceptance criteria:**\n- Ontology with 10,001 terms triggers `LARGE_IMPORT` warning...\n- Import warning UI shows extracted term count...\n- \"Cancel\" leaves project document unchanged...\n- \"Continue in degraded mode\" sets `ecm:importStatus: \"ecm:degraded\"` in saved project. Playwright test."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F7",
+            "claim": "SPEC.md \u00c2\u00a75.6's ecm:degraded description (line 448) already cites IMPLEMENTATION_PLAN section 3.3 AC4 and src/import/turtle-import.ts, establishing the Chain 7 amendment's contribution as present in the current file.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "448",
+                "excerpt": "- `\"ecm:degraded\"`: the user selected \"Continue in degraded mode\" at the import warning dialog (IMPLEMENTATION_PLAN section 3.3 AC4); the ontology record is stored with partial extraction and search-only navigation applies. Defined in `src/import/turtle-import.ts` (`ImportedOntologyRecord`)."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F8",
+            "claim": "The LARGE_IMPORT_THRESHOLD constant is defined in src/import/turtle-import.ts at line 42 as 10_000, consistent with the 10,000-term threshold named in both SPEC.md \u00c2\u00a75.6 (line 447) and \u00c2\u00a714.2 (line 1111).",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "42",
+                "excerpt": "/** Term count threshold for LARGE_IMPORT warning per SPEC section 14.2. */\nconst LARGE_IMPORT_THRESHOLD = 10_000;"
+              },
+              {
+                "file": "project/SPEC.md",
+                "lines": "1111",
+                "excerpt": "- Warning threshold: 10,000 extracted terms."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F9",
+            "claim": "project/DECISIONS.md currently contains ADR-001 through ADR-009 only (file ends at line 167); no ADR governs the import flow, the ecm:importStatus enumeration, or the caller-override pattern.",
+            "evidence": [
+              {
+                "file": "project/DECISIONS.md",
+                "lines": "1-167",
+                "excerpt": "## ADR-001: Use JSON-LD Deterministic Service Template\n...\n## ADR-009: rdfs:range Emission Authorized on owl:DatatypeProperty\n[file ends at line 167]"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F10",
+            "claim": "SPEC.md \u00c2\u00a714.2 currently ends at line 1120; the final bullet (line 1119) is 'preserves partial import status explicitly in the import report' \u00e2\u20ac\u201d the last substantive prose before \u00c2\u00a714.3 begins at line 1121. This is the insertion point nearest to the degraded-mode behavioral description where a \u00c2\u00a75.6 cross-reference could be added.",
+            "evidence": [
+              {
+                "file": "project/SPEC.md",
+                "lines": "1114-1122",
+                "excerpt": "If an ontology exceeds the warning threshold, the system:\n\n- shows an import warning with the extracted term count;\n- offers continue in degraded mode (search-only, virtualized list, partial extraction);\n- offers cancel;\n- preserves partial import status explicitly in the import report.\n\n### 14.3 Canvas Scale Targets"
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F11",
+            "claim": "IMPLEMENTATION_PLAN.md \u00c2\u00a73.1 sub-tasks span lines 538\u00e2\u20ac\u201c544; the ecm:importStatus: \"ecm:parsed\" entry is on line 542 and is the last sub-task before the acceptance criteria block at line 546. The acceptance-criteria block (lines 546\u00e2\u20ac\u201c553) does not mention ecm:importStatus at all.",
+            "evidence": [
+              {
+                "file": "project/IMPLEMENTATION_PLAN.md",
+                "lines": "538-553",
+                "excerpt": "**Sub-tasks:**\n- Implement `importOntology(turtleSource, fileName, projectId): ImportResult`.\n- Extract explicit `owl:Class`, `rdfs:Class` (normalized to `owl:Class`), `owl:ObjectProperty`, `owl:DatatypeProperty`.\n- Preserve `rdfs:label`, `rdfs:comment`, `rdfs:subClassOf`, `rdfs:subPropertyOf` verbatim.\n- Produce `ecm:ImportedOntology` record (\u00c2\u00a75.6): `id`, `type`, `ecm:projectId`, `ecm:name`, `ecm:sourceFileName`, `ecm:format: \"text/turtle\"`, `ecm:contentHash` (SHA-256 of source bytes), `ecm:content`, `ecm:createdAt`, `ecm:importStatus: \"ecm:parsed\"`.\n- Hard-reject source > 50 MB before parsing (\u00c2\u00a712.2).\n- Do NOT follow `owl:imports` references (\u00c2\u00a712.2).\n\n**Acceptance criteria:**\n- `importOntology(smallOntology.ttl)` produces \u00e2\u2030\u00a5 1 `owl:Class` term. Unit test.\n- `rdfs:Class` in input \u00e2\u2020\u2019 `owl:Class` in output. Unit test.\n- `rdfs:subClassOf` values preserved verbatim. Unit test.\n- `ecm:contentHash` = `sha256-` + SHA-256 of input bytes. Unit test.\n- 51 MB input returns error result without parsing. Unit test (mocked large input).\n- `owl:imports` NOT followed; terms only from supplied file. Unit test."
+              }
+            ],
+            "kind": "observation"
+          },
+          {
+            "id": "F12",
+            "claim": "The caller-override mechanism is fully implemented in src/ui/ImportOntologyDialog.tsx but the pattern is split across two files: importOntology (turtle-import.ts) always produces ecm:parsed; the UI caller (ImportOntologyDialog.handleContinueDegraded) applies the spread-override to produce ecm:degraded. No single document describes this split-responsibility architecture in prose.",
+            "evidence": [
+              {
+                "file": "src/import/turtle-import.ts",
+                "lines": "306",
+                "excerpt": "\"ecm:importStatus\": \"ecm:parsed\","
+              },
+              {
+                "file": "src/ui/ImportOntologyDialog.tsx",
+                "lines": "196-201",
+                "excerpt": "// Build degraded ontology record (SPEC section 14.2; IMPLEMENTATION_PLAN section 3.3).\n// Spread-override ecm:importStatus; all other fields are preserved verbatim.\nconst degradedOntology: ImportedOntologyRecord = {\n  ...pending.ontology,\n  \"ecm:importStatus\": \"ecm:degraded\",\n};"
+              }
+            ],
+            "kind": "inference"
+          }
+        ],
+        "summary": "For Amendment 1 (SPEC \u00c2\u00a714.2 cross-reference to \u00c2\u00a75.6): \u00c2\u00a714.2 (lines 1106\u00e2\u20ac\u201c1120) describes large-ontology degraded-mode behavior in behavioral terms but contains no reference to \u00c2\u00a75.6 where the ecm:importStatus closed enumeration is normatively defined. A one-directional reference already exists in the other direction: \u00c2\u00a75.6 line 447 says 'see section 14.2' in the ecm:parsed description. The terminal bullet of \u00c2\u00a714.2 (line 1119: 'preserves partial import status explicitly in the import report') is the natural insertion point for a \u00c2\u00a75.6 cross-reference. For Amendment 2 (IMPLEMENTATION_PLAN \u00c2\u00a73.1 caller-override note): \u00c2\u00a73.1 line 542 documents importOntology returning ecm:importStatus: 'ecm:parsed' as a sub-task output, but neither \u00c2\u00a73.1 sub-tasks nor acceptance criteria mention that the calling UI component (ImportOntologyDialog.handleContinueDegraded, lines 193\u00e2\u20ac\u201c220 of src/ui/ImportOntologyDialog.tsx) applies a spread-override to set 'ecm:degraded' post-return. The behavior is specified in \u00c2\u00a73.3 AC4 (line 586) and implemented in the dialog, but the mechanism (caller-side override, not a return value from importOntology) is undocumented in \u00c2\u00a73.1. No ADRs are relevant to either amendment; DECISIONS.md ends at ADR-009 with no import-flow governance. Both amendments are documentation-alignment changes grounded in currently-shipped code.",
+        "evidence_paths": [
+          "project/SPEC.md",
+          "project/IMPLEMENTATION_PLAN.md",
+          "project/DECISIONS.md",
+          "src/ui/ImportOntologyDialog.tsx",
+          "src/import/turtle-import.ts"
+        ],
+        "referenced_evidence": [
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.1",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a712.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.3 AC4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          }
+        ],
+        "open_questions": [
+          "Amendment 1 insertion style: should the \u00c2\u00a714.2 cross-reference to \u00c2\u00a75.6 be appended as a new trailing sentence to the final bullet ('preserves partial import status explicitly in the import report \u00e2\u20ac\u201d see \u00c2\u00a75.6 for the ecm:importStatus enumeration'), or as a standalone note after the bullet list? The architect must decide the exact prose form.",
+          "Amendment 2 placement: should the caller-override note in \u00c2\u00a73.1 be appended to sub-task line 542 (inline with the ecm:importStatus: 'ecm:parsed' entry), added as a new sub-task bullet, or added as an implementation note paragraph before the acceptance criteria? The architect must choose.",
+          "SPEC.md \u00c2\u00a75.6 line 448 (ecm:degraded description) cites IMPLEMENTATION_PLAN section 3.3 AC4 but does NOT cite \u00c2\u00a714.2 directly, while line 447 (ecm:parsed) DOES cite \u00c2\u00a714.2. This asymmetry between the two enum-value descriptions is observable; whether it should be corrected in the same chain is a scope question for the architect/operator."
+        ],
+        "scope_assessment": "Investigated all five files listed in inputs.files_to_read (project/SPEC.md \u00c2\u00a75.6 and \u00c2\u00a714.2, project/IMPLEMENTATION_PLAN.md \u00c2\u00a73.1 and \u00c2\u00a73.3, project/DECISIONS.md ADR registry, src/ui/ImportOntologyDialog.tsx, src/import/turtle-import.ts); did not investigate test files, other UI components, or the CLI layer (src/cli/index.ts) beyond what was cited in the dialog's inline comment."
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:19:19Z",
+          "event": "completed",
+          "payload": {
+            "agent": "reconnaissance"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "951caee6c4fc14e7289732c1b00238ec76ffb853744b35c24b441092a7749efa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:929-dev-p3-c9",
+      "agent": "developer",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:928-recon-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- Q2-batch amendment text",
+        "purpose": "Draft both Q2-batch amendments. Amendment 1: project/SPEC.md \u00a714.2 -- add a cross-reference paragraph noting that the LARGE_IMPORT threshold behavior produces ImportedOntologyRecords with ecm:importStatus='ecm:degraded' as enumerated in \u00a75.6 (cross-cite \u00a75.6). Amendment 2: project/IMPLEMENTATION_PLAN.md \u00a73.1 -- add a caller-override note documenting that importOntology returns ImportResult with ecm:importStatus='ecm:parsed' UNCONDITIONALLY in its returned ImportedOntologyRecord; the UI's ImportOntologyDialog (Chain 4 sub-task B / Chain 6 sub-task B) applies ecm:importStatus='ecm:degraded' as a spread-override AFTER importOntology returns when the user selects Continue-in-degraded-mode at the LARGE_IMPORT warning (cross-cite \u00a73.3 AC4). Both amendments are documentation alignment with shipped code; no ADR citations needed. ASCII-only content. Output TWO changes[] entries (one per amendment), each with mode=edit, exact before-snippet, and after-snippet. Per CLAUDE.md \u00a77.5 ADR-citation CPS check, any ADR-NNN references MUST resolve to actual ADR headers in DECISIONS.md.",
+        "files_in_scope": [
+          "project/SPEC.md (modify \u00a714.2: add cross-reference to \u00a75.6 enumeration)",
+          "project/IMPLEMENTATION_PLAN.md (modify \u00a73.1: add caller-override note)"
+        ],
+        "spec_refs": [
+          "SPEC \u00a714.2",
+          "SPEC \u00a75.6",
+          "IMPLEMENTATION_PLAN \u00a73.1",
+          "IMPLEMENTATION_PLAN \u00a73.3 AC4"
+        ],
+        "constraint": "Two-file change (one canonical-doc each). ASCII-only. Cite only ADRs already in project/DECISIONS.md (per CLAUDE.md \u00a77.5). Mirror existing canonical-doc style.",
+        "ft_anchor": null
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "project/SPEC.md",
+            "rationale": "\u00c2\u00a714.2 describes degraded-mode behavior in behavioral terms but names no property and cites no enumeration section. The ecm:importStatus closed enumeration is normatively defined in \u00c2\u00a75.6, which already cross-references \u00c2\u00a714.2 (line 447) in the ecm:parsed description. Adding a reciprocal cross-reference paragraph after the \u00c2\u00a714.2 bullet list closes the one-directional reference gap identified in recon F1/F2/F10. Inserted as a prose paragraph after the final bullet and before \u00c2\u00a714.3, consistent with SPEC.md style.",
+            "before": "- preserves partial import status explicitly in the import report.\n\n### 14.3 Canvas Scale Targets",
+            "after": "- preserves partial import status explicitly in the import report.\n\nThe `ecm:importStatus` field of the resulting `ecm:ImportedOntology` record is set to `\"ecm:degraded\"` when the user selects continue in degraded mode; see \u00c2\u00a75.6 for the closed enumeration of permitted `ecm:importStatus` values.\n\n### 14.3 Canvas Scale Targets",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "project/IMPLEMENTATION_PLAN.md",
+            "rationale": "\u00c2\u00a73.1 sub-task line 542 documents importOntology producing ecm:importStatus: 'ecm:parsed' but contains no mention of the caller-side override pattern. The split-responsibility architecture (importOntology always returns 'ecm:parsed'; the calling UI applies the spread-override to produce 'ecm:degraded') is implemented in ImportOntologyDialog.handleContinueDegraded but undocumented in \u00c2\u00a73.1 (recon F3/F12). The note is inserted as a **Note:** paragraph between the sub-tasks block and acceptance criteria \u00e2\u20ac\u201d not as a new sub-task bullet (it is not a function-level implementation task) and not inline on line 542 (would make the bullet unreadable). Cross-cites \u00c2\u00a73.3 AC4 per task inputs.",
+            "before": "- Do NOT follow `owl:imports` references (\u00c2\u00a712.2).\n\n**Acceptance criteria:**",
+            "after": "- Do NOT follow `owl:imports` references (\u00c2\u00a712.2).\n\n**Note:** `importOntology` returns `ecm:importStatus: \"ecm:parsed\"` unconditionally in the `ImportedOntologyRecord` it produces. When the user selects \"Continue in degraded mode\" at the `LARGE_IMPORT` warning, the calling UI (`ImportOntologyDialog`) applies a spread-override to set `ecm:importStatus: \"ecm:degraded\"` on the returned record before saving (\u00c2\u00a73.3 AC4). The function itself never sets `\"ecm:degraded\"`.\n\n**Acceptance criteria:**",
+            "scope": "minimal"
+          }
+        ],
+        "tests_recommended": [],
+        "open_questions": [
+          "Recon open question (carried forward, not blocking): SPEC.md \u00c2\u00a75.6 line 448 (ecm:degraded description) cites IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4 but does NOT cite \u00c2\u00a714.2, while line 447 (ecm:parsed) DOES cite \u00c2\u00a714.2. This asymmetry between the two enum-value descriptions is observable. Amendment 1 adds the \u00c2\u00a714.2 \u00e2\u2020\u2019 \u00c2\u00a75.6 direction; the \u00c2\u00a75.6 ecm:degraded \u00e2\u2020\u2019 \u00c2\u00a714.2 direction remains absent. Whether to also add a \u00c2\u00a714.2 back-citation to \u00c2\u00a75.6's ecm:degraded description is a scope question for the operator/architect."
+        ],
+        "summary": "Two minimal documentation-alignment amendments. C1 inserts a single cross-reference prose paragraph at the end of SPEC.md \u00c2\u00a714.2 naming the ecm:importStatus property and citing \u00c2\u00a75.6 as the closed-enumeration authority. C2 inserts a **Note:** paragraph in IMPLEMENTATION_PLAN.md \u00c2\u00a73.1 between the sub-tasks block and acceptance criteria documenting the unconditional ecm:parsed return from importOntology and the caller-side spread-override mechanism that produces ecm:degraded, with a cross-cite to \u00c2\u00a73.3 AC4. No ADR citations; ASCII-compatible content; exact before-snippets verified against disk.",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:20:52Z",
+          "event": "completed",
+          "payload": {
+            "agent": "developer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "5c5591e76da4f1d2fac656a85d554c4b927b759821bf70243c1816a582c371aa"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:930-mojibake-p3-c9",
+      "agent": "mojibake-repair",
+      "status": "blocked",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:929-dev-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- mojibake-repair",
+        "purpose": "Run mojibake-repair on developer 929's changes[] from UPSTREAM. Canonical-doc chain hygiene per CLAUDE.md \u00a77.8. Defense in depth on Windows-encoded operator environment."
+      },
+      "attempts": 1,
+      "outputs": {
+        "error": "missing_source_task",
+        "needed": [
+          "inputs.source_task"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:20:52Z",
+          "event": "cps_veto",
+          "payload": {
+            "reason": "agent reported structured error: 'missing_source_task'",
+            "rejected_outputs": {
+              "error": "missing_source_task",
+              "needed": [
+                "inputs.source_task"
+              ]
+            }
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "b9ac9ab2b22c33cd6dc8ce7e7375037e6defa3e8aa764fd8d8b9a8b6194c29b6"
+        },
+        {
+          "ts": "2026-06-04T20:20:53Z",
+          "event": "fixer_auto_dispatched",
+          "payload": {
+            "fixer_task": "urn:fnsr:task:933-fixer-auto-930-mojibake-p3-c9",
+            "dispatcher_task": "urn:fnsr:task:934-recovery-dispatch-930-mojibake-p3-c9",
+            "stall_kind": "cps_veto",
+            "prior_attempts": 0,
+            "age_hours": 0.0
+          },
+          "prev_hash": "b9ac9ab2b22c33cd6dc8ce7e7375037e6defa3e8aa764fd8d8b9a8b6194c29b6",
+          "chain_hash": "871434c90cc5d73fa9d9defe60729dddccb0b8e6334e1d5971f42fbe43639f2c"
+        },
+        {
+          "ts": "2026-06-04T20:25:43Z",
+          "event": "fixer_auto_dispatched",
+          "payload": {
+            "fixer_task": "urn:fnsr:task:938-fixer-auto-930-mojibake-p3-c9",
+            "dispatcher_task": "urn:fnsr:task:939-recovery-dispatch-930-mojibake-p3-c9",
+            "stall_kind": "unknown",
+            "prior_attempts": 1,
+            "age_hours": 0.1
+          },
+          "prev_hash": "871434c90cc5d73fa9d9defe60729dddccb0b8e6334e1d5971f42fbe43639f2c",
+          "chain_hash": "d9ccffaf5cc9320aba470b19315b299fc6082dfa26de784f984fe2065b0a574d"
+        },
+        {
+          "ts": "2026-06-04T20:55:16Z",
+          "event": "operator_reset",
+          "payload": {
+            "reason": "Replaced by recovery chain 935/936/937 which completed successfully on 2026-06-04T20:25:42Z. v3.6.0 auto-supersession hook did not fire because the recovery chain ends in an applier (937) not a test-runner; v3.6.1 candidate banked at bank-937-apply-p3-c9-redo-1. Per Aaron 2026-06-04 Option A operator decision on dispatcher 939.",
+            "reset_fields": {
+              "status": "blocked -> blocked (abandoned)"
+            },
+            "operator": "operator",
+            "replaced_by": [
+              "urn:fnsr:task:935-mojibake-p3-c9-redo"
+            ]
+          },
+          "prev_hash": "d9ccffaf5cc9320aba470b19315b299fc6082dfa26de784f984fe2065b0a574d",
+          "chain_hash": "e1a6432ebf9a226caa07d8d1b23739f47dfe3d68dc5ab9beb6f133cf2bfecb20"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:931-rat-p3-c9",
+      "agent": "architect",
+      "status": "blocked",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:930-mojibake-p3-c9",
+        "urn:fnsr:task:929-dev-p3-c9",
+        "urn:fnsr:task:928-recon-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 9 -- Pass 2a ratification (Q2-batch amendments; no-verification-ritual variant)",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the Q2-batch amendments. NOTE: verification-ritual is intentionally NOT in this chain (per Chain 7 Fixer's Option B reasoning -- low citation density; architect verifies cross-references directly via referenced_evidence; matches Aaron's no-phase-pressure follow-on framing). Read developer 929's two amendments (post-mojibake), reconnaissance 928 evidence from UPSTREAM. Produce six-field ruling. Verify directly via referenced_evidence: (1) SPEC \u00a75.6 enumeration exists in project/SPEC.md (Chain 7 commit 60044f7); (2) SPEC \u00a714.2 LARGE_IMPORT_THRESHOLD content exists; (3) IMPLEMENTATION_PLAN \u00a73.1 importOntology contract exists; (4) IMPLEMENTATION_PLAN \u00a73.3 AC4 wording exists; (5) src/ui/ImportOntologyDialog.tsx spread-override pattern matches the \u00a73.1 caller-override note; (6) both amendments are documentation alignment (editorial_verdict: editorial); (7) no invented ADRs; (8) ASCII-only.",
+        "spec_refs": [
+          "FNSR Spec 03 Architect refusal contract",
+          "CLAUDE.md \u00a77.5",
+          "CLAUDE.md \u00a77.8 (verification-ritual conditional language)"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:55:49Z",
+          "event": "operator_reset",
+          "payload": {
+            "reason": "Replaced by 936-rat-p3-c9-redo (ratified). Per Aaron 2026-06-04 Option A. Retry after transient Windows file-lock race.",
+            "reset_fields": {
+              "status": "ready -> blocked (abandoned)"
+            },
+            "operator": "operator",
+            "replaced_by": [
+              "urn:fnsr:task:936-rat-p3-c9-redo"
+            ]
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "7b8b051896c68939f1498d2921a56f16e3005218eb977c39f5d2282b902a2ff6"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:932-apply-p3-c9",
+      "agent": "applier",
+      "status": "blocked",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:931-rat-p3-c9",
+        "urn:fnsr:task:929-dev-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- applier (Pass 2b commit-finalize)",
+        "purpose": "Pass 2b commit-finalize for the Q2-batch amendments. Apply 929-dev's changes[] to project/SPEC.md (\u00a714.2) and project/IMPLEMENTATION_PLAN.md (\u00a73.1). Event 11 gating ensures dispatch only on 931 ratification == ratified.",
+        "source_task": "urn:fnsr:task:929-dev-p3-c9"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:55:22Z",
+          "event": "operator_reset",
+          "payload": {
+            "reason": "Replaced by 937-apply-p3-c9-redo which completed successfully (2 changes applied to SPEC.md + IMPLEMENTATION_PLAN.md). Transitively wedged on blocked 930; Option A cleanup per Aaron 2026-06-04 operator decision.",
+            "reset_fields": {
+              "status": "ready -> blocked (abandoned)"
+            },
+            "operator": "operator",
+            "replaced_by": [
+              "urn:fnsr:task:937-apply-p3-c9-redo"
+            ]
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "254c0575e1b6a759e751bc05856035ce073d295bc81a20eadf6b339e2a679d97"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:933-fixer-auto-930-mojibake-p3-c9",
+      "agent": "fixer",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [],
+      "inputs": {
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9",
+        "stall_kind": "cps_veto",
+        "prior_recovery_attempts": 0,
+        "age_hours": 0.0,
+        "purpose": "Diagnose stall on urn:fnsr:task:930-mojibake-p3-c9 (stall_kind=cps_veto, prior_attempts=0). Propose validator-eligible recovery_chain OR escalate. Read state.jsonld via Read tool to find the anchor task's outputs + history. Daemon auto-dispatched per Spec 09 v3.2-bridge."
+      },
+      "attempts": 1,
+      "outputs": {
+        "diagnosis": "Task urn:fnsr:task:930-mojibake-p3-c9 (mojibake-repair) was queued without the required inputs.source_task field. The mojibake-repair agent contract (.claude/agents/mojibake-repair.md lines 22-27, 'INPUTS schema') requires inputs.source_task pointing to an upstream task whose outputs contain a changes[] list AND requires that task to be in depends_on. The task had depends_on=['urn:fnsr:task:929-dev-p3-c9'] (correct) but no inputs.source_task. The agent returned the contract's structured-failure shape {error: 'missing_source_task', needed: ['inputs.source_task']} at 2026-06-04T20:20:52Z (state.jsonld:102879-102884); CPS vetoed (state.jsonld:102885-102899) and set status=blocked. Note: 929-dev-p3-c9's outputs.changes[] genuinely contains cp1252-UTF8 mojibake (visible as repeated \\u00c2\\u00a7 = 'A SECTION' = 'SECTION' pre-mangled, in both 'rationale' and 'after' fields around state.jsonld:102832-102842), so the repair step is required, not optional. Cascade: 931-rat-p3-c9 and 932-apply-p3-c9 are status=ready but their depends_on transitively includes blocked 930, so the daemon's next_ready_task predicate will never select them. This is the exact defect class fnsr_chain_validator PRED-4 (required inputs per agent) catches at append-time, had the operator used --verify-first on chain composition.",
+        "recovery_chain": [
+          {
+            "@id": "urn:fnsr:task:935-mojibake-p3-c9-redo",
+            "agent": "mojibake-repair",
+            "status": "ready",
+            "priority": 9,
+            "depends_on": [
+              "urn:fnsr:task:929-dev-p3-c9"
+            ],
+            "inputs": {
+              "phase": "phase-3",
+              "chain_label": "Phase 3 Chain 9 -- mojibake-repair (redo; replaces blocked 930 which omitted inputs.source_task)",
+              "source_task": "urn:fnsr:task:929-dev-p3-c9",
+              "purpose": "Run mojibake-repair on 929-dev's changes[] from UPSTREAM. Canonical-doc chain hygiene per CLAUDE.md Sec 7.8 gap-3 amendment. Defense in depth on Windows-encoded operator environment. Replaces blocked 930-mojibake-p3-c9 which was queued without inputs.source_task; this redo includes the required field per .claude/agents/mojibake-repair.md INPUTS schema."
+            }
+          },
+          {
+            "@id": "urn:fnsr:task:936-rat-p3-c9-redo",
+            "agent": "architect",
+            "status": "ready",
+            "priority": 9,
+            "depends_on": [
+              "urn:fnsr:task:935-mojibake-p3-c9-redo",
+              "urn:fnsr:task:929-dev-p3-c9",
+              "urn:fnsr:task:928-recon-p3-c9"
+            ],
+            "inputs": {
+              "phase": "phase-3",
+              "mode": "ratification",
+              "chain_label": "Phase 3 Chain 9 -- Pass 2a ratification (redo; retargeted at 935-mojibake; no-verification-ritual variant)",
+              "purpose": "Pass 2a ratification per FNSR Spec 03 for the Q2-batch amendments. Replacement for wedged 931-rat-p3-c9 (whose depends_on included blocked 930). NOTE: verification-ritual is intentionally NOT in this chain (per Chain 7 Fixer's Option B reasoning -- low citation density; architect verifies cross-references directly via referenced_evidence; matches Aaron's no-phase-pressure follow-on framing). Read 929-dev's two amendments via the mojibake-repaired 935 output (NOT the raw 929 outputs) for the canonical content, plus 928-recon evidence, from UPSTREAM. Produce six-field ruling. Verify directly via referenced_evidence: (1) SPEC Sec 5.6 enumeration exists in project/SPEC.md (Chain 7 commit 60044f7); (2) SPEC Sec 14.2 LARGE_IMPORT_THRESHOLD content exists; (3) IMPLEMENTATION_PLAN Sec 3.1 importOntology contract exists; (4) IMPLEMENTATION_PLAN Sec 3.3 AC4 wording exists; (5) src/ui/ImportOntologyDialog.tsx spread-override pattern matches the Sec 3.1 caller-override note; (6) both amendments are documentation alignment (editorial_verdict: editorial); (7) no invented ADRs; (8) ASCII-only content (mojibake already repaired by 935).",
+              "spec_refs": [
+                "FNSR Spec 03 Architect refusal contract",
+                "CLAUDE.md Sec 7.5",
+                "CLAUDE.md Sec 7.8 (verification-ritual conditional language; gap-3 mojibake-repair guidance)"
+              ]
+            }
+          },
+          {
+            "@id": "urn:fnsr:task:937-apply-p3-c9-redo",
+            "agent": "applier",
+            "status": "ready",
+            "priority": 9,
+            "depends_on": [
+              "urn:fnsr:task:936-rat-p3-c9-redo",
+              "urn:fnsr:task:935-mojibake-p3-c9-redo"
+            ],
+            "inputs": {
+              "phase": "phase-3",
+              "chain_label": "Phase 3 Chain 9 -- applier (Pass 2b commit-finalize; redo)",
+              "source_task": "urn:fnsr:task:935-mojibake-p3-c9-redo",
+              "purpose": "Pass 2b commit-finalize for the Q2-batch amendments. Apply the MOJIBAKE-REPAIRED changes[] from 935 (not raw 929 which contains cp1252 mojibake). Two-file edit: project/SPEC.md (Sec 14.2 cross-reference paragraph) and project/IMPLEMENTATION_PLAN.md (Sec 3.1 caller-override Note paragraph). Event 11 gating ensures dispatch only on 936 ratification == ratified. Replacement for wedged 932-apply-p3-c9."
+            }
+          }
+        ],
+        "escalate": false,
+        "rationale": "Pattern-E match (CPS veto on contract-required input) compounded with shallow Pattern-D wedge cascade (2 downstream tasks blocked). Three-task replacement chain re-creates the 930-mojibake / 931-rat / 932-apply structure with two corrections: (1) 935-mojibake-redo carries inputs.source_task='urn:fnsr:task:929-dev-p3-c9' that 930 omitted; (2) 937-apply-redo points its source_task at 935 (mojibake-repaired) rather than raw 929, so the applier consumes the cleaned changes[] and never writes \u00c3\u201a\u00c2\u00a7 patterns to canonical docs. The original wedged 930/931/932 remain in state as orphans (recovery_chain cannot mutate existing tasks; that is operator state-surgery territory). The substrate handles orphans gracefully: 931/932 are status=ready but next_ready_task requires all depends_on to be done, and 930 is blocked-not-done, so the daemon never picks them up. Cosmetic cleanup is operator-discretion via state_admin.py abandon for audit hygiene; not load-bearing for substrate progress. Validator predicates all pass: PRED-1 (937 applier source_task=935 is in depends_on); PRED-2 (no test-runner task in chain; N/A); PRED-3 (929-dev done, 928-recon done, 935/936 alive within chain); PRED-4 (935 has source_task; 936 has mode=ratification; 937 has source_task); PRED-5 (935/936/937 are unused @ids per grep); PRED-6 (DAG acyclic: 935 -> {929}; 936 -> {935,929,928}; 937 -> {936,935}). prior_recovery_attempts=0 (recursion budget intact). 3 new tasks is well under the 5-task cascade-escalation threshold. Would dispatch.",
+        "referenced_evidence": [
+          "state.jsonld:102866-102914 (930-mojibake-p3-c9 task body, blocked status, cps_veto history entry, fixer_auto_dispatched entry)",
+          "state.jsonld:102879-102884 (rejected_outputs: {error: 'missing_source_task', needed: ['inputs.source_task']})",
+          "state.jsonld:102827-102851 (929-dev-p3-c9 outputs.changes[] showing \\u00c2\\u00a7 mojibake in rationale/after fields -- repair genuinely needed)",
+          "state.jsonld:102917-102936 (931-rat-p3-c9 wedged on 930; preserves verification-ritual-omission rationale to mirror in 936-redo)",
+          "state.jsonld:102939-102952 (932-apply-p3-c9 wedged on 931 transitively)",
+          ".claude/agents/mojibake-repair.md:22-27 (INPUTS schema: source_task required and must be in depends_on)",
+          ".claude/agents/mojibake-repair.md:42-49 (failure-shape contract: error=missing_source_task; needed list)",
+          "CLAUDE.md Sec 7.8 'Chain-shape variation by artifact kind' (canonical-doc artifacts include mojibake-repair between developer and applier)",
+          "fnsr_chain_validator.py PRED-4 (would have caught this defect at append-time via --verify-first)"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:24:21Z",
+          "event": "completed",
+          "payload": {
+            "agent": "fixer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "8ea0f2731b4d045541f58b2a7e2f04235f59f916e5a41c573723f2131c6ff21a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:934-recovery-dispatch-930-mojibake-p3-c9",
+      "agent": "recovery-dispatcher",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [
+        "urn:fnsr:task:933-fixer-auto-930-mojibake-p3-c9"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:933-fixer-auto-930-mojibake-p3-c9",
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9"
+      },
+      "attempts": 1,
+      "outputs": {
+        "dispatched": 3,
+        "escalated": false,
+        "validator_report": {
+          "verdict": "PASS",
+          "severity_counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "findings_count": 0
+        },
+        "summary": "recovery dispatched: 3 task(s) appended to state.jsonld. anchor=urn:fnsr:task:930-mojibake-p3-c9",
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9",
+        "source_task": "urn:fnsr:task:933-fixer-auto-930-mojibake-p3-c9",
+        "recovery_chain_ids": [
+          "urn:fnsr:task:935-mojibake-p3-c9-redo",
+          "urn:fnsr:task:936-rat-p3-c9-redo",
+          "urn:fnsr:task:937-apply-p3-c9-redo"
+        ]
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:24:22Z",
+          "event": "completed",
+          "payload": {
+            "agent": "recovery-dispatcher"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "385a8440a3fcfdb0f50fede33abb9f50493d67633ba87004613dbcdd9164f432"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:935-mojibake-p3-c9-redo",
+      "agent": "mojibake-repair",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:929-dev-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- mojibake-repair (redo; replaces blocked 930 which omitted inputs.source_task)",
+        "source_task": "urn:fnsr:task:929-dev-p3-c9",
+        "purpose": "Run mojibake-repair on 929-dev's changes[] from UPSTREAM. Canonical-doc chain hygiene per CLAUDE.md Sec 7.8 gap-3 amendment. Defense in depth on Windows-encoded operator environment. Replaces blocked 930-mojibake-p3-c9 which was queued without inputs.source_task; this redo includes the required field per .claude/agents/mojibake-repair.md INPUTS schema."
+      },
+      "attempts": 1,
+      "outputs": {
+        "changes": [
+          {
+            "id": "C1",
+            "file": "project/SPEC.md",
+            "rationale": "\u00c2\u00a714.2 describes degraded-mode behavior in behavioral terms but names no property and cites no enumeration section. The ecm:importStatus closed enumeration is normatively defined in \u00c2\u00a75.6, which already cross-references \u00c2\u00a714.2 (line 447) in the ecm:parsed description. Adding a reciprocal cross-reference paragraph after the \u00c2\u00a714.2 bullet list closes the one-directional reference gap identified in recon F1/F2/F10. Inserted as a prose paragraph after the final bullet and before \u00c2\u00a714.3, consistent with SPEC.md style.",
+            "before": "- preserves partial import status explicitly in the import report.\n\n### 14.3 Canvas Scale Targets",
+            "after": "- preserves partial import status explicitly in the import report.\n\nThe `ecm:importStatus` field of the resulting `ecm:ImportedOntology` record is set to `\"ecm:degraded\"` when the user selects continue in degraded mode; see \u00a75.6 for the closed enumeration of permitted `ecm:importStatus` values.\n\n### 14.3 Canvas Scale Targets",
+            "scope": "minimal"
+          },
+          {
+            "id": "C2",
+            "file": "project/IMPLEMENTATION_PLAN.md",
+            "rationale": "\u00c2\u00a73.1 sub-task line 542 documents importOntology producing ecm:importStatus: 'ecm:parsed' but contains no mention of the caller-side override pattern. The split-responsibility architecture (importOntology always returns 'ecm:parsed'; the calling UI applies the spread-override to produce 'ecm:degraded') is implemented in ImportOntologyDialog.handleContinueDegraded but undocumented in \u00c2\u00a73.1 (recon F3/F12). The note is inserted as a **Note:** paragraph between the sub-tasks block and acceptance criteria \u00e2\u20ac\u201d not as a new sub-task bullet (it is not a function-level implementation task) and not inline on line 542 (would make the bullet unreadable). Cross-cites \u00c2\u00a73.3 AC4 per task inputs.",
+            "before": "- Do NOT follow `owl:imports` references (\u00a712.2).\n\n**Acceptance criteria:**",
+            "after": "- Do NOT follow `owl:imports` references (\u00a712.2).\n\n**Note:** `importOntology` returns `ecm:importStatus: \"ecm:parsed\"` unconditionally in the `ImportedOntologyRecord` it produces. When the user selects \"Continue in degraded mode\" at the `LARGE_IMPORT` warning, the calling UI (`ImportOntologyDialog`) applies a spread-override to set `ecm:importStatus: \"ecm:degraded\"` on the returned record before saving (\u00a73.3 AC4). The function itself never sets `\"ecm:degraded\"`.\n\n**Acceptance criteria:**",
+            "scope": "minimal"
+          }
+        ],
+        "summary": "repaired 4 mojibake instance(s) across 3 field(s) in 2 change(s)",
+        "self_assessment": "confident"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:24:22Z",
+          "event": "completed",
+          "payload": {
+            "agent": "mojibake-repair"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "71b8302eba775fdcc9a70fb29b9edc8be531f47476018a55bbe4fa623f30dda4"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:936-rat-p3-c9-redo",
+      "agent": "architect",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:935-mojibake-p3-c9-redo",
+        "urn:fnsr:task:929-dev-p3-c9",
+        "urn:fnsr:task:928-recon-p3-c9"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "mode": "ratification",
+        "chain_label": "Phase 3 Chain 9 -- Pass 2a ratification (redo; retargeted at 935-mojibake; no-verification-ritual variant)",
+        "purpose": "Pass 2a ratification per FNSR Spec 03 for the Q2-batch amendments. Replacement for wedged 931-rat-p3-c9 (whose depends_on included blocked 930). NOTE: verification-ritual is intentionally NOT in this chain (per Chain 7 Fixer's Option B reasoning -- low citation density; architect verifies cross-references directly via referenced_evidence; matches Aaron's no-phase-pressure follow-on framing). Read 929-dev's two amendments via the mojibake-repaired 935 output (NOT the raw 929 outputs) for the canonical content, plus 928-recon evidence, from UPSTREAM. Produce six-field ruling. Verify directly via referenced_evidence: (1) SPEC Sec 5.6 enumeration exists in project/SPEC.md (Chain 7 commit 60044f7); (2) SPEC Sec 14.2 LARGE_IMPORT_THRESHOLD content exists; (3) IMPLEMENTATION_PLAN Sec 3.1 importOntology contract exists; (4) IMPLEMENTATION_PLAN Sec 3.3 AC4 wording exists; (5) src/ui/ImportOntologyDialog.tsx spread-override pattern matches the Sec 3.1 caller-override note; (6) both amendments are documentation alignment (editorial_verdict: editorial); (7) no invented ADRs; (8) ASCII-only content (mojibake already repaired by 935).",
+        "spec_refs": [
+          "FNSR Spec 03 Architect refusal contract",
+          "CLAUDE.md Sec 7.5",
+          "CLAUDE.md Sec 7.8 (verification-ritual conditional language; gap-3 mojibake-repair guidance)"
+        ]
+      },
+      "attempts": 1,
+      "outputs": {
+        "ruling": "ratified",
+        "editorial_verdict": "editorial",
+        "editorial_verdict_reason": "Both amendments are documentation-alignment changes that name and cross-reference an architecturally implicit-but-not-textually-explicit API surface (the ecm:importStatus closed enumeration and the caller-side spread-override mechanism), without altering any defined term, normative shall/must clause, or behavioral specification \u00e2\u20ac\u201d falling squarely within the Q-4-C amendment Ruling 3 banking on terminology sharpening / language tightening to reflect existing API surfaces.",
+        "rationale": "Pass 2a ratification per FNSR Spec 03 on Q2-batch amendments to project/SPEC.md \u00c2\u00a714.2 and project/IMPLEMENTATION_PLAN.md \u00c2\u00a73.1, read from the mojibake-repaired 935 output (not raw 929). All eight required verifications pass directly from the recon evidence (urn:fnsr:task:928-recon-p3-c9) and disk inspection: (1) SPEC \u00c2\u00a75.6 enumeration exists (lines 445-448; established by the Chain 7 commit 60044f7 referenced in the chain label); (2) SPEC \u00c2\u00a714.2 LARGE_IMPORT_THRESHOLD content exists (lines 1106-1120); (3) IMPLEMENTATION_PLAN \u00c2\u00a73.1 importOntology contract exists (lines 534-553); (4) IMPLEMENTATION_PLAN \u00c2\u00a73.3 AC4 wording exists (line 586); (5) the src/ui/ImportOntologyDialog.tsx spread-override pattern at lines 193-201 implements exactly the split-responsibility architecture described in C2's **Note:** paragraph (importOntology unconditionally returns 'ecm:parsed'; the UI caller applies the spread-override to produce 'ecm:degraded'); (6) both amendments are pure documentation alignment with no semantic change (C1 closes a one-directional cross-reference gap; C2 names a mechanism already implemented in code); (7) no ADR-NNN citations in either after-payload; (8) mojibake repaired by 935 \u00e2\u20ac\u201d \u00c2\u00a7 characters in before/after match disk content convention. Verification-ritual is intentionally absent per Chain 7 Fixer's Option B reasoning (low citation density; only same-document \u00c2\u00a7-references which are recon-verified and disk-confirmed). The amendments fall within editorial-correction scope, so reconnaissance was technically not required by the refusal contract; recon 928 was nonetheless provided and consulted. The chain (recon \u00e2\u2020\u2019 developer \u00e2\u2020\u2019 mojibake-repair \u00e2\u2020\u2019 ratification) is well-formed; the operator-applier step downstream should land both changes against the disk content snapshotted by recon and verified at ratification time.",
+        "referenced_evidence": [
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:928-recon-p3-c9",
+            "field": "outputs.findings"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:929-dev-p3-c9",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "upstream_task",
+            "id": "urn:fnsr:task:935-mojibake-p3-c9-redo",
+            "field": "outputs.changes"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a75.6",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a714.2",
+            "source": "project/SPEC.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.1",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "\u00c2\u00a73.3 AC4",
+            "source": "project/IMPLEMENTATION_PLAN.md"
+          },
+          {
+            "type": "spec_section",
+            "id": "ImportOntologyDialog.handleContinueDegraded (lines 193-201)",
+            "source": "src/ui/ImportOntologyDialog.tsx"
+          }
+        ],
+        "bankings": []
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:25:42Z",
+          "event": "completed",
+          "payload": {
+            "agent": "architect"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "3873bb83e32ea71d306b932510de8500fdc82fa605f64586bb4da5da8f0c1c1d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:937-apply-p3-c9-redo",
+      "agent": "applier",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [
+        "urn:fnsr:task:936-rat-p3-c9-redo",
+        "urn:fnsr:task:935-mojibake-p3-c9-redo"
+      ],
+      "inputs": {
+        "phase": "phase-3",
+        "chain_label": "Phase 3 Chain 9 -- applier (Pass 2b commit-finalize; redo)",
+        "source_task": "urn:fnsr:task:935-mojibake-p3-c9-redo",
+        "purpose": "Pass 2b commit-finalize for the Q2-batch amendments. Apply the MOJIBAKE-REPAIRED changes[] from 935 (not raw 929 which contains cp1252 mojibake). Two-file edit: project/SPEC.md (Sec 14.2 cross-reference paragraph) and project/IMPLEMENTATION_PLAN.md (Sec 3.1 caller-override Note paragraph). Event 11 gating ensures dispatch only on 936 ratification == ratified. Replacement for wedged 932-apply-p3-c9."
+      },
+      "attempts": 1,
+      "outputs": {
+        "applied": [
+          {
+            "id": "C1",
+            "path": "project\\SPEC.md",
+            "mode": "edit",
+            "delta_bytes": 230
+          },
+          {
+            "id": "C2",
+            "path": "project\\IMPLEMENTATION_PLAN.md",
+            "mode": "edit",
+            "delta_bytes": 419
+          }
+        ],
+        "failed": [],
+        "summary": "2 changes applied"
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:25:42Z",
+          "event": "completed",
+          "payload": {
+            "agent": "applier"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831"
+        },
+        {
+          "ts": "2026-06-04T20:55:14Z",
+          "event": "banking",
+          "payload": {
+            "banking_id": "bank-937-apply-p3-c9-redo-1",
+            "category": "methodology-refinement-candidate",
+            "state": 1,
+            "content": "v3.6.0 auto-supersession gap: hook fires only when completed_task.agent == 'test-runner' AND outputs.status == 'all_pass'. Chain 9 (canonical-doc amendment chain) has NO test-runner at the end -- shape is recon -> dev -> mojibake -> rat -> apply. When 930-mojibake CPS-vetoed (operator composition defect: source_task on mojibake-repair task), Fixer 933 dispatched recovery chain 935/936/937 (mojibake-redo -> rat-redo -> apply-redo). 937-apply-redo completed successfully (2 changes applied). But v3.6.0 commit-hook didn't fire because 937 is an applier, not a test-runner. Anchor 930 stayed blocked; downstream orphans 931/932 stayed wedged; Fixer 938 surfaced operator decision 939 with three options including Option C (substrate fix). v3.6.1 candidate: extend _maybe_supersede_recovery_anchor to ALSO fire on . Symmetry argument: test-runner all_pass is the success-signal for code chains; applier all-changes-applied-zero-failed is the success-signal for canonical-doc chains. Same control-flow tick in fnsr_daemon's success-commit branch. Same test pattern; same audit-event shape. Pair with ft-891-verify-p3-c7-1 (verification-ritual canonical-doc input mapping) -- both are 'canonical-doc Pass 2a substrate-discipline polish' candidates; bundle into a single v3.6.1 ship. Defer to Phase 4 entry friction observation before committing.",
+            "transition_history": [
+              {
+                "state": 1,
+                "timestamp": "2026-06-04T20:55:14Z"
+              }
+            ],
+            "forward_tracked_by": [],
+            "operator": "operator"
+          },
+          "prev_hash": "e6eb6c2f0b2cf049b907c3cc1110fa769a9faec94238193bf7e5ada38d43c831",
+          "chain_hash": "41fd7960863310bc90081ddb6d600f83ad34fd06560062f79ea741ba5a4ffdd1"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:938-fixer-auto-930-mojibake-p3-c9",
+      "agent": "fixer",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [],
+      "inputs": {
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9",
+        "stall_kind": "unknown",
+        "prior_recovery_attempts": 1,
+        "age_hours": 0.1,
+        "purpose": "Diagnose stall on urn:fnsr:task:930-mojibake-p3-c9 (stall_kind=unknown, prior_attempts=1). Propose validator-eligible recovery_chain OR escalate. Read state.jsonld via Read tool to find the anchor task's outputs + history. Daemon auto-dispatched per Spec 09 v3.2-bridge."
+      },
+      "attempts": 1,
+      "outputs": {
+        "diagnosis": "False-positive stall detection on a permanent orphan. The prior Fixer (urn:fnsr:task:933) already diagnosed urn:fnsr:task:930-mojibake-p3-c9 correctly (CPS veto on missing inputs.source_task) and dispatched a three-task replacement chain (935-mojibake-redo, 936-rat-redo, 937-apply-redo). That recovery has FULLY SUCCEEDED: state.jsonld:103111-103113 shows 935-mojibake-p3-c9-redo status=done; 103160-103163 shows 936-rat-p3-c9-redo status=done; 103243-103245 shows 937-apply-p3-c9-redo status=done at 2026-06-04T20:25:42Z with two changes applied (project/SPEC.md +230 bytes, project/IMPLEMENTATION_PLAN.md +419 bytes per state.jsonld:103259-103274). The substantive work of Chain 9 is complete on disk. The current Fixer dispatch (938) fired one second later (2026-06-04T20:25:43Z, state.jsonld:102914-102925) because the daemon's stall-watcher sees urn:fnsr:task:930-mojibake-p3-c9 still status=blocked and increments prior_attempts to 1 with stall_kind=unknown -- but the substrate's recovery_chain pattern by design does NOT mutate the originally-blocked task; it queues REPLACEMENT tasks. 930 is a permanent orphan with its work already completed via 935/937. Two transitive orphans (931-rat-p3-c9 status=ready depends_on=[930,929,928]; 932-apply-p3-c9 status=ready depends_on=[931,929]) are also wedged: next_ready_task requires all deps done, but 930 will never be done. These orphans are harmless (daemon never selects them) but show up in queue listings and were explicitly flagged by the prior Fixer as 'operator-discretion cleanup' (state.jsonld:103039 'Cosmetic cleanup is operator-discretion via state_admin.py abandon for audit hygiene; not load-bearing for substrate progress'). Proposing another recovery_chain here would either duplicate 935/936/937 (already done) or attempt to mutate 930's status (state-surgery territory the substrate forbids worker agents from doing). No new recovery shape is appropriate; the substrate has already healed via the replacement path.",
+        "recovery_chain": [],
+        "escalate": true,
+        "rationale": "Prior recovery SUCCEEDED -- this is the v3.2-bridge stall-watcher's known limitation: it classifies a blocked-orphan task whose recovery has already landed as a stall, because the substrate's audit chain does not back-annotate the original blocked task with a 'recovered_via=urn:fnsr:task:935-redo' field. Proposing another recovery_chain would either (a) re-do work already done (935/936/937 are done; their applier output is already on disk), or (b) require state-surgery on 930/931/932 (mutate status=blocked to abandoned), which is operator-authoritative territory the recovery_chain cannot touch. prior_recovery_attempts=1 and the prior recovery is provably successful -- the right action is operator state_admin abandon (or no-op) cleanup, not another Fixer dispatch. Per the Fixer contract anti-pattern rule ('never propose a recovery_chain you wouldn't dispatch yourself'), escalation via Path 1 with options is the correct surface so the operator decision becomes discoverable via fnsr.status.md / fnsr.operator_decisions.md per CLAUDE.md Sec 7.6 + Sec 7.14.",
+        "referenced_evidence": [
+          "state.jsonld:102866-102927 (anchor 930-mojibake-p3-c9 status=blocked; cps_veto event 2026-06-04T20:20:52Z; two fixer_auto_dispatched events)",
+          "state.jsonld:102968-103062 (prior Fixer 933 outputs: diagnosis, recovery_chain, escalate=false, rationale)",
+          "state.jsonld:103065-103097 (recovery-dispatcher 934 status=done; recovery_chain_ids=[935,936,937] appended)",
+          "state.jsonld:103111-103113 (935-mojibake-p3-c9-redo status=done -- prior recovery step 1 succeeded)",
+          "state.jsonld:103160-103163 (936-rat-p3-c9-redo status=done -- prior recovery step 2 succeeded)",
+          "state.jsonld:103243-103245 (937-apply-p3-c9-redo status=done -- prior recovery step 3 succeeded)",
+          "state.jsonld:103258-103274 (937 applier outputs: 2 changes applied to project/SPEC.md +230 bytes and project/IMPLEMENTATION_PLAN.md +419 bytes)",
+          "state.jsonld:102929-102965 (orphan 931-rat-p3-c9 + 932-apply-p3-c9 status=ready, transitively wedged on 930)",
+          "state.jsonld:103039 (prior Fixer's explicit note: 'Cosmetic cleanup is operator-discretion via state_admin.py abandon for audit hygiene; not load-bearing for substrate progress')",
+          "CLAUDE.md Sec 7.6 (operator-decision handoff path: resolve --execution-mode declaration)",
+          "CLAUDE.md Sec 7.14 (system status communication surface: decision-necessary classification)"
+        ],
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Abandon the three orphan tasks (930, 931, 932) via three state_admin abandon calls with reason 'replaced by recovery chain 935/936/937 which completed successfully on 2026-06-04T20:25:42Z'. Then resolve THIS Fixer task (938) via --execution-mode state-surgery-applied --state-surgery-targets 930-mojibake-p3-c9,931-rat-p3-c9,932-apply-p3-c9. Outcome: clean queue listing; explicit audit trail showing the orphan -> replacement linkage; future status reports do not surface blocked-but-recovered tasks. Cost: three CLI invocations + this resolve."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Resolve THIS Fixer task (938) via --execution-mode no-execution-required --reason 'prior Fixer 933 recovery chain 935/936/937 completed successfully; anchor 930 is a permanent orphan by recovery-chain design; orphans 931/932 are harmless wedged-on-deadDep ready tasks the daemon never selects'. Outcome: explicit audit attestation that the stall is a false-positive; orphans remain in state for posterity; minimal operator action. Cost: one resolve command; queue listings continue to show 3 orphan tasks."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Treat as a substrate-discipline forward-track: open a forward-track candidate for 'stall-watcher false-positives on orphaned-by-replacement-chain blocked tasks' as a candidate v3.6 substrate improvement (e.g., back-annotate originally-blocked task with recovered_via=<replacement-chain-anchor> when recovery_chain dispatches succeed; or make stall-watcher walk forward to detect a successful replacement chain before re-firing Fixer). Then choose A or B for the immediate cleanup. Outcome: durable fix that prevents future Fixer-recursion on already-recovered orphans. Cost: one state_admin forward-track create + one resolve."
+          }
+        ],
+        "recommendation": "Recommend Option A. The substrate is at prior_recovery_attempts=1 with the next stall-watcher cycle likely to fire Fixer 940 against the same orphan if 930 stays blocked (hitting the FIXER_RECURSION_BOUND=2 and triggering operator-escalation anyway). Abandoning 930/931/932 with the explicit reason cleanly closes the orphan paths AND records the orphan -> replacement linkage in audit (the abandon reason carries the recovery_chain task ids). Option B is acceptable if Aaron prefers minimal-action cleanup but trades a fully-cleaned audit chain for queue-listing noise. Option C is the principled durable-fix path and should be PAIRED with A or B (forward-track + immediate cleanup) -- it does not substitute for the immediate cleanup."
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:27:13Z",
+          "event": "completed",
+          "payload": {
+            "agent": "fixer"
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "8ea0f2731b4d045541f58b2a7e2f04235f59f916e5a41c573723f2131c6ff21a"
+        }
+      ]
+    },
+    {
+      "@id": "urn:fnsr:task:939-recovery-dispatch-930-mojibake-p3-c9",
+      "agent": "recovery-dispatcher",
+      "status": "done",
+      "priority": 50,
+      "depends_on": [
+        "urn:fnsr:task:938-fixer-auto-930-mojibake-p3-c9"
+      ],
+      "inputs": {
+        "source_task": "urn:fnsr:task:938-fixer-auto-930-mojibake-p3-c9",
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9"
+      },
+      "attempts": 1,
+      "outputs": {
+        "status": "awaiting_operator_decision",
+        "options": [
+          {
+            "label": "A",
+            "tradeoff": "Abandon the three orphan tasks (930, 931, 932) via three state_admin abandon calls with reason 'replaced by recovery chain 935/936/937 which completed successfully on 2026-06-04T20:25:42Z'. Then resolve THIS Fixer task (938) via --execution-mode state-surgery-applied --state-surgery-targets 930-mojibake-p3-c9,931-rat-p3-c9,932-apply-p3-c9. Outcome: clean queue listing; explicit audit trail showing the orphan -> replacement linkage; future status reports do not surface blocked-but-recovered tasks. Cost: three CLI invocations + this resolve."
+          },
+          {
+            "label": "B",
+            "tradeoff": "Resolve THIS Fixer task (938) via --execution-mode no-execution-required --reason 'prior Fixer 933 recovery chain 935/936/937 completed successfully; anchor 930 is a permanent orphan by recovery-chain design; orphans 931/932 are harmless wedged-on-deadDep ready tasks the daemon never selects'. Outcome: explicit audit attestation that the stall is a false-positive; orphans remain in state for posterity; minimal operator action. Cost: one resolve command; queue listings continue to show 3 orphan tasks."
+          },
+          {
+            "label": "C",
+            "tradeoff": "Treat as a substrate-discipline forward-track: open a forward-track candidate for 'stall-watcher false-positives on orphaned-by-replacement-chain blocked tasks' as a candidate v3.6 substrate improvement (e.g., back-annotate originally-blocked task with recovered_via=<replacement-chain-anchor> when recovery_chain dispatches succeed; or make stall-watcher walk forward to detect a successful replacement chain before re-firing Fixer). Then choose A or B for the immediate cleanup. Outcome: durable fix that prevents future Fixer-recursion on already-recovered orphans. Cost: one state_admin forward-track create + one resolve."
+          }
+        ],
+        "recommendation": "Recommend Option A. The substrate is at prior_recovery_attempts=1 with the next stall-watcher cycle likely to fire Fixer 940 against the same orphan if 930 stays blocked (hitting the FIXER_RECURSION_BOUND=2 and triggering operator-escalation anyway). Abandoning 930/931/932 with the explicit reason cleanly closes the orphan paths AND records the orphan -> replacement linkage in audit (the abandon reason carries the recovery_chain task ids). Option B is acceptable if Aaron prefers minimal-action cleanup but trades a fully-cleaned audit chain for queue-listing noise. Option C is the principled durable-fix path and should be PAIRED with A or B (forward-track + immediate cleanup) -- it does not substitute for the immediate cleanup.",
+        "anchor_task": "urn:fnsr:task:930-mojibake-p3-c9",
+        "source_fixer_task": "urn:fnsr:task:938-fixer-auto-930-mojibake-p3-c9",
+        "diagnosis": "False-positive stall detection on a permanent orphan. The prior Fixer (urn:fnsr:task:933) already diagnosed urn:fnsr:task:930-mojibake-p3-c9 correctly (CPS veto on missing inputs.source_task) and dispatched a three-task replacement chain (935-mojibake-redo, 936-rat-redo, 937-apply-redo). That recovery has FULLY SUCCEEDED: state.jsonld:103111-103113 shows 935-mojibake-p3-c9-redo status=done; 103160-103163 shows 936-rat-p3-c9-redo status=done; 103243-103245 shows 937-apply-p3-c9-redo status=done a",
+        "rationale": "Prior recovery SUCCEEDED -- this is the v3.2-bridge stall-watcher's known limitation: it classifies a blocked-orphan task whose recovery has already landed as a stall, because the substrate's audit chain does not back-annotate the original blocked task with a 'recovered_via=urn:fnsr:task:935-redo' field. Proposing another recovery_chain would either (a) re-do work already done (935/936/937 are done; their applier output is already on disk), or (b) require state-surgery on 930/931/932 (mutate sta",
+        "referenced_evidence": [
+          "state.jsonld:102866-102927 (anchor 930-mojibake-p3-c9 status=blocked; cps_veto event 2026-06-04T20:20:52Z; two fixer_auto_dispatched events)",
+          "state.jsonld:102968-103062 (prior Fixer 933 outputs: diagnosis, recovery_chain, escalate=false, rationale)",
+          "state.jsonld:103065-103097 (recovery-dispatcher 934 status=done; recovery_chain_ids=[935,936,937] appended)",
+          "state.jsonld:103111-103113 (935-mojibake-p3-c9-redo status=done -- prior recovery step 1 succeeded)",
+          "state.jsonld:103160-103163 (936-rat-p3-c9-redo status=done -- prior recovery step 2 succeeded)",
+          "state.jsonld:103243-103245 (937-apply-p3-c9-redo status=done -- prior recovery step 3 succeeded)",
+          "state.jsonld:103258-103274 (937 applier outputs: 2 changes applied to project/SPEC.md +230 bytes and project/IMPLEMENTATION_PLAN.md +419 bytes)",
+          "state.jsonld:102929-102965 (orphan 931-rat-p3-c9 + 932-apply-p3-c9 status=ready, transitively wedged on 930)",
+          "state.jsonld:103039 (prior Fixer's explicit note: 'Cosmetic cleanup is operator-discretion via state_admin.py abandon for audit hygiene; not load-bearing for substrate progress')",
+          "CLAUDE.md Sec 7.6 (operator-decision handoff path: resolve --execution-mode declaration)",
+          "CLAUDE.md Sec 7.14 (system status communication surface: decision-necessary classification)"
+        ],
+        "fixer_escalated": true,
+        "operator_resolution": {
+          "chosen_option_index": 1,
+          "chosen_option": {
+            "label": "A",
+            "tradeoff": "Abandon the three orphan tasks (930, 931, 932) via three state_admin abandon calls with reason 'replaced by recovery chain 935/936/937 which completed successfully on 2026-06-04T20:25:42Z'. Then resolve THIS Fixer task (938) via --execution-mode state-surgery-applied --state-surgery-targets 930-mojibake-p3-c9,931-rat-p3-c9,932-apply-p3-c9. Outcome: clean queue listing; explicit audit trail showing the orphan -> replacement linkage; future status reports do not surface blocked-but-recovered tasks. Cost: three CLI invocations + this resolve."
+          },
+          "operator": "operator",
+          "execution_mode": "state-surgery-applied",
+          "execution_payload": {
+            "mode": "state-surgery-applied",
+            "state_surgery_targets": [
+              "urn:fnsr:task:930-mojibake-p3-c9",
+              "urn:fnsr:task:931-rat-p3-c9",
+              "urn:fnsr:task:932-apply-p3-c9"
+            ],
+            "reason": "Option A per Aaron 2026-06-04: abandon 3 orphan tasks (930/931/932) citing recovery chain successors (935/936/937 all done). Substrate forward-track Option C pairing banked as v3.6.1 candidate at bank-937-apply-p3-c9-redo-1 (extend v3.6.0 auto-supersession to applier-recovery chains, not just test-runner)."
+          },
+          "notes": "Aaron 2026-06-04 'Option A' verdict on canonical-doc Chain 9 orphan cleanup + substrate fix banked for v3.6.1"
+        }
+      },
+      "history": [
+        {
+          "ts": "2026-06-04T20:27:14Z",
+          "event": "awaiting_operator_decision",
+          "payload": {
+            "options_count": 3,
+            "recommendation": "Recommend Option A. The substrate is at prior_recovery_attempts=1 with the next stall-watcher cycle likely to fire Fixer 940 against the same orphan if 930 stays blocked (hitting the FIXER_RECURSION_BOUND=2 and triggering operator-escalation anyway). Abandoning 930/931/932 with the explicit reason cleanly closes the orphan paths AND records the orphan -> replacement linkage in audit (the abandon reason carries the recovery_chain task ids). Option B is acceptable if Aaron prefers minimal-action cleanup but trades a fully-cleaned audit chain for queue-listing noise. Option C is the principled durable-fix path and should be PAIRED with A or B (forward-track + immediate cleanup) -- it does not substitute for the immediate cleanup."
+          },
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "chain_hash": "103d1be510927f4fbd8b8cea0859d561b2c698db1533dbc31e480546a5832cae"
+        },
+        {
+          "ts": "2026-06-04T20:55:25Z",
+          "event": "operator_resolution",
+          "payload": {
+            "chosen_option_index": 1,
+            "chosen_option": {
+              "label": "A",
+              "tradeoff": "Abandon the three orphan tasks (930, 931, 932) via three state_admin abandon calls with reason 'replaced by recovery chain 935/936/937 which completed successfully on 2026-06-04T20:25:42Z'. Then resolve THIS Fixer task (938) via --execution-mode state-surgery-applied --state-surgery-targets 930-mojibake-p3-c9,931-rat-p3-c9,932-apply-p3-c9. Outcome: clean queue listing; explicit audit trail showing the orphan -> replacement linkage; future status reports do not surface blocked-but-recovered tasks. Cost: three CLI invocations + this resolve."
+            },
+            "operator": "operator",
+            "execution_mode": "state-surgery-applied",
+            "execution_payload": {
+              "mode": "state-surgery-applied",
+              "state_surgery_targets": [
+                "urn:fnsr:task:930-mojibake-p3-c9",
+                "urn:fnsr:task:931-rat-p3-c9",
+                "urn:fnsr:task:932-apply-p3-c9"
+              ],
+              "reason": "Option A per Aaron 2026-06-04: abandon 3 orphan tasks (930/931/932) citing recovery chain successors (935/936/937 all done). Substrate forward-track Option C pairing banked as v3.6.1 candidate at bank-937-apply-p3-c9-redo-1 (extend v3.6.0 auto-supersession to applier-recovery chains, not just test-runner)."
+            },
+            "notes": "Aaron 2026-06-04 'Option A' verdict on canonical-doc Chain 9 orphan cleanup + substrate fix banked for v3.6.1"
+          },
+          "prev_hash": "103d1be510927f4fbd8b8cea0859d561b2c698db1533dbc31e480546a5832cae",
+          "chain_hash": "fe5ad226438a2a969b4441b236cb850337ecd190d00b34a1bafbfd6d5335cb2e"
         }
       ]
     }

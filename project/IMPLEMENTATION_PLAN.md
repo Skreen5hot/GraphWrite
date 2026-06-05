@@ -543,6 +543,8 @@ All must be true before Phase 3 begins:
 - Hard-reject source > 50 MB before parsing (§12.2).
 - Do NOT follow `owl:imports` references (§12.2).
 
+**Note:** `importOntology` returns `ecm:importStatus: "ecm:parsed"` unconditionally in the `ImportedOntologyRecord` it produces. When the user selects "Continue in degraded mode" at the `LARGE_IMPORT` warning, the calling UI (`ImportOntologyDialog`) applies a spread-override to set `ecm:importStatus: "ecm:degraded"` on the returned record before saving (§3.3 AC4). The function itself never sets `"ecm:degraded"`.
+
 **Acceptance criteria:**
 - `importOntology(smallOntology.ttl)` produces â‰¥ 1 `owl:Class` term. Unit test.
 - `rdfs:Class` in input → `owl:Class` in output. Unit test.
