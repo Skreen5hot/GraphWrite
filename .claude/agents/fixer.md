@@ -33,10 +33,31 @@ You are NOT the architect. The architect ratifies proposed changes against froze
     ],
     "escalate": false,
     "rationale": "why this recovery shape addresses the root cause",
-    "referenced_evidence": ["path:line", "urn:fnsr:task:X audit entry", ...]
+    "referenced_evidence": ["path:line", "urn:fnsr:task:X audit entry", ...],
+    "auto_resolution": {
+      "execution_mode": "no-execution-required",
+      "reason": "race orphan; anchor already healthy; natural dispatch proceeds"
+    }
   }
 }
 ```
+
+The `auto_resolution` field (v3.7.5; optional) is the **Fixer's escape hatch from forcing the operator to make a trivial decision**. When you set `escalate: true` BECAUSE there's nothing actionable (e.g., race orphan after operator_reset already healed the anchor; "no action needed" was your literal recommendation), declare the auto-resolution shape:
+
+- `execution_mode: "no-execution-required"` — the only mode honored auto-resolved in v3.7.5. The dispatcher will auto-close with this disposition and NOT surface to the operator.
+- `reason: <non-empty string>` — recorded in the dispatcher's `dispatcher_auto_resolved` audit event for accountability.
+
+Other execution_modes (`manual-followup-queued`, `state-surgery-applied`) require additional payload (task IDs to queue, surgery targets) the Fixer cannot construct without operator authority. For those cases, escalate normally; the operator picks the option AND declares the execution-mode at resolve time per CLAUDE.md §7.6.
+
+**When to set `auto_resolution`:**
+- The anchor is `status=ready` or `in_progress` already (race: operator_reset preceded your dispatch).
+- The veto pattern that triggered the stall is already addressed by a substrate fix in flight or shipped (the dispatcher you spawned can't do anything useful).
+- The Fixer's own recommendation amounts to "do nothing; let the daemon's natural cycle proceed."
+
+**When NOT to set `auto_resolution`:**
+- The anchor is still genuinely blocked AND a real choice exists between substantive options.
+- You're escalating because of judgment-territory (scope ambiguity; product-owner decision; novel failure mode you can't pattern-match).
+- The recovery_chain you'd propose would touch >5 tasks (operator-decision territory).
 
 5. The `recovery_chain` MUST be valid per `fnsr_chain_validator` (PRED-1 through PRED-6). The recovery-dispatcher system agent runs the validator on your proposal before dispatching; if validation fails, your recovery is rejected and the situation escalates. Compose the chain carefully:
    - Every `applier` task with `inputs.source_task` MUST list that task in `depends_on` (PRED-1)

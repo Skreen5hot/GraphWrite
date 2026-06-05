@@ -3346,6 +3346,37 @@ def _recovery_dispatcher(task: dict[str, Any],
     recovery_chain = src.get("recovery_chain") or []
     diagnosis = (src.get("diagnosis") or "")[:500]
 
+    # v3.7.5: Fixer-asserted auto-resolution. The Fixer may set
+    # `outputs.auto_resolution: {execution_mode, reason}` to signal
+    # "I'm escalating because there's no recovery_chain to run, but
+    # the situation is auto-resolvable — no operator judgment needed."
+    # Currently scoped to `no-execution-required` (race orphans;
+    # "no action needed; natural dispatch proceeds"; "anchor already
+    # healthy"). The other execution_modes (manual-followup-queued,
+    # state-surgery-applied) require additional payload the Fixer
+    # cannot construct without operator authority, so they still
+    # escalate. Closes bank-976 + bank-977-2 cascade pattern: every
+    # "no action" recommendation became a fake operator decision.
+    auto_resolution = src.get("auto_resolution")
+    if escalate and isinstance(auto_resolution, dict):
+        ar_mode = auto_resolution.get("execution_mode")
+        ar_reason = auto_resolution.get("reason")
+        if (ar_mode == "no-execution-required"
+                and isinstance(ar_reason, str) and ar_reason.strip()):
+            return WorkerResult(True, {
+                "dispatched": 0,
+                "escalated": False,
+                "auto_resolved": True,
+                "execution_mode": ar_mode,
+                "reason": ar_reason,
+                "anchor_task": anchor_task_id,
+                "source_task": source_task_id,
+                "summary": (
+                    "Fixer self-classified as auto-resolvable "
+                    f"({ar_mode}); no operator surface emitted."
+                ),
+            }, "", "")
+
     # Honor fixer's explicit escalation request — emit
     # awaiting_operator_decision shape per CLAUDE.md §7.6 so the daemon
     # commits with status=awaiting_operator_decision and surfaces in

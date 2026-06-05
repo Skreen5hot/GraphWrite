@@ -532,6 +532,112 @@ class TestRecoveryDispatcher(unittest.TestCase):
         self.assertEqual(result.outputs["dispatched"], 0)
         self.assertFalse(result.outputs["escalated"])
 
+    def test_v375_auto_resolution_no_execution_required_skips_escalation(self):
+        """v3.7.5: when Fixer asserts escalate=true BUT also provides
+        a well-formed auto_resolution: {execution_mode:
+        no-execution-required, reason: ...}, the dispatcher honors it
+        and does NOT surface to operator. Closes bank-977-2 pattern:
+        race-orphan dispatchers where Fixer's recommendation was
+        literally 'no action needed'."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {
+                "source_task": "urn:t:fixer",
+                "anchor_task": "urn:fnsr:task:001-stalled",
+            },
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "race orphan; anchor 977 already healthy",
+            "rationale": "natural daemon dispatch proceeds; no action",
+            "auto_resolution": {
+                "execution_mode": "no-execution-required",
+                "reason": ("race-with-operator-reset; anchor already "
+                           "in_progress; natural dispatch proceeding"),
+            },
+            "options": ["A: no action", "B: abandon", "C: bank"],
+            "recommendation": "Option A (no-execution-required)",
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        self.assertTrue(result.ok)
+        # Must NOT emit awaiting_operator_decision shape
+        self.assertNotIn("status", result.outputs)
+        self.assertFalse(result.outputs["escalated"])
+        self.assertTrue(result.outputs["auto_resolved"])
+        self.assertEqual(result.outputs["execution_mode"],
+                         "no-execution-required")
+        self.assertIn("race", result.outputs["reason"])
+
+    def test_v375_auto_resolution_missing_reason_falls_through(self):
+        """v3.7.5 must validate shape strictly: missing/empty reason
+        means the auto_resolution declaration is incomplete; fall
+        through to normal escalate path so operator decides."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {"source_task": "urn:t:fixer"},
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "...",
+            "auto_resolution": {
+                "execution_mode": "no-execution-required",
+                # reason MISSING
+            },
+            "options": ["A", "B"],
+            "recommendation": "A",
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        self.assertEqual(result.outputs["status"],
+                         "awaiting_operator_decision")
+
+    def test_v375_auto_resolution_unsupported_mode_falls_through(self):
+        """v3.7.5: only no-execution-required is honored auto-resolved.
+        The other execution_modes (manual-followup-queued, state-
+        surgery-applied) require additional payload the Fixer cannot
+        construct without operator authority; still escalate."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {"source_task": "urn:t:fixer"},
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "...",
+            "auto_resolution": {
+                "execution_mode": "state-surgery-applied",
+                "reason": "would need surgery targets the Fixer can't pick",
+            },
+            "options": ["A", "B"],
+            "recommendation": "A",
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        self.assertEqual(result.outputs["status"],
+                         "awaiting_operator_decision")
+
+    def test_v375_no_auto_resolution_legacy_behavior_unchanged(self):
+        """Backward compatibility: Fixer outputs without auto_resolution
+        still escalate normally."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {"source_task": "urn:t:fixer"},
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "...",
+            "options": ["A", "B"],
+            "recommendation": "A",
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        self.assertEqual(result.outputs["status"],
+                         "awaiting_operator_decision")
+
     def test_validator_fail_escalates_no_dispatch(self):
         # Recovery chain has applier missing source_task in deps (PRED-1 fail)
         bad_chain = [{

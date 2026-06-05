@@ -35,7 +35,14 @@ The recovery-dispatcher is paired with the **fixer** worker agent. The fixer pro
 2. Behavior:
 
    - Read the source_task's outputs from UPSTREAM (parallel to applier).
-   - If `outputs.escalate == true`: do NOT dispatch. Return:
+   - **v3.7.5 auto-resolution gate (runs first when `escalate == true`):** if the Fixer's outputs include a well-formed `auto_resolution: {execution_mode: "no-execution-required", reason: "<non-empty>"}`, do NOT escalate to operator. Return:
+     ```
+     {dispatched: 0, escalated: false, auto_resolved: true,
+      execution_mode: "no-execution-required", reason: "<fixer's reason>",
+      summary: "Fixer self-classified as auto-resolvable (no-execution-required); no operator surface emitted."}
+     ```
+     The daemon commits with `status=done`. Only `no-execution-required` is honored auto-resolved in v3.7.5; other execution_modes fall through to the normal escalate path.
+   - If `outputs.escalate == true` and no `auto_resolution` (or malformed): do NOT dispatch. Return:
      ```
      {dispatched: 0, escalated: true, summary: "fixer requested escalation",
       validator_report: null}
