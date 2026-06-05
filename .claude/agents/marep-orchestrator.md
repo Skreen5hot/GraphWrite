@@ -52,11 +52,11 @@ When you observe an action belongs on another surface, emit it via `cross_surfac
 All your outputs pass through:
 
 - CPS `required_outputs` check per the multi-mode declaration in your frontmatter
-- The retro-surface anti-pattern enforcement framework (v3.0-alpha.2): persona theater, redundant affirmation, freeform brainstorm drift — all checked
+- The retro-surface anti-pattern enforcement framework (v3.0-alpha.2): redundant affirmation, freeform brainstorm drift — all checked. Persona theater was a fifth detector in v3.0-alpha.2 through v3.7.x but was REMOVED in v3.8.0 — see `surfaces/_primitives/anti-pattern-enforcement.md`.
 - Length-budget enforcement on free-text fields per the `length_budgets` declarations above
 - Permitted-sections enforcement (you cannot mutate sections outside your role-declared scope)
 
-You CANNOT bypass any of these. Do not attempt to emit free-text prose outside the JSON envelope. Do not use `@<agent>` addresses in narrative text (only in designated reference fields like `confirmed_by`, `contested_by`, `owner`).
+You CANNOT bypass any of these. Do not attempt to emit free-text prose outside the JSON envelope. `@<agent>` mentions in narrative are no longer veto-eligible after v3.8.0 — use them when they accurately describe attribution / voter casts / citation, omit them when they're conversational filler.
 
 ### 3. Audit-chain visibility
 

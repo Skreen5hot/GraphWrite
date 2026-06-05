@@ -347,60 +347,27 @@ _DESIGNATED_REFERENCE_FIELDS = (
     "supporting_sources", "dissenting_sources",
     "source_agent", "voter",
 )
-_PERSONA_ADDR_RE = re.compile(r"@[A-Z][a-zA-Z0-9_-]*")
-
-# v3.7: persona-theater meta-discussion exemption. Per bank-944-marep-orch-
-# phase-transition-01-to-02-1, the persona-theater predicate false-fires
-# on meta-discussion of role coverage (e.g., "the absence of @QA from
-# the gathering pool" — @QA is a TOPIC not an ADDRESS). Detected by
-# scanning the ~40 chars preceding the @-match for negation keywords;
-# matches inside negation context are exempted (not flagged as theater).
-_PERSONA_NEGATION_CONTEXT_RE = re.compile(
-    r"(absence of|without|not dispatched|not surfaced|did not|"
-    r"haven't|hasn't|not present|missing|omit(ted)?|not include[d]?|"
-    r"not (the|a|an) |excluding|excludes|exempted|exempt|not addressed)",
-    re.IGNORECASE,
-)
-_PERSONA_NEGATION_LOOKBACK_CHARS = 40
-
-# v3.7.3: persona-theater parenthetical-citation exemption. Per
-# bank-977 (second instance), the persona-theater predicate false-fires
-# on @<Role> mentions used as parenthetical attribution markers
-# (e.g., "the contract gap — advisory (@QA, QA-6) vs major
-# (@DeliveryManager, DM-2)..."). These are CITATIONS, not addresses;
-# the role identifier marks WHICH agent surfaced the issue. Detected
-# by paren-balance walk: if the @-match is inside an unclosed `(...)`
-# region within a lookback window, it's a citation, not theater.
-_PERSONA_PAREN_LOOKBACK_CHARS = 50
-
-
-def _in_parenthetical_citation(text: str, pos: int) -> bool:
-    """v3.7.3 helper. True iff position `pos` is inside a `(...)` region
-    that opens within _PERSONA_PAREN_LOOKBACK_CHARS before `pos` AND
-    closes within _PERSONA_PAREN_LOOKBACK_CHARS after `pos`. Balances
-    nested parens correctly (only an UNMATCHED-and-still-open `(`
-    counts as opening the citation context)."""
-    lb_start = max(0, pos - _PERSONA_PAREN_LOOKBACK_CHARS)
-    preceding = text[lb_start:pos]
-    depth = 0
-    for ch in preceding:
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth = max(0, depth - 1)
-    if depth <= 0:
-        return False
-    fwd_end = min(len(text), pos + _PERSONA_PAREN_LOOKBACK_CHARS)
-    following = text[pos:fwd_end]
-    fdepth = 0
-    for ch in following:
-        if ch == "(":
-            fdepth += 1
-        elif ch == ")":
-            if fdepth == 0:
-                return True
-            fdepth -= 1
-    return False
+# v3.8.0: persona-theater detector REMOVED. After 4 false-positive ships
+# in the Phase 3 exit retro (v3.7.0 negation, v3.7.1 schema fields,
+# v3.7.3 parenthetical citation, and a then-current narrative-vote-
+# description case), the substrate-discipline reality was inescapable:
+# regex over free text cannot distinguish ROLE-AS-ACTOR (legitimate
+# attribution / voter casts / citation) from ROLE-AS-ADDRESSEE
+# (conversational drift). Every new analytical mode revealed a new
+# false-positive vector. The original concern (conversational drift)
+# is already prevented by JSON-envelope-only output parsing + agent
+# prompts forbidding prose outside the envelope + length budgets on
+# free-text fields + the retro-end synthesist's quality observation
+# pass. The regex was belt-and-suspenders that became the suspenders
+# we kept tripping over.
+#
+# `_DESIGNATED_REFERENCE_FIELDS` is retained as documentation for the
+# schema fields that explicitly carry role identifiers (source_agent,
+# voter, etc.). The tuple is no longer consulted by a persona-theater
+# check (there is none); it is still passed to `_collect_free_text_fields`
+# as an exclude_paths argument so the freeform-brainstorm length-budget
+# check skips structured-reference fields (where length is content,
+# not prose).
 
 # Conversational connectives forbidden in free-text retro outputs per
 # MAREP §17.3. Substrate default; agents may extend via frontmatter.
@@ -422,7 +389,8 @@ def _collect_free_text_fields(
     (where @-agent patterns are legitimate, e.g., vote casts) by name
     match on any path component.
 
-    Used by _check_no_persona_theater and _check_no_freeform_brainstorm.
+    Used by _check_no_freeform_brainstorm (persona-theater removed in
+    v3.8.0).
     """
     found: dict[str, str] = {}
     def walk(value: Any, path: str) -> None:
@@ -470,40 +438,8 @@ def _normalized_levenshtein(a: str, b: str) -> float:
     return 1.0 - (distance / max_len)
 
 
-def _check_no_persona_theater(
-    task: dict[str, Any], outputs: dict[str, Any],
-) -> None:
-    """Per MAREP §17.1. Scan free-text fields for @<agent> patterns
-    outside designated reference fields. Raise ContainmentVeto with
-    error: persona_theater_detected on hit.
-    """
-    text_fields = _collect_free_text_fields(outputs)
-    hits = []
-    for path, text in text_fields.items():
-        for m in _PERSONA_ADDR_RE.finditer(text):
-            # v3.7 negation-context exemption: skip matches where the
-            # ~40 char window before OR after contains a negation
-            # keyword (meta-discussion of role coverage is not persona
-            # addressing).
-            ws = max(0, m.start() - _PERSONA_NEGATION_LOOKBACK_CHARS)
-            we = min(len(text), m.end() + _PERSONA_NEGATION_LOOKBACK_CHARS)
-            preceding = text[ws:m.start()]
-            following = text[m.end():we]
-            if (_PERSONA_NEGATION_CONTEXT_RE.search(preceding)
-                    or _PERSONA_NEGATION_CONTEXT_RE.search(following)):
-                continue
-            # v3.7.3 parenthetical-citation exemption: skip matches
-            # inside (...) attribution markers — "advisory (@QA, QA-6)"
-            # is citation, not address.
-            if _in_parenthetical_citation(text, m.start()):
-                continue
-            hits.append({"path": path, "match": m.group(0),
-                          "snippet": text[max(0, m.start() - 30):m.end() + 30]})
-    if hits:
-        raise ContainmentVeto(
-            f"persona_theater_detected: agent addresses outside "
-            f"designated reference fields: {hits[:5]}"
-        )
+# _check_no_persona_theater REMOVED in v3.8.0. See the rationale comment
+# block above _DESIGNATED_REFERENCE_FIELDS.
 
 
 def _check_no_redundant_affirmation(
@@ -882,7 +818,10 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
         # tasks per the explicit inputs.surface attribution.
         if _is_retro_surface_task(task) and agent_name:
             config = _agent_anti_pattern_config(agent_name)
-            _check_no_persona_theater(task, proposed_outputs)
+            # _check_no_persona_theater REMOVED in v3.8.0; concern is
+            # already prevented by JSON-envelope-only output parsing,
+            # length budgets, and the retro-end synthesist's quality
+            # observation pass.
             _check_no_freeform_brainstorm(
                 task, proposed_outputs,
                 length_budgets=config.get("length_budgets"),

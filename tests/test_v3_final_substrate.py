@@ -54,8 +54,9 @@ class TestAntiPatternEnforcementPrimitiveDoc(unittest.TestCase):
     def test_doc_lists_first_explicit_instance(self):
         text = self.doc_path.read_text(encoding="utf-8")
         self.assertIn("retro-surface anti-pattern framework", text)
-        # Must reference the canonical retro anti-patterns by name
-        self.assertIn("_check_no_persona_theater", text)
+        # Must reference the canonical retro anti-patterns by name.
+        # v3.8.0: _check_no_persona_theater REMOVED — see fnsr_daemon.py
+        # rationale block + this doc's "Removed in v3.8.0" section.
         self.assertIn("_check_no_redundant_affirmation", text)
         self.assertIn("_check_no_freeform_brainstorm", text)
         self.assertIn("_check_no_semantic_memory_mutation", text)

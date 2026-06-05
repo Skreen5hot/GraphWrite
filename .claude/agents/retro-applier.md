@@ -100,7 +100,7 @@ The diff_summary names sources + counts; per-proposal `@id` provenance lives in 
 
 ## Anti-pattern detection (v3.0-alpha.2)
 
-The retro-applier ITSELF doesn't go through the retro-surface anti-pattern checks (it's a system agent with structured JSON inputs/outputs; no free-text fields where persona theater or freeform brainstorm would apply). But the proposals it consumes from analytical agents (`@QA`, `@DeliveryManager`, `@RiskAnalyst`, etc.) DID go through those checks at their dispatching CPS gates. The applier trusts the upstream CPS validation.
+The retro-applier ITSELF doesn't go through the retro-surface anti-pattern checks (it's a system agent with structured JSON inputs/outputs; no free-text fields where freeform brainstorm drift would apply). But the proposals it consumes from analytical agents (`@QA`, `@DeliveryManager`, `@RiskAnalyst`, etc.) DID go through those checks at their dispatching CPS gates. The applier trusts the upstream CPS validation. (Persona theater was a fifth detector in v3.0-alpha.2 through v3.7.x; removed in v3.8.0 — see `surfaces/_primitives/anti-pattern-enforcement.md`.)
 
 If an upstream agent emitted free-text content that should have been rejected (e.g., CPS bypass) and the applier merges it, the substrate's audit chain records the merge attribution; a future operator review surfaces the chain-of-custody.
 

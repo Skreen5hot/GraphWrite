@@ -15,7 +15,7 @@ canonical_reference: ariadne/archive/specs/MAREP-v2.2/MAREP_v2.2.md §17 (first 
 
 A discipline for converting **named LLM failure modes into substrate-mechanical refusals**: each anti-pattern is paired with a structural detector that fires before the agent's output reaches state.jsonld. The pattern's value is that the substrate (deterministic Python) decides whether an output exhibits the anti-pattern, not the LLM that produced the output.
 
-The pattern is substrate-wide. It applies wherever the substrate accepts free-text-bearing outputs from LLM workers and the operator can describe failure modes structurally enough that a deterministic detector exists. The first explicit substrate instance is the retro-surface anti-pattern framework (v3.0-alpha.2; persona theater, redundant affirmation, freeform brainstorm drift). Future instances are inevitable as additional LLM-bearing surfaces ratify their own behavioral constraints.
+The pattern is substrate-wide. It applies wherever the substrate accepts free-text-bearing outputs from LLM workers and the operator can describe failure modes structurally enough that a deterministic detector exists. The first explicit substrate instance is the retro-surface anti-pattern framework (v3.0-alpha.2; ~~persona theater~~ [removed v3.8.0], redundant affirmation, freeform brainstorm drift). Future instances are inevitable as additional LLM-bearing surfaces ratify their own behavioral constraints. **Lesson from v3.8.0 removal:** "structural enough that a deterministic detector exists" is the load-bearing condition. When the operator can NAME a failure mode but the deterministic detector cannot distinguish it from legitimate behavior at LLM-output scale, the detector is the wrong shape and should not ship.
 
 This document is the substrate's canonical specification of the anti-pattern enforcement pattern. Documents referencing "the anti-pattern framework" or "substrate-mechanical behavioral discipline" cite this primitive.
 
@@ -107,7 +107,7 @@ The first explicit substrate instance of this pattern. Per MAREP v2.2 §17, four
 
 | Anti-pattern | Detector | Why it matters |
 |---|---|---|
-| **Persona theater** | `_check_no_persona_theater` — regex scan for `@<agent>` in free-text fields outside designated reference fields | Retros drift into theatrical role-play when agents address each other in narrative; the structured `proposed_issues`/`confirmed_by`/`contested_by` fields are the substrate's audience-trail-honest alternative |
+| ~~**Persona theater**~~ | ~~`_check_no_persona_theater`~~ — **REMOVED in v3.8.0**: regex over free text could not distinguish role-as-actor (legitimate attribution, voter casts, citation) from role-as-addressee (conversational drift). Four false-positive ships in the Phase 3 exit retro (v3.7.0 negation context; v3.7.1 schema agent-reference fields; v3.7.3 parenthetical citation; v3.7.x narrative role description) demonstrated unboundedness. The original concern (conversational drift) is prevented by JSON-envelope-only output parsing + agent prompts forbidding prose outside the envelope + length budgets on free-text fields + retro-end synthesist quality observation. | (deprecated) |
 | **Redundant affirmation** | `_check_no_redundant_affirmation` — normalized Levenshtein similarity vs prior turn body; reject ≥ 0.85 | Multi-turn agent dispatches can echo the prior turn instead of advancing analysis; substrate measures and refuses |
 | **Freeform brainstorm drift** | `_check_no_freeform_brainstorm` — length-budget enforcement + forbidden-conversational-connectives scan | Agents may exceed scope by writing prose where structured fields are required; length budgets + connective lists make the constraint mechanical |
 | **Out-of-scope mutation** | `permitted_sections` enforcement in `retro-applier` + retro-state schema validation | Agents propose mutations outside their role's authorized scope; deterministic Python rejects per role binding |
@@ -124,7 +124,7 @@ Each row below is an *instance* of the anti-pattern framework, not a separate pr
 
 | Surface | Anti-pattern instances | First introduced |
 |---|---|---|
-| Retro | Persona theater, redundant affirmation, freeform brainstorm drift, out-of-scope mutation, semantic-memory mutation | v3.0-alpha.2 + v3.0 final |
+| Retro | ~~Persona theater~~ (removed v3.8.0), redundant affirmation, freeform brainstorm drift, out-of-scope mutation, semantic-memory mutation | v3.0-alpha.2 + v3.0 final |
 | Verification | (potential) Citation-format drift, ADR-reference invention | v2.6.0 — RETROACTIVELY (`_check_adr_citations` is an instance of the anti-pattern framework predating the named pattern; satisfies all three properties) |
 | Substrate-wide | Null outputs, structured-error envelope drift, required_outputs omission, awaiting-decision shape malformation | v2.1.0+ — RETROACTIVELY (substrate's pre-existing CPS infrastructure is the anti-pattern framework's foundation) |
 | External-side-effect agents | Dirty-tree commit, protected-branch commit, hook-bypass without rationale | v2.9.0 (git-committer) — RETROACTIVELY (the safety-by-default+bypass-reason pattern is an anti-pattern instance) |
@@ -171,7 +171,8 @@ Each one inherits the same three properties from this primitive. The substrate's
 - **v2.6.0**: `_check_adr_citations` — retroactively another anti-pattern enforcement instance (ADR-NNN ghost class).
 - **v2.9.0**: git-committer safety defaults — retroactively another anti-pattern enforcement instance (external-side-effect-agent class).
 - **v3.0-alpha.2**: Retro-surface anti-pattern framework (persona theater, redundant affirmation, freeform brainstorm drift) — first explicit substrate instance with the framework name.
-- **v3.0 final (THIS RELEASE)**: Anti-pattern primitive doc authored; `_check_no_semantic_memory_mutation` added as second substrate-wide anti-pattern enforcement instance (semantic-memory immutability from retro turns).
+- **v3.0 final**: Anti-pattern primitive doc authored; `_check_no_semantic_memory_mutation` added as second substrate-wide anti-pattern enforcement instance (semantic-memory immutability from retro turns).
+- **v3.8.0**: `_check_no_persona_theater` REMOVED. Phase 3 exit retro surfaced four false-positive ships (v3.7.0 negation context; v3.7.1 schema agent-reference fields; v3.7.3 parenthetical citation; v3.7.x narrative role description) demonstrating that regex over free text cannot distinguish role-as-actor (legitimate) from role-as-addressee (conversational drift). The structural-detector-exists property fails: every analytical mode produces new shapes of legitimate `@<Role>` mentions. Removal precedent: when the deterministic detector itself produces operator-decision overhead exceeding the value of the behavioral guard, the detector ships the wrong shape. The original concern (conversational drift) is prevented by JSON-envelope-only output parsing + length budgets + the retro-end synthesist's quality observation pass.
 - **Future**: corpus-wide `TestAntiPatternFrameworkConformance` test that validates every detector's three structural properties; additional surface instances as ratified.
 
 ## Cross-references
@@ -180,7 +181,7 @@ Each one inherits the same three properties from this primitive. The substrate's
 - MAREP_INTEGRATION_SPEC §6 (substrate-mechanical enforcement contract)
 - `surfaces/_primitives/episodic-to-semantic-promotion.md` (semantic-memory immutability anti-pattern lives at the boundary between these two primitives)
 - `surfaces/_primitives/bounded-authority-orchestrator.md` (BAO substrate-enforcement bound is the BAO-side reflection of the anti-pattern framework)
-- `fnsr_daemon.py` `_check_no_persona_theater`, `_check_no_redundant_affirmation`, `_check_no_freeform_brainstorm`, `_check_no_semantic_memory_mutation` — canonical detector implementations
+- `fnsr_daemon.py` `_check_no_redundant_affirmation`, `_check_no_freeform_brainstorm`, `_check_no_semantic_memory_mutation` — canonical detector implementations (the v3.0-alpha.2 `_check_no_persona_theater` was removed in v3.8.0)
 
 ## Provenance
 

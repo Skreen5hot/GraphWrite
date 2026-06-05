@@ -19,7 +19,7 @@ The operator dispatches each analytical role (typically in round-robin or parall
 - New supporting/dissenting evidence (`evidence_paths`, embedded in their proposed envelope)
 - Optional refined-root-cause re-statements (`proposed_issues[]` updates, scoped by role permission)
 
-The substrate's anti-pattern enforcement (persona theater, redundant affirmation, freeform brainstorm drift) is most active in this phase — agents are reading each other's outputs and may otherwise drift.
+The substrate's anti-pattern enforcement (redundant affirmation, freeform brainstorm drift) is most active in this phase — agents are reading each other's outputs and may otherwise drift. (Persona theater was a third detector in v3.0-alpha.2 through v3.7.x; removed in v3.8.0 — see `surfaces/_primitives/anti-pattern-enforcement.md` for the false-positive history that motivated removal.)
 
 ## Per-role permitted_sections
 

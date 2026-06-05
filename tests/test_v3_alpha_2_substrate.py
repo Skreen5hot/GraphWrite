@@ -56,166 +56,65 @@ class TestEpisodicToSemanticPrimitiveDoc(unittest.TestCase):
 
 # ---------- Anti-pattern enforcement framework --------------------------
 
-class TestAntiPatternPersonaTheater(unittest.TestCase):
-    def test_clean_output_passes(self):
-        outputs = {
-            "proposed_issues": [
-                {"id": "QA-1", "title": "Test coverage gap",
-                 "rationale": "Module X has no tests for branch Y."}
-            ],
-            "summary": "Found one coverage gap.",
-        }
-        # MUST NOT raise
-        d._check_no_persona_theater({"agent": "qa"}, outputs)
+class TestPersonaTheaterRemoved(unittest.TestCase):
+    """v3.8.0: persona-theater detector REMOVED. Regex over free text
+    cannot distinguish role-as-actor (legitimate) from role-as-addressee
+    (theater). The v3.7.0-v3.7.3 exemption ships chased false positives
+    the detector itself created. Verify removal."""
 
-    def test_persona_address_in_free_text_vetoes(self):
-        outputs = {
-            "proposed_issues": [{
-                "id": "QA-1",
-                "rationale": "Great point @Architect — coverage is low here.",
-            }],
-        }
-        with self.assertRaises(d.ContainmentVeto) as ctx:
-            d._check_no_persona_theater({"agent": "qa"}, outputs)
-        self.assertIn("persona_theater_detected", str(ctx.exception))
+    def test_persona_theater_check_no_longer_callable(self):
+        """The predicate function must not exist; calling it would
+        re-introduce the false-positive regime."""
+        self.assertFalse(
+            hasattr(d, "_check_no_persona_theater"),
+            "_check_no_persona_theater must be removed in v3.8.0"
+        )
 
-    def test_designated_reference_fields_allow_addresses(self):
-        # @-addresses are LEGITIMATE in designated reference fields
-        # (votes.cast[*].agent, confirmed_by, contested_by, owner, etc.)
-        outputs = {
-            "proposed_issues": [{
-                "id": "QA-1",
-                "confirmed_by": ["@Architect", "@Skeptic"],
-                "contested_by": [],
-                "rationale": "Plain prose without persona theater.",
-            }],
-        }
-        # MUST NOT raise
-        d._check_no_persona_theater({"agent": "qa"}, outputs)
+    def test_persona_theater_regex_helpers_removed(self):
+        """The supporting regexes/helpers (_PERSONA_ADDR_RE, negation
+        and parenthetical helpers) are also removed."""
+        for name in ("_PERSONA_ADDR_RE",
+                     "_PERSONA_NEGATION_CONTEXT_RE",
+                     "_PERSONA_NEGATION_LOOKBACK_CHARS",
+                     "_PERSONA_PAREN_LOOKBACK_CHARS",
+                     "_in_parenthetical_citation"):
+            self.assertFalse(
+                hasattr(d, name),
+                f"{name} must be removed in v3.8.0"
+            )
 
-    def test_v37_negation_context_absence_exempts(self):
-        """v3.7: meta-discussion of role coverage via 'absence of @X' is
-        a TOPIC reference, not a persona address — must NOT veto.
-        Closes bank-944-marep-orch-phase-transition-01-to-02-1 false-
-        positive pattern observed on 2026-06-04 retro 01-gathering."""
-        outputs = {
-            "rationale": (
-                "The absence of @Architect, @Developer, and @UserAdvocate "
-                "roles from the gathering pool was an operator composition "
-                "choice consistent with the 3-role MAREP default."
-            ),
-        }
-        d._check_no_persona_theater({"agent": "marep-orchestrator"}, outputs)
+    def test_designated_reference_fields_retained_as_documentation(self):
+        """_DESIGNATED_REFERENCE_FIELDS is RETAINED — still passed to
+        _collect_free_text_fields so the length-budget check skips
+        structured-reference fields. The tuple no longer powers a
+        persona-theater veto (there is none) but documents which
+        schema fields explicitly carry role identifiers."""
+        self.assertTrue(hasattr(d, "_DESIGNATED_REFERENCE_FIELDS"))
+        for field_name in ("source_agent", "voter", "confirmed_by",
+                           "contested_by", "owner"):
+            self.assertIn(field_name, d._DESIGNATED_REFERENCE_FIELDS)
 
-    def test_v37_negation_context_without_exempts(self):
-        outputs = {"rationale": "The retro proceeded without @QA dispatched."}
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v37_negation_context_not_dispatched_exempts(self):
-        outputs = {"rationale": "@Architect was not dispatched this phase."}
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v37_address_outside_negation_still_vetoes(self):
-        """v3.7 must not over-exempt: @-addresses without preceding
-        negation context still veto as persona theater."""
-        outputs = {
-            "rationale": "Coverage is low here @Architect — please review.",
-        }
-        with self.assertRaises(d.ContainmentVeto) as ctx:
-            d._check_no_persona_theater({"agent": "qa"}, outputs)
-        self.assertIn("persona_theater_detected", str(ctx.exception))
-
-    def test_v371_source_agent_field_allows_addresses(self):
-        """v3.7.1: source_agent is the marep-orchestrator conflict-
-        detection schema's agent-reference field
-        (conflicts_surfaced[*].positions[*].source_agent). Must be
-        in _DESIGNATED_REFERENCE_FIELDS so persona-theater check
-        skips it. Closes bank-977-marep-orch-conflict-detection-
-        03-analysis-1 (977 vetoed despite schema-correct output)."""
-        outputs = {
-            "conflicts_surfaced": [{
-                "id": "C1",
-                "subject": "Cross-role characterization of Chain 9 failure",
-                "positions": [
-                    {"source_agent": "@QA",
-                     "claim": "Chain 9 recurred the verification-ritual gap.",
-                     "evidence": "QA-6 rationale citing Chain 7 pattern."},
-                    {"source_agent": "@DeliveryManager",
-                     "claim": "Chain 9 is operator-composition tax.",
-                     "evidence": "DM-2 rationale framing the same."},
-                ],
-                "synthesis_attempt": "Both positions agree on the substrate "
-                                     "gap; divergence is taxonomic only."
-            }],
-            "summary": "One cross-role conflict surfaced; positions converge."
-        }
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v371_voter_field_allows_addresses(self):
-        """v3.7.1: voter is the proposed_votes schema's agent-reference
-        field per surfaces/retro/phases/03-analysis.md. Must be
-        allowlisted."""
-        outputs = {
-            "proposed_votes": [
-                {"@id": "vote-1", "issue_id": "QA-1",
-                 "voter": "@QA", "vote": "confirm"},
-                {"@id": "vote-2", "issue_id": "DM-3",
-                 "voter": "@DeliveryManager", "vote": "contest",
-                 "rationale": "Coordination overhead framing too broad."}
-            ],
-            "summary": "Two votes cast.",
-        }
-        d._check_no_persona_theater({"agent": "qa"}, outputs)
-
-    def test_v373_parenthetical_citation_exempts(self):
-        """v3.7.3: @-mentions inside (...) attribution markers are
-        citations, not addresses. Closes bank-977-marep-orch-conflict-
-        detection-03-analysis-1 second-instance pattern observed at
-        09:55:10Z (subject field carried '(@QA, QA-6) vs (@DeliveryManager,
-        DM-2)' parenthetical citations)."""
-        outputs = {
-            "conflicts_surfaced": [{
-                "id": "C1",
-                "subject": ("verification-ritual input contract gap — "
-                            "advisory (@QA, QA-6) vs major "
-                            "(@DeliveryManager, DM-2) on the same "
-                            "recurring pattern"),
-                "synthesis_attempt": ("Both positions cite the same root "
-                                      "cause; severity calibration diverges.")
-            }],
-            "summary": "One cross-role severity-calibration conflict."
-        }
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v373_single_paren_citation_exempts(self):
-        outputs = {"rationale": "The finding was surfaced (@QA) early in 01."}
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v373_paren_with_attribution_word_exempts(self):
-        outputs = {"rationale": "The position (per @Architect) was contested."}
-        d._check_no_persona_theater(
-            {"agent": "marep-orchestrator"}, outputs)
-
-    def test_v373_address_outside_parens_still_vetoes(self):
-        """v3.7.3 must not over-exempt: @-addresses NOT inside parens
-        still veto."""
-        outputs = {"rationale": "Coverage is low here @Architect — review."}
-        with self.assertRaises(d.ContainmentVeto) as ctx:
-            d._check_no_persona_theater({"agent": "qa"}, outputs)
-        self.assertIn("persona_theater_detected", str(ctx.exception))
-
-    def test_v373_unclosed_paren_does_not_exempt(self):
-        """If the `(` is open but no matching `)` follows within reach,
-        the @-mention is NOT a parenthetical citation — still vetoes."""
-        outputs = {"rationale": "Discussion (@Architect please review next."}
-        with self.assertRaises(d.ContainmentVeto) as ctx:
-            d._check_no_persona_theater({"agent": "qa"}, outputs)
-        self.assertIn("persona_theater_detected", str(ctx.exception))
+    def test_at_mentions_in_retro_outputs_no_longer_veto(self):
+        """Confirmation test: every shape that vetoed under v3.7.x now
+        passes the CPS check. Free-text @<Role> mentions in narrative
+        no longer raise. The retro-end synthesist + length budgets +
+        JSON-envelope-only parsing remain the substantive guards."""
+        # Cases that previously vetoed in v3.7.x:
+        from fnsr_daemon import _check_no_freeform_brainstorm
+        cases = [
+            {"rationale": "Great point @Architect — coverage is low."},
+            {"rationale": "@Architect needs to review next."},
+            {"rationale": "Cross-role vote — @QA on DM-2 and @DM on QA-6."},
+            {"rationale": "Discussion (@Architect please review next."},
+        ]
+        for outputs in cases:
+            # Must not raise (no persona-theater check exists; brainstorm
+            # check is by length only and these texts are short).
+            _check_no_freeform_brainstorm(
+                {"agent": "qa"}, outputs,
+                length_budgets={"rationale": 1000},
+                forbidden_connectives=(),
+            )
 
 
 class TestAntiPatternRedundantAffirmation(unittest.TestCase):

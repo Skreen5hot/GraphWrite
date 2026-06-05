@@ -841,7 +841,7 @@ Symptoms and recovery paths:
 | `retro-applier` reports `version_mismatch` | Concurrent or stale `version_read` | Read current `retro.version` from the state file; re-emit the proposal with corrected `version_read` |
 | CPS veto `semantic_memory_immutable_from_retro` | A retro task tried to edit a canonical path directly | The task is mis-scoped; rescope as a `promote-candidate` followed by the ratification chain |
 | CPS veto `out_of_scope_mutation` from retro-applier | An analytical role proposed a section it doesn't own per the phase spec | Re-read `surfaces/retro/phases/<phase>.md` for that phase's per-role permitted_sections; adjust the agent's contract or operator's dispatch |
-| CPS veto `persona_theater_detected` / `redundant_affirmation` / `freeform_brainstorm_drift` | Anti-pattern fired on agent output | Read the veto's structured evidence; the agent's emitted text contained the pattern. Re-prompt or revise contract |
+| CPS veto `redundant_affirmation` / `freeform_brainstorm_drift` | Anti-pattern fired on agent output | Read the veto's structured evidence; the agent's emitted text contained the pattern. Re-prompt or revise contract. (`persona_theater_detected` was removed in v3.8.0 — see anti-pattern-enforcement primitive doc.) |
 
 ### When promotion candidates are not promoted
 
