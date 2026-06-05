@@ -473,38 +473,33 @@ def _check_no_redundant_affirmation(
 
 def _check_no_freeform_brainstorm(
     task: dict[str, Any], outputs: dict[str, Any],
-    length_budgets: Optional[dict[str, int]] = None,
     forbidden_connectives: Optional[list[str]] = None,
 ) -> None:
-    """Per MAREP §17.3. Two-pass check:
-    1. Walk outputs against per-field max_length budgets; reject overruns.
-    2. Scan free-text fields for forbidden conversational connectives.
+    """Per MAREP §17.3 — narrowed in v3.8.1.
 
-    Both length_budgets and forbidden_connectives come from agent
-    frontmatter (length_budgets dict; conversational_connectives_forbidden
-    list). When unset, substrate defaults apply (no length budgets;
-    _DEFAULT_FORBIDDEN_CONNECTIVES list).
+    Scans free-text fields for forbidden conversational connectives. This is
+    the structural-detector half of the check (small finite list of explicit
+    phrases that signal conversational drift).
+
+    v3.8.1: length-budget enforcement REMOVED. Same lesson as v3.8.0's
+    persona-theater removal — when the deterministic detector cannot
+    distinguish "agent producing legitimate dense content" from "agent
+    overflowing into prose," the detector ships the wrong shape. Per-field
+    character caps were tripped 3 times in the Phase 3 exit retro
+    (summary 1500->2500, synthesis_attempt 1000->1500,
+    recommended_resolution_paths/rationale 800 was hit) with the next
+    overrun statistically inevitable on one of the 6 remaining budgeted
+    fields. Length budgets are RETAINED in agent frontmatter as advisory
+    documentation, but the substrate no longer vetos on them. Bloat
+    prevention is now handled by the retro-end synthesist's quality
+    observation + agent prompt discipline.
+
+    `forbidden_connectives` is retained: small finite list of explicit
+    conversational drift markers ("as we discussed", "circling back", etc.)
+    From the agent's frontmatter `conversational_connectives_forbidden:`
+    list, falling back to `_DEFAULT_FORBIDDEN_CONNECTIVES`.
     """
     text_fields = _collect_free_text_fields(outputs)
-    # Length-budget enforcement
-    budgets = length_budgets or {}
-    overruns = []
-    for pattern, limit in budgets.items():
-        # Patterns may use [*] wildcards per MAREP_INTEGRATION_SPEC §5.2
-        for path, text in text_fields.items():
-            if not _section_pattern_matches(path, pattern):
-                continue
-            if len(text) > limit:
-                overruns.append({
-                    "path": path, "pattern": pattern,
-                    "limit": limit, "actual": len(text),
-                })
-    if overruns:
-        raise ContainmentVeto(
-            f"freeform_brainstorm_drift: length-budget overruns: "
-            f"{overruns[:3]}"
-        )
-    # Conversational-connective scan
     forbidden = forbidden_connectives or list(_DEFAULT_FORBIDDEN_CONNECTIVES)
     hits = []
     for path, text in text_fields.items():
@@ -824,7 +819,6 @@ def cps_check(task: dict[str, Any], proposed_outputs: Any) -> None:
             # observation pass.
             _check_no_freeform_brainstorm(
                 task, proposed_outputs,
-                length_budgets=config.get("length_budgets"),
                 forbidden_connectives=config.get("forbidden_connectives"),
             )
             # Semantic-memory immutability check (v3.0 final): retro

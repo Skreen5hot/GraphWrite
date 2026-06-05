@@ -454,7 +454,7 @@ The actual semantic-memory mutation goes through the standard ratification chain
 Per `surfaces/_primitives/anti-pattern-enforcement.md`, four anti-patterns fire on retro-surface tasks (`inputs.surface: "retro"`); persona theater was a fifth in v3.0-alpha.2 through v3.7.x but was removed in v3.8.0 because regex over free text could not distinguish role-as-actor from role-as-addressee:
 
 - `_check_no_redundant_affirmation` — Levenshtein similarity ≥ 0.85 vs prior turn body
-- `_check_no_freeform_brainstorm` — length-budget overruns + forbidden conversational connectives
+- `_check_no_freeform_brainstorm` — forbidden conversational connectives (length-budget enforcement removed in v3.8.1; budgets remain in agent frontmatter as advisory only)
 - `_check_no_semantic_memory_mutation` — direct mutation of canonical paths (CLAUDE.md, PLAYBOOK.md, ADRs, surfaces/, .claude/agents/, etc.)
 - Permitted-sections enforcement via `retro-applier` system agent — refuses out-of-scope mutations per role binding
 

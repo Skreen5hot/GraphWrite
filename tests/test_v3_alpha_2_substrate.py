@@ -109,10 +109,10 @@ class TestPersonaTheaterRemoved(unittest.TestCase):
         ]
         for outputs in cases:
             # Must not raise (no persona-theater check exists; brainstorm
-            # check is by length only and these texts are short).
+            # check is connectives-only after v3.8.1 and these texts
+            # contain no forbidden connectives).
             _check_no_freeform_brainstorm(
                 {"agent": "qa"}, outputs,
-                length_budgets={"rationale": 1000},
                 forbidden_connectives=(),
             )
 
@@ -148,23 +148,25 @@ class TestAntiPatternRedundantAffirmation(unittest.TestCase):
 
 
 class TestAntiPatternFreeformBrainstorm(unittest.TestCase):
-    def test_within_length_budget_passes(self):
-        outputs = {
-            "summary": "Short summary within budget.",
-        }
-        budgets = {"summary": 500}
-        d._check_no_freeform_brainstorm(
-            {"agent": "qa"}, outputs, length_budgets=budgets)
+    """v3.8.1: length-budget enforcement REMOVED from _check_no_freeform_
+    brainstorm. The check now only scans for explicit conversational
+    connectives (a small finite list of structural drift markers).
+    Same lesson as v3.8.0's persona-theater removal."""
 
-    def test_length_overrun_vetoes(self):
-        outputs = {
-            "summary": "x" * 1000,
-        }
-        budgets = {"summary": 100}
-        with self.assertRaises(d.ContainmentVeto) as ctx:
+    def test_v381_length_budgets_no_longer_enforced(self):
+        """v3.8.1: long outputs that exceed any hypothetical budget pass.
+        The substrate no longer vetos on character counts."""
+        outputs = {"summary": "x" * 10000}
+        # MUST NOT raise; length budgets no longer enforced
+        d._check_no_freeform_brainstorm({"agent": "qa"}, outputs)
+
+    def test_v381_length_budgets_parameter_removed(self):
+        """The length_budgets keyword argument is removed in v3.8.1.
+        Passing it is a TypeError."""
+        with self.assertRaises(TypeError):
             d._check_no_freeform_brainstorm(
-                {"agent": "qa"}, outputs, length_budgets=budgets)
-        self.assertIn("freeform_brainstorm_drift", str(ctx.exception))
+                {"agent": "qa"}, {"summary": "x" * 100},
+                length_budgets={"summary": 10})
 
     def test_forbidden_connective_vetoes(self):
         outputs = {
@@ -179,6 +181,27 @@ class TestAntiPatternFreeformBrainstorm(unittest.TestCase):
         outputs = {"summary": "Circling back to the QA finding..."}
         with self.assertRaises(d.ContainmentVeto):
             d._check_no_freeform_brainstorm({"agent": "qa"}, outputs)
+
+    def test_v381_dense_content_without_connectives_passes(self):
+        """v3.8.1 confirmation: a real conflict-detection-mode payload
+        with substantive synthesis (the kind that tripped v3.7.x budget
+        whack-a-mole) now passes when no connectives are present."""
+        outputs = {
+            "conflicts_surfaced": [{
+                "id": "C1",
+                "subject": "verification-ritual input mismatch (recurring)",
+                "synthesis_attempt": (
+                    "Both positions ground the same root cause in "
+                    "different framings. QA cites the source_task vs "
+                    "artifact_text mismatch as a verification-discipline "
+                    "violation; DM cites it as operator-composition "
+                    "tax. " * 5  # ~1500+ chars; would have tripped v3.7.x
+                ),
+            }],
+            "summary": "x" * 3000,  # would have tripped any summary budget
+        }
+        d._check_no_freeform_brainstorm({"agent": "marep-orchestrator"},
+                                         outputs)
 
 
 class TestSectionPatternMatcher(unittest.TestCase):
