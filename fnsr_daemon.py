@@ -3299,6 +3299,8 @@ def _recovery_dispatcher(task: dict[str, Any],
             return WorkerResult(True, {
                 "dispatched": 0,
                 "escalated": False,
+                "validator_report": None,  # v3.8.2 fix: required by
+                                            # recovery-dispatcher contract
                 "auto_resolved": True,
                 "execution_mode": ar_mode,
                 "reason": ar_reason,

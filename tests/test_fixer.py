@@ -532,6 +532,40 @@ class TestRecoveryDispatcher(unittest.TestCase):
         self.assertEqual(result.outputs["dispatched"], 0)
         self.assertFalse(result.outputs["escalated"])
 
+    def test_v382_auto_resolution_includes_validator_report(self):
+        """v3.8.2 regression: the v3.7.5 auto_resolution return path
+        omitted `validator_report` even though it is in the
+        recovery-dispatcher's required_outputs. CPS-veto'd in the wild
+        (task 1008 in the Phase 3 exit retro). Output shape MUST satisfy
+        the contract."""
+        task = {
+            "@id": "urn:t:dispatcher",
+            "agent": "recovery-dispatcher",
+            "inputs": {
+                "source_task": "urn:t:fixer",
+                "anchor_task": "urn:fnsr:task:001-stalled",
+            },
+        }
+        upstream = {"urn:t:fixer": {
+            "escalate": True,
+            "recovery_chain": [],
+            "diagnosis": "race orphan",
+            "auto_resolution": {
+                "execution_mode": "no-execution-required",
+                "reason": "race-with-operator-reset; anchor healthy",
+            },
+            "options": ["A"],
+            "recommendation": "A",
+        }}
+        result = d._recovery_dispatcher(task, upstream)
+        # All four required keys per .claude/agents/recovery-dispatcher.md
+        # frontmatter must be present (validator_report may be None):
+        for required in ("dispatched", "validator_report",
+                         "escalated", "summary"):
+            self.assertIn(required, result.outputs,
+                          f"v3.7.5 auto_resolution output missing "
+                          f"required key {required!r}")
+
     def test_v375_auto_resolution_no_execution_required_skips_escalation(self):
         """v3.7.5: when Fixer asserts escalate=true BUT also provides
         a well-formed auto_resolution: {execution_mode:
