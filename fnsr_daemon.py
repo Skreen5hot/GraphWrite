@@ -3101,6 +3101,17 @@ def _retro_collect_proposals(proposals_input: dict) -> dict[str, list]:
             ("risks", "proposed_risks"),
             ("votes", "proposed_votes"),
             ("decisions", "proposed_decisions"),
+            # v3.8.4: marep-orchestrator consensus-summary mode emits
+            # consensus_outcomes[] (per .claude/agents/marep-orchestrator.md
+            # consensus-summary mode contract). Semantically each outcome
+            # IS a decision record; the retro-applier maps both forms to
+            # the canonical decisions[] section. Closes the 04-consensus
+            # gap surfaced in the Phase 3 exit retro (1011 produced
+            # consensus_outcomes but the applier didn't know to merge them
+            # into decisions[], so 1012 phase-transition correctly refused
+            # to advance per the spec's "decisions[] records consensus
+            # outcome" exit criterion).
+            ("decisions", "consensus_outcomes"),
         ):
             items = outputs.get(key) or []
             if not isinstance(items, list):
@@ -3108,6 +3119,13 @@ def _retro_collect_proposals(proposals_input: dict) -> dict[str, list]:
             for item in items:
                 if not isinstance(item, dict):
                     continue
+                # v3.8.4: consensus_outcomes use issue_id as the natural
+                # @id; normalize so the applier's @id-keyed idempotency
+                # check finds them on re-dispatch.
+                if (key == "consensus_outcomes"
+                        and "@id" not in item and "id" not in item
+                        and "issue_id" in item):
+                    item = dict(item, **{"@id": f"decision-{item['issue_id']}"})
                 by_section[sec].append({
                     "source_task_id": source_task_id,
                     "item": item,

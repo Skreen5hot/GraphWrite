@@ -388,6 +388,48 @@ class TestRetroApplier(unittest.TestCase):
         self.assertEqual(len(state["issues"]), 1)
         self.assertEqual(state["issues"][0]["@id"], "QA-1")
 
+    def test_v384_consensus_outcomes_merge_into_decisions(self):
+        """v3.8.4: consensus_outcomes[] from marep-orchestrator consensus-
+        summary mode are mapped to retro state's decisions[] section.
+        Closes 04-consensus gap surfaced in Phase 3 exit retro: agent
+        produced consensus_outcomes but the applier didn't know to merge
+        them, so phase-transition correctly refused to advance per the
+        spec's 'decisions[] records consensus outcome' exit criterion."""
+        result = self._dispatch(version_read=7, proposals={
+            "urn:fnsr:task:marep-1": {"outputs": {"consensus_outcomes": [
+                {"issue_id": "QA-1", "status": "confirmed",
+                 "supporting_evidence": ["vote-r1-1"],
+                 "rationale": "Confirmed by @QA on first dispatch."},
+                {"issue_id": "DM-2", "status": "confirmed",
+                 "supporting_evidence": ["vote-r1-2"],
+                 "rationale": "Confirmed by @DM."},
+            ]}}
+        })
+        self.assertEqual(result.outputs["retro_state_version"], 8)
+        self.assertEqual(len(result.outputs["applied"]), 2)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        # Two decision entries landed
+        self.assertEqual(len(state["decisions"]), 2)
+        ids = {d["@id"] for d in state["decisions"]}
+        self.assertEqual(ids, {"decision-QA-1", "decision-DM-2"})
+        # Original payload preserved
+        d_qa = next(x for x in state["decisions"]
+                     if x["@id"] == "decision-QA-1")
+        self.assertEqual(d_qa["status"], "confirmed")
+        self.assertEqual(d_qa["issue_id"], "QA-1")
+
+    def test_v384_consensus_outcomes_preserve_existing_id(self):
+        """v3.8.4: when a consensus_outcome already has an @id, the
+        applier preserves it rather than synthesizing one."""
+        result = self._dispatch(version_read=7, proposals={
+            "urn:fnsr:task:marep-1": {"outputs": {"consensus_outcomes": [
+                {"@id": "my-decision-1", "issue_id": "QA-1",
+                 "status": "confirmed"}
+            ]}}
+        })
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["decisions"][0]["@id"], "my-decision-1")
+
     def test_version_mismatch_returns_error(self):
         result = self._dispatch(version_read=999, proposals={})
         self.assertEqual(result.outputs.get("error"), "version_mismatch")
