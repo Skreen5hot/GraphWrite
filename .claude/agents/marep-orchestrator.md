@@ -17,7 +17,7 @@ length_budgets:
   rationale: 1500
   summary: 2500
   conflicts_surfaced[*]/subject: 250
-  conflicts_surfaced[*]/synthesis_attempt: 1000
+  conflicts_surfaced[*]/synthesis_attempt: 1500
   recommended_resolution_paths[*]/rationale: 800
   consensus_outcomes[*]/rationale: 800
   retro_summary_text: 3000
