@@ -170,6 +170,53 @@ class TestAntiPatternPersonaTheater(unittest.TestCase):
         }
         d._check_no_persona_theater({"agent": "qa"}, outputs)
 
+    def test_v373_parenthetical_citation_exempts(self):
+        """v3.7.3: @-mentions inside (...) attribution markers are
+        citations, not addresses. Closes bank-977-marep-orch-conflict-
+        detection-03-analysis-1 second-instance pattern observed at
+        09:55:10Z (subject field carried '(@QA, QA-6) vs (@DeliveryManager,
+        DM-2)' parenthetical citations)."""
+        outputs = {
+            "conflicts_surfaced": [{
+                "id": "C1",
+                "subject": ("verification-ritual input contract gap — "
+                            "advisory (@QA, QA-6) vs major "
+                            "(@DeliveryManager, DM-2) on the same "
+                            "recurring pattern"),
+                "synthesis_attempt": ("Both positions cite the same root "
+                                      "cause; severity calibration diverges.")
+            }],
+            "summary": "One cross-role severity-calibration conflict."
+        }
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v373_single_paren_citation_exempts(self):
+        outputs = {"rationale": "The finding was surfaced (@QA) early in 01."}
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v373_paren_with_attribution_word_exempts(self):
+        outputs = {"rationale": "The position (per @Architect) was contested."}
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v373_address_outside_parens_still_vetoes(self):
+        """v3.7.3 must not over-exempt: @-addresses NOT inside parens
+        still veto."""
+        outputs = {"rationale": "Coverage is low here @Architect — review."}
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d._check_no_persona_theater({"agent": "qa"}, outputs)
+        self.assertIn("persona_theater_detected", str(ctx.exception))
+
+    def test_v373_unclosed_paren_does_not_exempt(self):
+        """If the `(` is open but no matching `)` follows within reach,
+        the @-mention is NOT a parenthetical citation — still vetoes."""
+        outputs = {"rationale": "Discussion (@Architect please review next."}
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d._check_no_persona_theater({"agent": "qa"}, outputs)
+        self.assertIn("persona_theater_detected", str(ctx.exception))
+
 
 class TestAntiPatternRedundantAffirmation(unittest.TestCase):
     def test_no_prior_turn_is_no_op(self):

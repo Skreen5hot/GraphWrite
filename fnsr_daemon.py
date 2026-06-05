@@ -363,6 +363,45 @@ _PERSONA_NEGATION_CONTEXT_RE = re.compile(
 )
 _PERSONA_NEGATION_LOOKBACK_CHARS = 40
 
+# v3.7.3: persona-theater parenthetical-citation exemption. Per
+# bank-977 (second instance), the persona-theater predicate false-fires
+# on @<Role> mentions used as parenthetical attribution markers
+# (e.g., "the contract gap — advisory (@QA, QA-6) vs major
+# (@DeliveryManager, DM-2)..."). These are CITATIONS, not addresses;
+# the role identifier marks WHICH agent surfaced the issue. Detected
+# by paren-balance walk: if the @-match is inside an unclosed `(...)`
+# region within a lookback window, it's a citation, not theater.
+_PERSONA_PAREN_LOOKBACK_CHARS = 50
+
+
+def _in_parenthetical_citation(text: str, pos: int) -> bool:
+    """v3.7.3 helper. True iff position `pos` is inside a `(...)` region
+    that opens within _PERSONA_PAREN_LOOKBACK_CHARS before `pos` AND
+    closes within _PERSONA_PAREN_LOOKBACK_CHARS after `pos`. Balances
+    nested parens correctly (only an UNMATCHED-and-still-open `(`
+    counts as opening the citation context)."""
+    lb_start = max(0, pos - _PERSONA_PAREN_LOOKBACK_CHARS)
+    preceding = text[lb_start:pos]
+    depth = 0
+    for ch in preceding:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+    if depth <= 0:
+        return False
+    fwd_end = min(len(text), pos + _PERSONA_PAREN_LOOKBACK_CHARS)
+    following = text[pos:fwd_end]
+    fdepth = 0
+    for ch in following:
+        if ch == "(":
+            fdepth += 1
+        elif ch == ")":
+            if fdepth == 0:
+                return True
+            fdepth -= 1
+    return False
+
 # Conversational connectives forbidden in free-text retro outputs per
 # MAREP §17.3. Substrate default; agents may extend via frontmatter.
 _DEFAULT_FORBIDDEN_CONNECTIVES = (
@@ -452,6 +491,11 @@ def _check_no_persona_theater(
             following = text[m.end():we]
             if (_PERSONA_NEGATION_CONTEXT_RE.search(preceding)
                     or _PERSONA_NEGATION_CONTEXT_RE.search(following)):
+                continue
+            # v3.7.3 parenthetical-citation exemption: skip matches
+            # inside (...) attribution markers — "advisory (@QA, QA-6)"
+            # is citation, not address.
+            if _in_parenthetical_citation(text, m.start()):
                 continue
             hits.append({"path": path, "match": m.group(0),
                           "snippet": text[max(0, m.start() - 30):m.end() + 30]})
