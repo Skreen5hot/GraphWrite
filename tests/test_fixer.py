@@ -1021,11 +1021,18 @@ class TestRecoveryAnchorAutoSupersession(unittest.TestCase):
     def test_supersession_unwedges_stall_detector(self):
         """After auto-supersession, the stall-detector no longer treats
         the anchor as a candidate (closes the loop)."""
+        import datetime as _dt
+        # v3.7 fix: use a dynamic recent timestamp so the test doesn't
+        # break when wall-clock rolls past the FIXER_STALE_HOURS window
+        # past the originally-hardcoded fixture date.
+        recent_ts = (_dt.datetime.now(_dt.timezone.utc)
+                     - _dt.timedelta(hours=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
         state = {"tasks": [
             {"@id": "urn:t:anchor", "agent": "applier",
              "status": "blocked", "outputs": {"error": "apply_partial_failure"},
              "history": [{"event": "cps_veto",
-                           "ts": "2026-06-04T08:00:00Z",
+                           "ts": recent_ts,
                            "prev_hash": "0" * 64, "chain_hash": "a" * 64}]},
             {"@id": "urn:t:apply-recovery", "agent": "applier",
              "status": "done", "depends_on": [],

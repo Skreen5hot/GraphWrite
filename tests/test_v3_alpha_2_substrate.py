@@ -93,6 +93,40 @@ class TestAntiPatternPersonaTheater(unittest.TestCase):
         # MUST NOT raise
         d._check_no_persona_theater({"agent": "qa"}, outputs)
 
+    def test_v37_negation_context_absence_exempts(self):
+        """v3.7: meta-discussion of role coverage via 'absence of @X' is
+        a TOPIC reference, not a persona address — must NOT veto.
+        Closes bank-944-marep-orch-phase-transition-01-to-02-1 false-
+        positive pattern observed on 2026-06-04 retro 01-gathering."""
+        outputs = {
+            "rationale": (
+                "The absence of @Architect, @Developer, and @UserAdvocate "
+                "roles from the gathering pool was an operator composition "
+                "choice consistent with the 3-role MAREP default."
+            ),
+        }
+        d._check_no_persona_theater({"agent": "marep-orchestrator"}, outputs)
+
+    def test_v37_negation_context_without_exempts(self):
+        outputs = {"rationale": "The retro proceeded without @QA dispatched."}
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v37_negation_context_not_dispatched_exempts(self):
+        outputs = {"rationale": "@Architect was not dispatched this phase."}
+        d._check_no_persona_theater(
+            {"agent": "marep-orchestrator"}, outputs)
+
+    def test_v37_address_outside_negation_still_vetoes(self):
+        """v3.7 must not over-exempt: @-addresses without preceding
+        negation context still veto as persona theater."""
+        outputs = {
+            "rationale": "Coverage is low here @Architect — please review.",
+        }
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d._check_no_persona_theater({"agent": "qa"}, outputs)
+        self.assertIn("persona_theater_detected", str(ctx.exception))
+
 
 class TestAntiPatternRedundantAffirmation(unittest.TestCase):
     def test_no_prior_turn_is_no_op(self):

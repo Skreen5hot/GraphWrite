@@ -6,9 +6,9 @@ model: sonnet
 required_outputs: [proposed_issues, evidence_paths, summary]
 contract_class: read-only
 length_budgets:
-  proposed_issues[*]/title: 120
+  proposed_issues[*]/title: 180
   proposed_issues[*]/evidence[*]: 500
-  proposed_issues[*]/rationale: 800
+  proposed_issues[*]/rationale: 1000
   summary: 1500
 ---
 

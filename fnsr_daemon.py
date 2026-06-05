@@ -339,6 +339,20 @@ _DESIGNATED_REFERENCE_FIELDS = (
 )
 _PERSONA_ADDR_RE = re.compile(r"@[A-Z][a-zA-Z0-9_-]*")
 
+# v3.7: persona-theater meta-discussion exemption. Per bank-944-marep-orch-
+# phase-transition-01-to-02-1, the persona-theater predicate false-fires
+# on meta-discussion of role coverage (e.g., "the absence of @QA from
+# the gathering pool" — @QA is a TOPIC not an ADDRESS). Detected by
+# scanning the ~40 chars preceding the @-match for negation keywords;
+# matches inside negation context are exempted (not flagged as theater).
+_PERSONA_NEGATION_CONTEXT_RE = re.compile(
+    r"(absence of|without|not dispatched|not surfaced|did not|"
+    r"haven't|hasn't|not present|missing|omit(ted)?|not include[d]?|"
+    r"not (the|a|an) |excluding|excludes|exempted|exempt|not addressed)",
+    re.IGNORECASE,
+)
+_PERSONA_NEGATION_LOOKBACK_CHARS = 40
+
 # Conversational connectives forbidden in free-text retro outputs per
 # MAREP §17.3. Substrate default; agents may extend via frontmatter.
 _DEFAULT_FORBIDDEN_CONNECTIVES = (
@@ -418,6 +432,17 @@ def _check_no_persona_theater(
     hits = []
     for path, text in text_fields.items():
         for m in _PERSONA_ADDR_RE.finditer(text):
+            # v3.7 negation-context exemption: skip matches where the
+            # ~40 char window before OR after contains a negation
+            # keyword (meta-discussion of role coverage is not persona
+            # addressing).
+            ws = max(0, m.start() - _PERSONA_NEGATION_LOOKBACK_CHARS)
+            we = min(len(text), m.end() + _PERSONA_NEGATION_LOOKBACK_CHARS)
+            preceding = text[ws:m.start()]
+            following = text[m.end():we]
+            if (_PERSONA_NEGATION_CONTEXT_RE.search(preceding)
+                    or _PERSONA_NEGATION_CONTEXT_RE.search(following)):
+                continue
             hits.append({"path": path, "match": m.group(0),
                           "snippet": text[max(0, m.start() - 30):m.end() + 30]})
     if hits:

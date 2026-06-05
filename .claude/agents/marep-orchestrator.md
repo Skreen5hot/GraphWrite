@@ -12,14 +12,14 @@ required_outputs:
   consensus-summary: [consensus_outcomes, unresolved_issues, summary]
   final-compression: [retro_summary_text, archive_paths, deliverables, summary]
 length_budgets:
-  proposed_transition: 200
-  current_phase_status: 800
+  proposed_transition: 300
+  current_phase_status: 1500
   rationale: 1500
   summary: 1500
-  conflicts_surfaced[*]/subject: 200
-  conflicts_surfaced[*]/synthesis_attempt: 800
-  recommended_resolution_paths[*]/rationale: 600
-  consensus_outcomes[*]/rationale: 600
+  conflicts_surfaced[*]/subject: 250
+  conflicts_surfaced[*]/synthesis_attempt: 1000
+  recommended_resolution_paths[*]/rationale: 800
+  consensus_outcomes[*]/rationale: 800
   retro_summary_text: 3000
 conversational_connectives_forbidden:
   - "as we discussed"
