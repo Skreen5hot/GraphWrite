@@ -272,6 +272,60 @@ class TestMultiChangeAtomicApply(unittest.TestCase):
                          "X-----YYYYYYYYYY")
 
 
+class TestV388LinendingPreservation(unittest.TestCase):
+    """v3.8.8: applier write_text MUST pass newline="" so developer-
+    authored LF survives on Windows. Default newline=None translates
+    "\n" to os.linesep (CRLF on Windows), silently corrupting byte-
+    equality goldens. Surfaced during Phase 4 Chain 2 (task 1047):
+    manifest.jsonld golden was written CRLF; AC6 byte-equality failed."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-newline-test-"))
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_v388_create_preserves_lf(self):
+        """LF in developer's `after` lands as LF on disk, not CRLF."""
+        task = {"@id": "urn:t:apply", "agent": "applier", "inputs": {
+            "source_task": "urn:t:dev",
+            "apply_root": str(self.tmpdir),
+        }}
+        # Developer authors a file with LF line endings
+        content_lf = "line1\nline2\nline3\n"
+        r = d._apply_changes(task, {"urn:t:dev": {"changes": [
+            {"id": "C1", "file": "new.txt", "before": None,
+             "after": content_lf},
+        ]}})
+        self.assertNotIn("error", r.outputs)
+        # Read raw bytes — confirm NO CRLF normalization
+        raw = (self.tmpdir / "new.txt").read_bytes()
+        # Allow leading BOM (applier prepends BOM by default on new files)
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raw = raw[3:]
+        self.assertEqual(raw, content_lf.encode("utf-8"),
+                          "applier corrupted LF -> CRLF (v3.8.8 regression)")
+
+    def test_v388_edit_preserves_lf(self):
+        """Edit-mode write_text path also preserves LF."""
+        target = self.tmpdir / "edit.txt"
+        target.write_bytes(b"old line\nremains\n")
+        task = {"@id": "urn:t:apply", "agent": "applier", "inputs": {
+            "source_task": "urn:t:dev",
+            "apply_root": str(self.tmpdir),
+        }}
+        r = d._apply_changes(task, {"urn:t:dev": {"changes": [
+            {"id": "E1", "file": "edit.txt",
+             "before": "old line", "after": "new line\nplus\nmore"},
+        ]}})
+        self.assertNotIn("error", r.outputs)
+        # Raw bytes: "new line\nplus\nmore\nremains\n" with LF preserved
+        raw = target.read_bytes()
+        self.assertEqual(raw, b"new line\nplus\nmore\nremains\n",
+                          "applier corrupted LF -> CRLF in edit path")
+
+
 class TestApplyViaInvokeAgent(unittest.TestCase):
     """Verify the applier is correctly registered in SYSTEM_AGENTS and
     routed through invoke_agent (not invoke_subagent)."""

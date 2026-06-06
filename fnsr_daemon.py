@@ -1266,7 +1266,15 @@ def _apply_changes(task: dict[str, Any],
         content_to_write = after if after.startswith("﻿") else "﻿" + after
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content_to_write, encoding="utf-8")
+            # v3.8.8: pass newline="" to preserve developer-authored
+            # line endings (default newline=None translates "\n" to
+            # os.linesep on write — CRLF on Windows — silently
+            # corrupting byte-equality goldens). Surfaced during Phase 4
+            # Chain 2 (1047 test-runner): manifest.jsonld golden was
+            # written with CRLF but the developer authored LF; AC6
+            # byte-equality test failed.
+            file_path.write_text(content_to_write, encoding="utf-8",
+                                  newline="")
             applied.append({"id": cid, "path": str(file_path), "mode": "create",
                             "bytes_written": len(content_to_write.encode("utf-8")),
                             "bom_prepended": not after.startswith("﻿")})
@@ -1326,7 +1334,10 @@ def _apply_changes(task: dict[str, Any],
             new_content = new_content[:pos] + after + new_content[pos + length:]
 
         try:
-            file_path.write_text(new_content, encoding="utf-8")
+            # v3.8.8: newline="" preserves developer-authored line
+            # endings; see same fix above for the create path.
+            file_path.write_text(new_content, encoding="utf-8",
+                                  newline="")
             for pos, length, cid, after in keep:
                 applied.append({
                     "id": cid, "path": str(file_path), "mode": "edit",
