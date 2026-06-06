@@ -891,6 +891,46 @@ def _is_canonical_doc(file_rel: str) -> bool:
     return False
 
 
+def _collect_in_batch_adr_additions(changes: list) -> set[str]:
+    """v3.8.5: scan `changes[*].after` content destined for the canonical
+    ADR registry (DECISIONS.md) for new `## ADR-NNN:` headers being added
+    in this batch. Returns the set of NNN strings.
+
+    Closes the substrate gap surfaced during the OED-313 closure chain:
+    a single coherent change set can both ADD a new ADR header AND cite
+    that ADR in cross-references (other DECISIONS.md sections, SPEC,
+    ROADMAP). Pre-v3.8.5, the cross-references self-vetoed because the
+    on-disk DECISIONS.md didn't yet contain the new header. v3.8.5 treats
+    in-batch additions as valid citations alongside the on-disk registry.
+
+    Only ADR headers added in changes destined for the ADR registry file
+    itself (DECISIONS.md) are counted. References elsewhere don't
+    constitute "adding" the ADR.
+    """
+    additions: set[str] = set()
+    decisions_rel = str(DECISIONS_PATH).replace("\\", "/")
+    # Normalize the registry path to its file-relative form for comparison
+    # against change.file (which is typically a project-relative path).
+    decisions_basename = decisions_rel.rsplit("/", 1)[-1]
+    for c in changes:
+        if not isinstance(c, dict):
+            continue
+        file_rel = c.get("file")
+        if not isinstance(file_rel, str):
+            continue
+        normalized = file_rel.replace("\\", "/")
+        # Match the ADR registry file by basename or full path suffix.
+        if not (normalized == decisions_rel
+                or normalized.endswith("/" + decisions_basename)
+                or normalized == decisions_basename):
+            continue
+        after = c.get("after")
+        if not isinstance(after, str):
+            continue
+        additions.update(m.group(1) for m in _ADR_HEADER_RE.finditer(after))
+    return additions
+
+
 def _check_adr_citations(proposed_outputs: Any,
                           decisions_path: Path = DECISIONS_PATH) -> None:
     """Veto when proposed changes cite a non-existent ADR in canonical docs.
@@ -902,9 +942,14 @@ def _check_adr_citations(proposed_outputs: Any,
     cites ADR-012 but DECISIONS.md has no ADR-012 entry, or its ADR-012
     is a different decision than the agent thinks.
 
+    v3.8.5: an ADR being ADDED in this same batch (via a `## ADR-NNN:`
+    header in changes destined for DECISIONS.md) counts as a valid
+    citation target. This permits coherent change sets that introduce a
+    new ADR alongside cross-references to it.
+
     No-op when:
       - proposed_outputs has no `changes` (not a developer-shaped output)
-      - DECISIONS.md doesn't exist yet (no registry to check against)
+      - DECISIONS.md doesn't exist yet AND no in-batch additions present
       - No change targets a canonical doc
     """
     if not isinstance(proposed_outputs, dict):
@@ -912,6 +957,7 @@ def _check_adr_citations(proposed_outputs: Any,
     changes = proposed_outputs.get("changes")
     if not isinstance(changes, list):
         return
+    in_batch_additions = _collect_in_batch_adr_additions(changes)
     registry: Optional[set[str]] = None  # lazily loaded only if needed
     missing_per_change: list[tuple[str, str, list[str]]] = []
     for c in changes:
@@ -928,11 +974,14 @@ def _check_adr_citations(proposed_outputs: Any,
             continue
         if registry is None:
             registry = _load_adr_registry(decisions_path)
-            if not registry:
-                # No DECISIONS.md or empty — skip the check; nothing to
-                # validate against. Operator can build the registry later.
-                return
-        bad = [n for n in cites if n not in registry]
+        # v3.8.5: union the on-disk registry with in-batch additions.
+        effective = registry | in_batch_additions
+        if not effective:
+            # No DECISIONS.md AND no in-batch additions — skip the check;
+            # nothing to validate against. Operator can build the registry
+            # later.
+            return
+        bad = [n for n in cites if n not in effective]
         if bad:
             missing_per_change.append(
                 (c.get("id", "?"), file_rel, [f"ADR-{n}" for n in bad])

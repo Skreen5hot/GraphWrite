@@ -201,6 +201,79 @@ class TestAdrCitationCheck(unittest.TestCase):
             d._check_adr_citations(outputs, decisions_path=self.decisions)
         self.assertIn("ADR-099", str(ctx.exception))
 
+    def test_v385_in_batch_new_adr_satisfies_cross_references(self):
+        """v3.8.5: when changes[] adds a new ADR header in DECISIONS.md
+        AND other changes cite that ADR, the cross-references are valid.
+        Closes substrate gap surfaced during OED-313 closure chain:
+        a single coherent change set introducing ADR-010 + cross-refs
+        previously self-vetoed because the on-disk DECISIONS.md didn't
+        yet contain ADR-010."""
+        outputs = {
+            "changes": [
+                {
+                    "id": "C1",
+                    "file": "project/DECISIONS.md",
+                    "after": "## ADR-099: New decision\n\nText body.",
+                },
+                {
+                    "id": "C2",
+                    "file": "project/SPEC.md",
+                    "after": "Per ADR-099, the new rule applies.",
+                },
+                {
+                    "id": "C3",
+                    "file": "project/ROADMAP.md",
+                    "after": "OED-XYZ closed by ADR-099.",
+                },
+            ],
+        }
+        # MUST NOT raise — ADR-099 added in C1; C2/C3 reference it.
+        d._check_adr_citations(outputs, decisions_path=self.decisions)
+
+    def test_v385_in_batch_addition_only_in_decisions_md(self):
+        """v3.8.5 negative: a `## ADR-NNN:` header that appears in a
+        change destined for SOMEWHERE OTHER than DECISIONS.md does NOT
+        register the ADR. The canonical registry path matters."""
+        outputs = {
+            "changes": [
+                {
+                    "id": "C1",
+                    "file": "project/SPEC.md",  # not DECISIONS.md
+                    "after": "## ADR-099: Spurious header in wrong file",
+                },
+                {
+                    "id": "C2",
+                    "file": "project/SPEC.md",
+                    "after": "Per ADR-099, the rule applies.",
+                },
+            ],
+        }
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d._check_adr_citations(outputs, decisions_path=self.decisions)
+        self.assertIn("ADR-099", str(ctx.exception))
+
+    def test_v385_invalid_citation_still_fires_with_in_batch_addition(self):
+        """v3.8.5: in-batch additions only cover the ADR they ADD.
+        Citing a DIFFERENT non-existent ADR still vetoes."""
+        outputs = {
+            "changes": [
+                {
+                    "id": "C1",
+                    "file": "project/DECISIONS.md",
+                    "after": "## ADR-099: New decision",
+                },
+                {
+                    "id": "C2",
+                    "file": "project/SPEC.md",
+                    "after": "Per ADR-099 + ADR-888 (ghost).",
+                },
+            ],
+        }
+        with self.assertRaises(d.ContainmentVeto) as ctx:
+            d._check_adr_citations(outputs, decisions_path=self.decisions)
+        self.assertIn("ADR-888", str(ctx.exception))
+        self.assertNotIn("ADR-099", str(ctx.exception))
+
 
 GHOST_DECISIONS = """\
 # Architecture Decision Records
