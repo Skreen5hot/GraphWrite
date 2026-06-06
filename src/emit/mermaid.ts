@@ -160,7 +160,10 @@ export function emitMermaid(project: Record<string, unknown>): string {
   const lines: string[] = [];
   lines.push("graph TD");
 
-  // Emit node declarations with round-trip label format (ADR-011)
+  // Emit node declarations with round-trip label format (ADR-011).
+  // Per Aaron 2026-06-06 spec: 4-space indent; &quot; HTML entities;
+  // blank line between node block and edge block; class IRI resolves
+  // to rdfs:label (not the IRI fragment).
   for (const iri of sortedIris) {
     const nid = nodeId.get(iri)!;
     const label = instanceLabel.get(iri) ?? iri;
@@ -173,7 +176,11 @@ export function emitMermaid(project: Record<string, unknown>): string {
       const typeLines = classIris.map((c) => `<br>${c}`).join("");
       nodeLabel = `${escapeMermaidLabel(label)}:${typeLocal}${typeLines}`;
     }
-    lines.push(`  ${nid}["${nodeLabel}"]`);
+    lines.push(`    ${nid}[&quot;${nodeLabel}&quot;]`);
+  }
+
+  if (edges.length > 0) {
+    lines.push("");
   }
 
   // Emit edge declarations with round-trip label format (ADR-011)
@@ -181,7 +188,7 @@ export function emitMermaid(project: Record<string, unknown>): string {
     const fromId = nodeId.get(edge.from)!;
     const toId = nodeId.get(edge.to)!;
     const edgeLabel = `${escapeMermaidLabel(edge.label)}<br>${edge.predicateIri}`;
-    lines.push(`  ${fromId} -- "${edgeLabel}" --> ${toId}`);
+    lines.push(`    ${fromId} -- &quot;${edgeLabel}&quot; --> ${toId}`);
   }
 
   return lines.join("\n") + "\n";

@@ -457,8 +457,8 @@ try {
     "emitMermaid node label must include 'Alice:' (label:type separator, ADR-011)");
   ok(rtOut.includes("<br>"),
     "emitMermaid node label must include '<br>' line breaks (ADR-011)");
-  ok(rtOut.includes(" -- \""),
-    "emitMermaid edge must use ' -- \"' format (ADR-011)");
+  ok(rtOut.includes(" -- &quot;"),
+    "emitMermaid edge must use ' -- &quot;' HTML-entity format (ADR-011)");
   pass("emitMermaid: graph TD, label:type separator, <br> line breaks, -- edge format (ADR-011)");
 } catch (e) { fail("emitMermaid round-trip format (ADR-011)", e); }
 
@@ -470,6 +470,66 @@ try {
     "emitMermaid must include second type IRI in multi-type node label (ADR-011)");
   pass("emitMermaid: multi-type instance includes all rdf:type IRIs in node label (ADR-011)");
 } catch (e) { fail("emitMermaid multi-type node label (ADR-011)", e); }
+
+// ---------------------------------------------------------------------------
+// AC4-golden: Mermaid byte-equality against Aaron's literal ADR-011 spec
+// example. This is the operator-authored golden discipline: when the
+// operator provides a literal example output in chat, that example MUST
+// become a test fixture so emitter drift is caught at byte level.
+// ---------------------------------------------------------------------------
+console.log("\nAC4-golden: Mermaid byte-equality against Aaron's literal ADR-011 example");
+
+try {
+  const PERSON_IRI = "https://www.commoncoreontologies.org/ont00001262";
+  const INTEREST_IRI = "https://www.commoncoreontologies.org/ont00001984";
+  // Instance IRIs chosen so sortedIris places mama before baby (N0=mama).
+  const SPEC_PROJECT = {
+    "ecm:terms": [
+      {
+        "id": PERSON_IRI,
+        "rdfs:label": { text: "Person", lang: "en" },
+        "ecm:classIris": [],
+      },
+      {
+        "id": INTEREST_IRI,
+        "rdfs:label": { text: "has interest in", lang: "en" },
+        "ecm:classIris": [],
+      },
+    ],
+    "ecm:instances": [
+      {
+        "id": "https://example.com/0-mama",
+        "rdfs:label": { text: "mama", lang: "en" },
+        "ecm:classIris": [PERSON_IRI],
+      },
+      {
+        "id": "https://example.com/1-baby",
+        "rdfs:label": { text: "baby", lang: "en" },
+        "ecm:classIris": [PERSON_IRI],
+      },
+    ],
+    "ecm:relations": [
+      {
+        "ecm:subjectIri": "https://example.com/0-mama",
+        "ecm:predicateIri": INTEREST_IRI,
+        "ecm:objectIri": "https://example.com/1-baby",
+      },
+    ],
+  };
+  const out = emitMermaid(SPEC_PROJECT);
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  // Resolve from cwd (project root when running npm test); the test file
+  // itself runs from dist-tests/ after tsc, so import.meta.url-based paths
+  // misalign with on-disk fixtures.
+  const goldenPath = path.resolve(process.cwd(), "test", "golden", "mermaid-aaron-spec.mmd");
+  const expected = await fs.readFile(goldenPath, "utf-8");
+  strictEqual(out, expected,
+    `emitMermaid byte-equality vs test/golden/mermaid-aaron-spec.mmd. ` +
+    `Operator-authored golden discipline: when Aaron provides a literal ` +
+    `example, the emitter MUST match it byte-for-byte.`);
+  pass("emitMermaid byte-equality vs Aaron's literal ADR-011 spec example");
+} catch (e) { fail("emitMermaid byte-equality vs Aaron's literal ADR-011 example", e); }
 
 // ---------------------------------------------------------------------------
 // AC5-fence: Markdown Mermaid code fence (ADR-011)
