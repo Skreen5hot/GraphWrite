@@ -672,7 +672,7 @@ export function Inspector({
                 value={selectedAddClassIri}
                 onChange={(e) => { setSelectedAddClassIri(e.target.value); }}
                 data-testid="gw-select-add-class"
-                style={{ fontSize: "0.8rem", flex: 1 }}
+                style={{ fontSize: "0.8rem", flex: 1, minWidth: 0 }}
               >
                 <option value="">(select class)</option>
                 {owlClassOptions.map((opt) => (
