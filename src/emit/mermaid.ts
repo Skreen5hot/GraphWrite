@@ -169,7 +169,7 @@ export function emitMermaid(project: Record<string, unknown>): string {
     if (classIris.length === 0) {
       nodeLabel = escapeMermaidLabel(label);
     } else {
-      const typeLocal = localName(classIris[0]);
+      const typeLocal = termLabel.get(classIris[0]) ?? localName(classIris[0]);
       const typeLines = classIris.map((c) => `<br>${c}`).join("");
       nodeLabel = `${escapeMermaidLabel(label)}:${typeLocal}${typeLines}`;
     }
