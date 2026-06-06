@@ -215,3 +215,22 @@
 - SPEC §17.2 hard-error table gains a `LABEL_CONTAINS_COLON` row; OED-301 is closed
 - `emitMarkdown` in `src/emit/markdown.ts` embeds the ABox diagram in a `## Diagram` section wrapped in triple-backtick `mermaid` code fences
 - A future Mermaid importer closes the round-trip loop by parsing the new format back to ABox triples (deferred)
+
+
+---
+
+## ADR-012: PO Review Cycle Primitive
+
+**Date:** 2026-06-06
+
+**Decision:** Add structured PO review cycle as a substrate primitive. Record each round of operator feedback as a chain-hashed `po_feedback` audit event with byte-quote granularity (observed-vs-expected), gap classification (`data-side` / `spec-side` / `verification-side`), remediation kind (`substrate-fix` / `subject-fix` / `spec-amendment` / `discipline-correction`), and an auto-incrementing per-phase iteration counter. Operator records via `state_admin po-feedback <phase-id> --anchor-task ... --observed-quote ... --expected-quote ... --gap ... --gap-classification ... --remediation ...`. The substrate's pre-dispatch chain validator gains PRED-7: any developer task targeting `src/emit/`, `src/validate/`, or `src/format/` paths MUST declare `inputs.operator_golden_path` pointing at a `test/golden/*` fixture, enforcing the operator-authored byte-equality discipline.
+
+**Context:** Phase 4 PO review of the Mermaid emit format required four chat-mediated iterations (flowchart→graph TD; Inspector UI fix; label resolution; HTML-entity encoding + indent + blank line + byte-equality golden). Each iteration was prose-spec-then-byte-drift: ADR-011 captured the format in prose, the developer implemented something that "looked right" but wasn't, the architect ratified against contract dimensions (determinism, kernel-isolation) but couldn't verify byte output, and the tests asserted structural shape (`startsWith("graph TD")`, `includes("<br>")`) that passed on incorrect output. Only when the byte-equality golden landed in commit 1921ed5 was the drift actually caught structurally. The substrate-discipline observation: **prose specs drift, byte goldens don't**. Generalizing the byte-golden pattern as a substrate primitive — operator-authored examples become required test fixtures by chain-validator contract — closes this gap for all future format-spec changes (Phase 5 persistence emit paths, Phase 6 starter content, downstream phases).
+
+**Consequences:**
+- New audit event type `po_feedback` recorded via `state_admin po-feedback`; chain-hashed via existing `hiri_sign` mechanism; carries `phase_id`, `iteration_n`, `anchor_task`, `observed_quote`, `expected_quote`, `gap_classification`, `gap_description`, `remediation`, optional `notes` and `observed_source`
+- `fnsr_chain_validator.py` PRED-7 (`pred_7_operator_golden_for_format_spec`): developer tasks whose `inputs.target_paths` contain `src/emit/`, `src/validate/`, or `src/format/` prefixes (or whose `inputs.purpose` mentions those paths) MUST set `inputs.operator_golden_path`; `state_admin append-tasks --verify-first` refuses chains that violate
+- `state_admin po-feedback` CLI registered with required `--anchor-task`, `--observed-quote`, `--expected-quote`, `--gap`, `--gap-classification`, `--remediation`
+- Per-phase iteration counter auto-computed by walking task histories for matching `po_feedback` events; the next event gets `iteration_n = count + 1`
+- The `fnsr.po_review.md` visibility surface (analogous to `fnsr.status.md`) is deferred to v3.9.1; v3.9.0 ships the data layer and the enforcement
+- Phase 4 retro will record this primitive as the closure of the Mermaid drift pattern; subsequent format-spec phases (Phase 5 persistence; Phase 6 starter content) inherit the discipline mechanically

@@ -315,6 +315,96 @@ def pred_6_no_circular_deps(
     return findings
 
 
+# v3.9.0: format-spec target patterns. When a developer task's
+# inputs.target_paths (or inputs.purpose) names ANY file under these
+# globs, the chain MUST include `inputs.operator_golden_path` pointing
+# at a test/golden/* fixture. This encodes the operator-authored-golden
+# discipline per ADR-012 (PO Review Cycle Primitive). Closes the
+# Phase 4 Mermaid drift pattern where prose ADR-011 didn't prevent the
+# emitter from misinterpreting the spec; only the byte-equality golden
+# (commit 1921ed5) actually caught the drift.
+_FORMAT_SPEC_PATH_GLOBS = (
+    "src/emit/",
+    "src/validate/",
+    "src/format/",
+)
+
+
+def pred_7_operator_golden_for_format_spec(
+    chain_tasks: list[dict], current_state: dict
+) -> list[dict]:
+    """v3.9.0: when a developer task targets a format-spec module
+    (src/emit/, src/validate/, src/format/), an operator-authored
+    byte-equality golden MUST exist in the chain.
+
+    Detection (operator-authored-golden discipline per ADR-012):
+      - The developer task's inputs.target_paths is a list of strings;
+        ANY entry under _FORMAT_SPEC_PATH_GLOBS triggers the check.
+      - OR (fallback) the developer task's inputs.purpose contains
+        `src/emit/` / `src/validate/` / `src/format/` substrings.
+      - Required: inputs.operator_golden_path field exists and is a
+        non-empty string ending in `.mmd`, `.ttl`, `.nt`, `.jsonld`,
+        `.md`, `.json`, or under `test/golden/`. The path doesn't
+        need to exist yet (the developer task may CREATE it), but the
+        field MUST be populated so the architect ratification knows
+        what byte-equality target the developer must satisfy.
+
+    Closes the "prose ADR drifts; byte golden doesn't" gap structurally:
+    the architect ratification cannot pass unless the chain composer
+    declared the golden up front. Operator-authored examples become
+    test fixtures by contract, not by hope.
+    """
+    findings = []
+    for t in chain_tasks:
+        if t.get("agent") != "developer":
+            continue
+        inputs = t.get("inputs") or {}
+        if not isinstance(inputs, dict):
+            continue
+        # Detection: target_paths list OR purpose substring
+        targets_format_spec = False
+        target_paths = inputs.get("target_paths")
+        if isinstance(target_paths, list):
+            for p in target_paths:
+                if isinstance(p, str) and any(
+                    p.startswith(g) or g in p
+                    for g in _FORMAT_SPEC_PATH_GLOBS
+                ):
+                    targets_format_spec = True
+                    break
+        if not targets_format_spec:
+            purpose = inputs.get("purpose") or ""
+            if isinstance(purpose, str):
+                if any(g in purpose for g in _FORMAT_SPEC_PATH_GLOBS):
+                    targets_format_spec = True
+        if not targets_format_spec:
+            continue
+        golden_path = inputs.get("operator_golden_path")
+        if not isinstance(golden_path, str) or not golden_path.strip():
+            findings.append({
+                "predicate_id": "pred-7-operator-golden-for-format-spec",
+                "severity": "error",
+                "task_id": t.get("@id", "?"),
+                "evidence": {
+                    "target_paths": target_paths,
+                    "operator_golden_path_present": False,
+                },
+                "fix_suggestion": (
+                    "Add `inputs.operator_golden_path` to the developer task "
+                    "pointing at the expected byte-equality fixture "
+                    "(typically test/golden/<name>.<ext>). Per ADR-012, "
+                    "format-spec changes (src/emit/**, src/validate/**, "
+                    "src/format/**) require an operator-authored golden "
+                    "so the architect ratification can verify the developer's "
+                    "output matches the operator's literal example byte-for-byte. "
+                    "If the golden doesn't exist yet, the developer task may "
+                    "CREATE it as one of changes[]; the path declaration "
+                    "is what's required, not the file's pre-existence."
+                ),
+            })
+    return findings
+
+
 PREDICATES = (
     pred_1_applier_source_in_depends,
     pred_2_windows_npm_bare,
@@ -322,6 +412,7 @@ PREDICATES = (
     pred_4_required_inputs,
     pred_5_no_id_collisions,
     pred_6_no_circular_deps,
+    pred_7_operator_golden_for_format_spec,
 )
 
 

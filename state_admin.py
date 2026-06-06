@@ -814,6 +814,98 @@ def cmd_bank(args: argparse.Namespace) -> int:
     return 0
 
 
+def _count_po_feedback_for_phase(state: dict[str, Any],
+                                  phase_id: str) -> int:
+    """v3.9.0: count existing po_feedback audit events for the given
+    phase_id across all task histories. Used to compute the iteration
+    counter for the next po_feedback event.
+
+    iteration_n = count + 1 for the next event.
+    """
+    count = 0
+    for t in state.get("tasks", []) or []:
+        for h in t.get("history", []) or []:
+            if h.get("event") != "po_feedback":
+                continue
+            payload = h.get("payload") or {}
+            if isinstance(payload, dict) and payload.get("phase_id") == phase_id:
+                count += 1
+    return count
+
+
+def cmd_po_feedback(args: argparse.Namespace) -> int:
+    """v3.9.0: record a structured PO feedback event for a phase per
+    ADR-012 (PO Review Cycle Primitive).
+
+    Replaces chat-mediated review-iteration with a substrate-audited
+    event: observed-vs-expected captured at byte-quote granularity;
+    gap classification (data-side / spec-side / verification-side);
+    iteration counter increments automatically; downstream remediation
+    chain composer (operator-queued, follow-up via state_admin
+    append-tasks) consults the event payload for context.
+
+    Example:
+
+        state_admin po-feedback phase-4 \\
+            --anchor-task urn:fnsr:task:1076-test-runner-rerun-phase-4-chain-6 \\
+            --observed-quote 'N0[\"mamam:ont00001262<br>...\"]' \\
+            --expected-quote 'N0[&quot;mama:Person<br>...&quot;]' \\
+            --gap 'emitter uses IRI fragment + bare quotes' \\
+            --remediation subject-fix \\
+            --notes 'reported via chat 2026-06-06 17:30 UTC'
+
+    Anchors the event on the operator-named task (typically the phase's
+    demo-released anchor). The audit event is chain-hashed via hiri_sign
+    and lands in task.history alongside the rest of the substrate's
+    audit trail.
+    """
+    state_path = Path(args.state_path)
+    state = _load_state(state_path)
+    task = _find_task(state, args.anchor_task)
+    if task is None:
+        print(f"anchor task not found: {args.anchor_task}", file=sys.stderr)
+        return 1
+    valid_classifications = ("data-side", "spec-side", "verification-side")
+    if args.gap_classification not in valid_classifications:
+        print(f"--gap-classification must be one of {valid_classifications}",
+              file=sys.stderr)
+        return 1
+    valid_remediations = ("substrate-fix", "subject-fix",
+                          "spec-amendment", "discipline-correction")
+    if args.remediation not in valid_remediations:
+        print(f"--remediation must be one of {valid_remediations}",
+              file=sys.stderr)
+        return 1
+    iteration_n = _count_po_feedback_for_phase(state, args.phase_id) + 1
+    payload: dict[str, Any] = {
+        "phase_id": args.phase_id,
+        "iteration_n": iteration_n,
+        "anchor_task": args.anchor_task,
+        "observed_quote": args.observed_quote,
+        "expected_quote": args.expected_quote,
+        "gap_classification": args.gap_classification,
+        "gap_description": args.gap,
+        "remediation": args.remediation,
+        "operator": args.operator,
+    }
+    if args.notes:
+        payload["notes"] = args.notes
+    if args.observed_source:
+        payload["observed_source"] = args.observed_source
+    _append_audit(task, "po_feedback", payload)
+    _save_state(state_path, state)
+    print(f"po_feedback recorded: phase={args.phase_id} iteration={iteration_n} "
+          f"gap_class={args.gap_classification} remediation={args.remediation}")
+    print(f"  anchor: {args.anchor_task}")
+    print(f"  next step: compose remediation chain "
+          f"(recon -> developer -> architect -> applier -> test-runner). "
+          f"Per ADR-012 + PRED-7, the developer task targeting any "
+          f"src/emit|validate|format/** MUST declare "
+          f"`inputs.operator_golden_path` pointing at the byte-equality "
+          f"fixture matching --expected-quote.")
+    return 0
+
+
 def _find_banking(state: dict[str, Any], banking_id: str) \
         -> Optional[tuple[dict[str, Any], dict[str, Any]]]:
     """Locate a banking event by banking_id across all task histories.
@@ -2821,6 +2913,59 @@ def _build_parser() -> argparse.ArgumentParser:
                          help="optional surfacing cycle identifier")
     p_bank.add_argument("--operator", default="operator")
     p_bank.set_defaults(func=cmd_bank)
+
+    # v3.9.0: PO Review Cycle Primitive (ADR-012)
+    p_po_fb = sub.add_parser(
+        "po-feedback",
+        help="record structured PO feedback for a phase (v3.9.0; ADR-012)",
+        description="Record a po_feedback audit event anchored on a "
+                    "phase task. Replaces chat-mediated review-iteration "
+                    "with a substrate-audited event capturing observed-vs-"
+                    "expected at byte granularity. Iteration counter "
+                    "auto-increments per phase. Operator follows up with "
+                    "state_admin append-tasks pointing at a remediation "
+                    "chain whose developer task carries "
+                    "inputs.operator_golden_path per PRED-7.",
+    )
+    p_po_fb.add_argument("phase_id",
+                          help="phase identifier (e.g., phase-4)")
+    p_po_fb.add_argument("--anchor-task", required=True,
+                         help="task @id to anchor the po_feedback event on "
+                              "(typically the phase's demo-released anchor)")
+    p_po_fb.add_argument("--observed-quote", required=True,
+                         help="literal byte-quote of what shipped (paste the "
+                              "actual output excerpt)")
+    p_po_fb.add_argument("--expected-quote", required=True,
+                         help="literal byte-quote of what was expected (the "
+                              "operator's spec example or corrected version)")
+    p_po_fb.add_argument("--gap", required=True,
+                         help="one-sentence description of the gap "
+                              "(what's different and why it matters)")
+    p_po_fb.add_argument(
+        "--gap-classification", required=True,
+        choices=("data-side", "spec-side", "verification-side"),
+        help="data-side = upstream data is wrong; spec-side = "
+             "implementation doesn't match documented spec; "
+             "verification-side = test missing or asserts wrong thing",
+    )
+    p_po_fb.add_argument(
+        "--remediation", required=True,
+        choices=("substrate-fix", "subject-fix", "spec-amendment",
+                 "discipline-correction"),
+        help="substrate-fix = fnsr_daemon/state_admin code change; "
+             "subject-fix = subject project (src/ tests/) change; "
+             "spec-amendment = SPEC/DECISIONS canonical doc update; "
+             "discipline-correction = operator-side process change",
+    )
+    p_po_fb.add_argument("--observed-source", default=None,
+                         help="optional pointer to the artifact where "
+                              "the observed quote came from (file path, "
+                              "URL, chat-export hash)")
+    p_po_fb.add_argument("--notes", default=None,
+                         help="optional free-text notes (timestamp, "
+                              "external reference)")
+    p_po_fb.add_argument("--operator", default="operator")
+    p_po_fb.set_defaults(func=cmd_po_feedback)
 
     p_trans = sub.add_parser("transition-banking",
                               help="transition a banking to a new state "

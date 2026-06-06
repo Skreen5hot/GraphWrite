@@ -196,6 +196,76 @@ class TestChainValidatorPredicates(unittest.TestCase):
         findings = v.pred_6_no_circular_deps(chain, self._state_with([]))
         self.assertEqual(findings, [])
 
+    # ---- PRED-7: operator-authored golden for format-spec targets ----
+    def test_pred7_fires_when_emit_target_lacks_golden_path(self):
+        """v3.9.0 (ADR-012): developer targeting src/emit/** MUST set
+        inputs.operator_golden_path. Closes the prose-spec-drifts gap
+        per the Phase 4 Mermaid review cycle."""
+        chain = [{
+            "@id": "urn:t:dev",
+            "agent": "developer",
+            "inputs": {
+                "target_paths": ["src/emit/mermaid.ts"],
+                # operator_golden_path INTENTIONALLY MISSING
+            },
+        }]
+        findings = v.pred_7_operator_golden_for_format_spec(
+            chain, self._state_with([]))
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["predicate_id"],
+                          "pred-7-operator-golden-for-format-spec")
+        self.assertEqual(findings[0]["severity"], "error")
+
+    def test_pred7_fires_on_purpose_substring_too(self):
+        """Fallback detection: purpose text mentioning src/emit triggers."""
+        chain = [{
+            "@id": "urn:t:dev",
+            "agent": "developer",
+            "inputs": {
+                "purpose": "Update src/emit/turtle.ts emit ordering...",
+            },
+        }]
+        findings = v.pred_7_operator_golden_for_format_spec(
+            chain, self._state_with([]))
+        self.assertEqual(len(findings), 1)
+
+    def test_pred7_passes_when_golden_path_declared(self):
+        chain = [{
+            "@id": "urn:t:dev",
+            "agent": "developer",
+            "inputs": {
+                "target_paths": ["src/emit/mermaid.ts"],
+                "operator_golden_path": "test/golden/mermaid-aaron-spec.mmd",
+            },
+        }]
+        findings = v.pred_7_operator_golden_for_format_spec(
+            chain, self._state_with([]))
+        self.assertEqual(findings, [])
+
+    def test_pred7_passes_on_non_format_targets(self):
+        """Developer task targeting unrelated paths must not require golden."""
+        chain = [{
+            "@id": "urn:t:dev",
+            "agent": "developer",
+            "inputs": {"target_paths": ["src/kernel/transform.ts"]},
+        }]
+        findings = v.pred_7_operator_golden_for_format_spec(
+            chain, self._state_with([]))
+        self.assertEqual(findings, [])
+
+    def test_pred7_validate_chain_full_report_carries_error(self):
+        """End-to-end: validate_chain includes PRED-7 in PREDICATES;
+        a violating chain receives an error finding in the full report."""
+        chain = [{
+            "@id": "urn:t:dev",
+            "agent": "developer",
+            "inputs": {"target_paths": ["src/validate/codes.ts"]},
+        }]
+        report = v.validate_chain(chain, self._state_with([]))
+        self.assertEqual(report["verdict"], "FAIL")
+        pred_ids = {f["predicate_id"] for f in report["findings"]}
+        self.assertIn("pred-7-operator-golden-for-format-spec", pred_ids)
+
     # ---- Full validator ----
     def test_validate_chain_returns_pass_on_clean(self):
         chain = [

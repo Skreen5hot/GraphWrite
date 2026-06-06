@@ -645,6 +645,157 @@ class TestPromoteCandidateCommand(unittest.TestCase):
         self.assertIsNone(last["payload"]["from_episodic"])
 
 
+# ---------- v3.9.0: PO Review Cycle Primitive (ADR-012) -----------------
+
+class TestPoFeedbackCommand(unittest.TestCase):
+    """v3.9.0 (ADR-012): structured PO review feedback as chain-hashed
+    audit event. Replaces chat-mediated review-iteration with
+    substrate-audited byte-quote granularity."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp(prefix="fnsr-pofb-"))
+        self.state_path = self.tmpdir / "state.jsonld"
+        self.state_path.write_text(json.dumps({
+            "@context": "https://fnsr.example/context.jsonld",
+            "@id": "urn:fnsr:run:test",
+            "tasks": [{
+                "@id": "urn:fnsr:task:anchor",
+                "agent": "developer",
+                "status": "done",
+                "depends_on": [],
+                "history": [{
+                    "event": "completed", "payload": {},
+                    "prev_hash": "0" * 64, "chain_hash": "a" * 64,
+                }],
+            }],
+        }, indent=2), encoding="utf-8")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _state(self):
+        return json.loads(self.state_path.read_text(encoding="utf-8"))
+
+    def test_po_feedback_records_chain_hashed_audit_event(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-4",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--observed-quote", 'N0["mamam:ont00001262<br>...IRI..."]',
+            "--expected-quote",
+            'N0[&quot;mama:Person<br>...IRI...&quot;]',
+            "--gap", "emitter uses IRI fragment + bare quotes",
+            "--gap-classification", "spec-side",
+            "--remediation", "subject-fix",
+        ])
+        self.assertEqual(rc, 0)
+        anchor = self._state()["tasks"][0]
+        last = anchor["history"][-1]
+        self.assertEqual(last["event"], "po_feedback")
+        p = last["payload"]
+        self.assertEqual(p["phase_id"], "phase-4")
+        self.assertEqual(p["iteration_n"], 1)
+        self.assertEqual(p["anchor_task"], "urn:fnsr:task:anchor")
+        self.assertIn("mamam", p["observed_quote"])
+        self.assertIn("&quot;", p["expected_quote"])
+        self.assertEqual(p["gap_classification"], "spec-side")
+        self.assertEqual(p["remediation"], "subject-fix")
+
+    def test_po_feedback_iteration_counter_increments_per_phase(self):
+        # First feedback round → iteration_n=1
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-4",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--observed-quote", "a", "--expected-quote", "b",
+            "--gap", "first", "--gap-classification", "spec-side",
+            "--remediation", "subject-fix",
+        ])
+        # Second feedback round → iteration_n=2 (same phase)
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-4",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--observed-quote", "c", "--expected-quote", "d",
+            "--gap", "second", "--gap-classification", "data-side",
+            "--remediation", "subject-fix",
+        ])
+        anchor = self._state()["tasks"][0]
+        po_events = [h for h in anchor["history"]
+                     if h.get("event") == "po_feedback"]
+        self.assertEqual(len(po_events), 2)
+        self.assertEqual(po_events[0]["payload"]["iteration_n"], 1)
+        self.assertEqual(po_events[1]["payload"]["iteration_n"], 2)
+
+    def test_po_feedback_separate_phase_keeps_independent_counter(self):
+        # phase-4 round 1
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-4",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--observed-quote", "a", "--expected-quote", "b",
+            "--gap", "first", "--gap-classification", "spec-side",
+            "--remediation", "subject-fix",
+        ])
+        # phase-5 round 1 (independent counter)
+        state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-5",
+            "--anchor-task", "urn:fnsr:task:anchor",
+            "--observed-quote", "c", "--expected-quote", "d",
+            "--gap", "first", "--gap-classification", "spec-side",
+            "--remediation", "subject-fix",
+        ])
+        anchor = self._state()["tasks"][0]
+        po_events = [h for h in anchor["history"]
+                     if h.get("event") == "po_feedback"]
+        self.assertEqual(po_events[0]["payload"]["phase_id"], "phase-4")
+        self.assertEqual(po_events[0]["payload"]["iteration_n"], 1)
+        self.assertEqual(po_events[1]["payload"]["phase_id"], "phase-5")
+        self.assertEqual(po_events[1]["payload"]["iteration_n"], 1)
+
+    def test_po_feedback_rejects_invalid_gap_classification(self):
+        import argparse
+        ns = argparse.Namespace(
+            phase_id="phase-4",
+            anchor_task="urn:fnsr:task:anchor",
+            observed_quote="x", expected_quote="y", gap="z",
+            gap_classification="invalid-class",
+            remediation="subject-fix",
+            observed_source=None, notes=None,
+            state_path=str(self.state_path),
+            operator="operator",
+        )
+        rc = state_admin.cmd_po_feedback(ns)
+        self.assertEqual(rc, 1)
+
+    def test_po_feedback_rejects_invalid_remediation(self):
+        import argparse
+        ns = argparse.Namespace(
+            phase_id="phase-4",
+            anchor_task="urn:fnsr:task:anchor",
+            observed_quote="x", expected_quote="y", gap="z",
+            gap_classification="spec-side",
+            remediation="invalid-remediation",
+            observed_source=None, notes=None,
+            state_path=str(self.state_path),
+            operator="operator",
+        )
+        rc = state_admin.cmd_po_feedback(ns)
+        self.assertEqual(rc, 1)
+
+    def test_po_feedback_rejects_unknown_anchor_task(self):
+        rc = state_admin.main([
+            "--state-path", str(self.state_path),
+            "po-feedback", "phase-4",
+            "--anchor-task", "urn:fnsr:task:does-not-exist",
+            "--observed-quote", "x", "--expected-quote", "y",
+            "--gap", "z", "--gap-classification", "spec-side",
+            "--remediation", "subject-fix",
+        ])
+        self.assertEqual(rc, 1)
+
+
 # ---------- Retro phase specs at v3.0 final -----------------------------
 
 class TestRetroPhaseSpecsFinalized(unittest.TestCase):
