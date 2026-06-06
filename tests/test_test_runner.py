@@ -165,6 +165,77 @@ class TestTestRunnerHappyPaths(unittest.TestCase):
         self.assertEqual(result.outputs["total"], 7)
 
 
+class TestV387StructuredErrorEnvelope(unittest.TestCase):
+    """v3.8.7: test-runner status=errors/failures must surface as
+    outputs.error so CPS check vetoes and task transitions to blocked.
+
+    Pre-v3.8.7: test-runner returned WorkerResult(True, outputs) with
+    status="errors" or "failures" but no `error` field; CPS passed, task
+    went to status=done. Build/test failures were silently committed
+    (surfaced during Phase 4 Chain 2 on task 1042 — TS compile error in
+    src/manifest/build.ts:90 went undetected with status=done)."""
+
+    def test_v387_errors_status_sets_outputs_error(self):
+        # Build failure: non-zero exit AND zero tests parsed
+        with patch.object(subprocess, "run",
+                           return_value=_mock_proc(
+                               2,
+                               "TS2352 type error somewhere",
+                               "compile failure")):
+            task = {"agent": "test-runner",
+                    "inputs": {"cmd": "npm test"}}
+            result = d._test_runner(task, {})
+        self.assertEqual(result.outputs["status"], "errors")
+        self.assertEqual(result.outputs["error"], "test_runner_errors")
+
+    def test_v387_failures_status_sets_outputs_error(self):
+        # Test failure: non-zero exit AND parsed test failures > 0
+        with patch.object(subprocess, "run",
+                           return_value=_mock_proc(
+                               1, _NPM_FAIL_STDOUT, "")):
+            task = {"agent": "test-runner",
+                    "inputs": {"cmd": "npm test"}}
+            result = d._test_runner(task, {})
+        self.assertEqual(result.outputs["status"], "failures")
+        self.assertEqual(result.outputs["error"], "test_runner_failures")
+
+    def test_v387_all_pass_no_error_field(self):
+        # Green path: outputs.error MUST NOT be set on success
+        with patch.object(subprocess, "run",
+                           return_value=_mock_proc(0, _NPM_PASS_STDOUT, "")):
+            task = {"agent": "test-runner",
+                    "inputs": {"cmd": "npm test"}}
+            result = d._test_runner(task, {})
+        self.assertEqual(result.outputs["status"], "all_pass")
+        self.assertNotIn("error", result.outputs)
+
+    def test_v387_stall_classifier_recognizes_test_runner_errors(self):
+        """v3.8.7 classifier branch: a blocked task with
+        outputs.error='test_runner_errors' is classified as
+        test_runner_errors stall_kind so the Fixer can pattern-match
+        to Pattern C (brief-confirmation territory)."""
+        import datetime as _dt
+        recent_ts = (_dt.datetime.now(_dt.timezone.utc)
+                     - _dt.timedelta(hours=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+        state = {"tasks": [{
+            "@id": "urn:t:test-1042",
+            "status": "blocked",
+            "outputs": {
+                "status": "errors",
+                "error": "test_runner_errors",
+                "exit_code": 2,
+                "raw_stdout_tail": "TS error",
+            },
+            "history": [{"event": "cps_veto", "ts": recent_ts,
+                          "prev_hash": "0" * 64,
+                          "chain_hash": "a" * 64}],
+        }]}
+        stalls = d._stalls_eligible_for_fixer(state)
+        self.assertEqual(len(stalls), 1)
+        self.assertEqual(stalls[0]["stall_kind"], "test_runner_errors")
+
+
 class TestTestRunnerErrorPaths(unittest.TestCase):
     def test_command_unresolvable_when_no_cmd_no_env(self):
         # Clear env var if set

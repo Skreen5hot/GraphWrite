@@ -2831,7 +2831,7 @@ def _test_runner(task: dict[str, Any],
         f"{parsed.get('skipped', 0)} skipped",
         f"({parsed.get('total', 0)} total in {duration_s:.2f}s)",
     ]
-    return WorkerResult(True, {
+    outputs = {
         "status": status,
         "passed": parsed.get("passed", 0),
         "failed": parsed.get("failed", 0),
@@ -2843,7 +2843,22 @@ def _test_runner(task: dict[str, Any],
         "exit_code": proc.returncode,
         "summary": " ".join(summary_parts),
         "parser_used": parser,
-    }, "", "")
+    }
+    # v3.8.7: surface non-success status as a structured error so the
+    # CPS containment-prevention check vetoes the commit, the task
+    # transitions to status=blocked, and the Fixer auto-dispatch can
+    # pick it up. Pre-v3.8.7 the test-runner returned WorkerResult(True,
+    # outputs) with status="errors" or "failures" but no `error` field,
+    # so the CPS check passed and the task went to status=done — leaving
+    # the build/test failure invisible to the stall detector.
+    # Surfaced during Phase 4 Chain 2 (1042): TS compile error in
+    # src/manifest/build.ts:90 was silently committed as done with
+    # status=errors, exit_code=2, passed=0/failed=0/total=0.
+    if status == "errors":
+        outputs["error"] = "test_runner_errors"
+    elif status == "failures":
+        outputs["error"] = "test_runner_failures"
+    return WorkerResult(True, outputs, "", "")
 
 
 # ---- git-committer (v2.9.0) ---------------------------------------------
@@ -3903,7 +3918,17 @@ def _stalls_eligible_for_fixer(state: dict[str, Any]) -> list[dict[str, Any]]:
             stall_kind = "apply_partial_failure"
         elif err == "source_not_in_upstream":
             stall_kind = "source_not_in_upstream"
+        elif err == "test_runner_errors":
+            # v3.8.7: explicit slug from test-runner status=errors path
+            stall_kind = "test_runner_errors"
+        elif err == "test_runner_failures":
+            # v3.8.7: explicit slug from test-runner status=failures path
+            stall_kind = "test_runner_failures"
         elif outputs.get("status") == "errors" and outputs.get("returncode") is None:
+            # Legacy branch (pre-v3.8.7) — field name was wrong
+            # (returncode vs exit_code) so this never fired in practice;
+            # retained for backward compatibility with any callers that
+            # construct outputs without going through _test_runner.
             stall_kind = "test_runner_errors"
         elif last_evt == "cps_veto":
             stall_kind = "cps_veto"
