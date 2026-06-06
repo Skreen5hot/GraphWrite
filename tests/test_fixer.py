@@ -1268,6 +1268,76 @@ class TestRecoveryAnchorAutoSupersession(unittest.TestCase):
         anchor_ids_after = [c["anchor_id"] for c in candidates_after]
         self.assertNotIn("urn:t:anchor", anchor_ids_after)
 
+    def test_v386_applier_success_supersedes_docs_only_recovery(self):
+        """v3.8.6: when a recovery-chain applier completes with no
+        failures AND no downstream test-runner sibling exists, the
+        blocked anchor is auto-superseded. Closes the phantom-blocked-
+        anchor pattern observed on 1021 in the OED-313 closure chain
+        after the brief-confirmation applier-brief succeeded."""
+        anchor_t = {
+            "@id": "urn:t:anchor", "agent": "applier",
+            "status": "blocked",
+            "outputs": {"error": "apply_partial_failure"},
+            "history": [{"event": "cps_veto", "prev_hash": "0" * 64,
+                          "chain_hash": "a" * 64}],
+        }
+        state = {"tasks": [anchor_t]}
+        applier_recovery = {
+            "@id": "urn:t:applier-brief",
+            "agent": "applier",
+            "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"applied": [{"id": "C2"}], "failed": []},
+        }
+        d._maybe_supersede_recovery_anchor(state, applier_recovery)
+        self.assertEqual(anchor_t["status"], "done")
+        sup = anchor_t["outputs"]["anchor_superseded_by"]
+        self.assertEqual(sup["trigger_kind"], "applier-success-docs-only")
+        self.assertEqual(sup["applier_task"], "urn:t:applier-brief")
+
+    def test_v386_applier_with_failures_does_not_supersede(self):
+        """v3.8.6 negative: applier with failures (partial-failure shape)
+        must NOT supersede the anchor."""
+        anchor_t = {
+            "@id": "urn:t:anchor", "agent": "applier", "status": "blocked",
+            "outputs": {}, "history": [],
+        }
+        state = {"tasks": [anchor_t]}
+        partial = {
+            "@id": "urn:t:applier-brief", "agent": "applier",
+            "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"applied": [],
+                         "failed": [{"id": "C1", "reason": "x"}],
+                         "error": "apply_partial_failure"},
+        }
+        d._maybe_supersede_recovery_anchor(state, partial)
+        self.assertEqual(anchor_t["status"], "blocked")
+
+    def test_v386_applier_defers_to_test_runner_when_sibling_exists(self):
+        """v3.8.6: if a recovery chain has BOTH an applier and a downstream
+        test-runner (same recovery_anchor), applier success must defer
+        supersession to the test-runner — even if the applier finishes
+        first. v3.6.0 path handles the test-runner all_pass case."""
+        anchor_t = {
+            "@id": "urn:t:anchor", "agent": "applier", "status": "blocked",
+            "outputs": {}, "history": [],
+        }
+        applier_recovery = {
+            "@id": "urn:t:applier-brief", "agent": "applier", "status": "done",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+            "outputs": {"applied": [{"id": "C2"}], "failed": []},
+        }
+        test_runner_pending = {
+            "@id": "urn:t:test-recovery", "agent": "test-runner",
+            "status": "ready",
+            "inputs": {"recovery_anchor": "urn:t:anchor"},
+        }
+        state = {"tasks": [anchor_t, applier_recovery, test_runner_pending]}
+        d._maybe_supersede_recovery_anchor(state, applier_recovery)
+        self.assertEqual(anchor_t["status"], "blocked",
+                          "applier success must defer to pending test-runner")
+
 
 if __name__ == "__main__":
     unittest.main()

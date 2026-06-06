@@ -3680,36 +3680,71 @@ def _maybe_supersede_recovery_anchor(
     auto-supersede the original blocked anchor by flipping it to
     status=done with provenance.
 
+    v3.8.6: extended to also fire on recovery-chain applier success
+    when no downstream test-runner is queued. Recovery chains for
+    docs-only changes (no code change → no test-runner needed) end
+    with applier success; the v3.6.0 test-runner-only check missed
+    this case. Closes the phantom-blocked-anchor pattern observed on
+    1021 after the OED-313 brief-confirmation chain (applier-brief
+    succeeded; 1021 stayed status=blocked).
+
     Triggers iff ALL of:
-      - completed_task.agent == "test-runner"
-      - completed_task.outputs.status == "all_pass"
       - completed_task.inputs.recovery_anchor is set (added by the
         recovery-dispatcher when it appends the recovery chain)
       - the referenced anchor exists in state.tasks
       - the anchor's current status is "blocked" (idempotent: skip if
         already done / abandoned)
+      - completed_task is a recovery-chain success — one of:
+        (a) test-runner with outputs.status == "all_pass" (v3.6.0)
+        (b) applier with no failures AND no downstream test-runner
+            sibling exists in the same recovery_anchor group (v3.8.6)
 
     Records an `anchor_superseded_by_recovery` audit event on the
-    anchor (chain-hashed via _record) and sets status=done with an
-    `outputs.anchor_superseded_by` annotation citing the test-runner
-    + the recovery applier (best-effort lookup via recovery_anchor
-    siblings; falls back to test-runner only).
-
-    Closes the phantom-stall-after-recovery pattern hit 3x this session
-    (Chain 1c, Chain 4.1, Chain 5 sub-task A). Aaron 2026-06-04
-    "sustained fix" directive.
+    anchor (chain-hashed) and sets status=done with an
+    `outputs.anchor_superseded_by` annotation citing the trigger task.
     """
-    if completed_task.get("agent") != "test-runner":
-        return
-    outs = completed_task.get("outputs") or {}
-    if outs.get("status") != "all_pass":
-        return
     inputs = completed_task.get("inputs") or {}
     if not isinstance(inputs, dict):
         return
     anchor_id = inputs.get("recovery_anchor")
     if not anchor_id or not isinstance(anchor_id, str):
         return
+
+    # Classify completion: test-runner-allpass (v3.6.0) vs applier-success
+    # (v3.8.6 docs-only case).
+    agent = completed_task.get("agent")
+    outs = completed_task.get("outputs") or {}
+    completed_id = completed_task.get("@id")
+    trigger_kind: Optional[str] = None
+    if agent == "test-runner" and outs.get("status") == "all_pass":
+        trigger_kind = "test-runner-allpass"
+    elif agent == "applier":
+        # v3.8.6: applier success = no `error` key AND failed list empty
+        # (or absent). The applier may have an `error` field on
+        # apply_partial_failure; absence indicates clean success.
+        if outs.get("error"):
+            return
+        failed = outs.get("failed")
+        if isinstance(failed, list) and len(failed) > 0:
+            return
+        # Don't fire if a downstream test-runner sibling exists for the
+        # same recovery_anchor — it will fire the v3.6.0 path when it
+        # passes (or block the anchor's supersession if it fails).
+        for t in state.get("tasks", []) or []:
+            if t.get("@id") == completed_id:
+                continue
+            if t.get("agent") != "test-runner":
+                continue
+            t_inputs = t.get("inputs") or {}
+            if (isinstance(t_inputs, dict)
+                    and t_inputs.get("recovery_anchor") == anchor_id):
+                # Test-runner sibling exists; defer to v3.6.0 path
+                return
+        trigger_kind = "applier-success-docs-only"
+
+    if trigger_kind is None:
+        return
+
     # Look up the anchor in state.tasks
     anchor = None
     for t in state.get("tasks", []) or []:
@@ -3719,39 +3754,57 @@ def _maybe_supersede_recovery_anchor(
     if anchor is None:
         log.warning(
             "recovery-anchor %s referenced by %s not found in state",
-            anchor_id, completed_task.get("@id"),
+            anchor_id, completed_id,
         )
         return
     if anchor.get("status") != "blocked":
         # Idempotent: anchor already resolved (done / abandoned / etc.)
         return
+
     # Best-effort: find the applier sibling in the same recovery chain
-    # (any task with same recovery_anchor that is an applier).
-    test_runner_id = completed_task.get("@id")
+    # for the supersession payload's provenance citation.
     applier_id = None
-    for t in state.get("tasks", []) or []:
-        if t.get("@id") == test_runner_id:
-            continue
-        if t.get("agent") != "applier":
-            continue
-        t_inputs = t.get("inputs") or {}
-        if isinstance(t_inputs, dict) and t_inputs.get("recovery_anchor") == anchor_id:
-            applier_id = t.get("@id")
-            break
+    if trigger_kind == "test-runner-allpass":
+        for t in state.get("tasks", []) or []:
+            if t.get("@id") == completed_id:
+                continue
+            if t.get("agent") != "applier":
+                continue
+            t_inputs = t.get("inputs") or {}
+            if (isinstance(t_inputs, dict)
+                    and t_inputs.get("recovery_anchor") == anchor_id):
+                applier_id = t.get("@id")
+                break
+    else:
+        # v3.8.6: the completed task IS the applier.
+        applier_id = completed_id
 
     # Flip anchor + record audit
     anchor_outs = anchor.get("outputs") or {}
     if not isinstance(anchor_outs, dict):
         anchor_outs = {}
-    supersession_payload = {
-        "test_runner_task": test_runner_id,
-        "test_result": "all_pass",
-        "applier_task": applier_id,
-        "reason": (
+    if trigger_kind == "test-runner-allpass":
+        reason_text = (
             "Recovery chain completed successfully (test-runner "
             "all_pass); v3.6.0 auto-supersession of the blocked anchor."
-        ),
-    }
+        )
+        supersession_payload = {
+            "test_runner_task": completed_id,
+            "test_result": "all_pass",
+            "applier_task": applier_id,
+            "reason": reason_text,
+        }
+    else:
+        reason_text = (
+            "Recovery chain completed successfully (applier success on "
+            "docs-only recovery; no downstream test-runner); v3.8.6 "
+            "auto-supersession of the blocked anchor."
+        )
+        supersession_payload = {
+            "applier_task": completed_id,
+            "trigger_kind": "applier-success-docs-only",
+            "reason": reason_text,
+        }
     anchor_outs["anchor_superseded_by"] = supersession_payload
     anchor["outputs"] = anchor_outs
     anchor["status"] = "done"
@@ -3767,8 +3820,8 @@ def _maybe_supersede_recovery_anchor(
         }),
     })
     log.info(
-        "anchor %s superseded by recovery test-runner %s (all_pass)",
-        anchor_id, test_runner_id,
+        "anchor %s superseded by recovery %s (%s)",
+        anchor_id, completed_id, trigger_kind,
     )
 
 
