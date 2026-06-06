@@ -367,12 +367,12 @@ async function testExportMermaid(): Promise<void> {
   try {
     strictEqual(r.exitCode, 0, `expected exit 0, got ${r.exitCode}`);
     ok(
-      r.stdout.startsWith("flowchart"),
-      "expected Mermaid flowchart output starting with 'flowchart'",
+      r.stdout.startsWith("graph TD"),
+      "expected Mermaid output starting with 'graph TD' per ADR-011",
     );
-    pass("AC10: export --format mermaid exits 0 with Mermaid flowchart output");
+    pass("AC10: export --format mermaid exits 0 with Mermaid graph TD output");
   } catch (e) {
-    fail("AC10: export --format mermaid exits 0 with Mermaid flowchart output", e);
+    fail("AC10: export --format mermaid exits 0 with Mermaid graph TD output", e);
   }
 }
 

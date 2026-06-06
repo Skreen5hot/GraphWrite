@@ -198,3 +198,20 @@
 - Per-code malformed fixture completion for the remaining Â§17.2 codes beyond the two existing fixtures is not gated on OED-313; delivery tracked via ft-097-test-validator-2
 - Phase 1 exit gate (OED-313 component): complete when the five fixture items above exist with passing CI byte-comparison checks
 - Phase 4 exit gate (OED-313 component): complete when the two Phase 4 addition items above exist with passing CI checks
+
+---
+
+## ADR-011: Mermaid ABox Emit Format for RDF Round-Trip
+
+**Date:** 2026-06-06
+
+**Decision:** Emit ABox Mermaid diagrams using `graph TD` syntax with round-trip labels. Node format: `N<i>["<rdfs:label>:<type-local><br><type-IRI>[<br><type-IRI-N>...]"]` where `type-local` is the local name (fragment after `#`, last path segment after `/`, or last colon-delimited segment) of the first `rdf:type` IRI, and subsequent `<br>`-separated lines carry each type IRI. Edge format: `N<i> -- "<predicate-label><br><property-IRI>" --> N<j>`. Instance `rdfs:label` values MUST NOT contain literal `:` characters (reserved for the label:type separator); a `LABEL_CONTAINS_COLON` hard error blocks export when this constraint is violated. Embedded Mermaid in Markdown contexts is wrapped in triple-backtick fences with `mermaid` lang tag; standalone `.mmd` files are raw (no fences). Node ordering is lexicographic by IRI for deterministic output.
+
+**Context:** The prior format (`flowchart LR` with bare labels and pipe-delimited edge labels) was one-way: RDF → render only. It carried no type or predicate IRI information, so the Mermaid diagram could not be used to recover the originating RDF graph. The new format is round-trippable: a future Mermaid importer can parse the inline type and predicate IRIs to reconstruct ABox triples without the source JSON-LD document. Lexicographic IRI ordering ensures byte-identical re-exports regardless of `ecm:instances` array order. The colon character is structurally reserved as the separator between the display label and the type local name; instance labels containing a colon must be rejected by the validator before export is attempted. OED-301 (Mermaid edge label truncation policy) is resolved by this ADR: edge labels carry the full predicate IRI inline and are not truncated.
+
+**Consequences:**
+- `emitMermaid` in `src/emit/mermaid.ts` is rewritten to produce `graph TD` with the new node/edge label format and lexicographic IRI ordering
+- `LABEL_CONTAINS_COLON` is added to `src/validate/codes.ts` (18th hard error) and emitted by `src/validate/index.ts` when any `ecm:Instance` `rdfs:label` contains a literal colon; blocks export per §17.2
+- SPEC §17.2 hard-error table gains a `LABEL_CONTAINS_COLON` row; OED-301 is closed
+- `emitMarkdown` in `src/emit/markdown.ts` embeds the ABox diagram in a `## Diagram` section wrapped in triple-backtick `mermaid` code fences
+- A future Mermaid importer closes the round-trip loop by parsing the new format back to ABox triples (deferred)

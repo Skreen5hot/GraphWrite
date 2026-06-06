@@ -31,6 +31,8 @@ import { narrateTriple, narrateProject } from "../src/emit/triple-narration.js";
 import { emitJsonLd }   from "../src/emit/json-ld.js";
 import { emitMermaid }  from "../src/emit/mermaid.js";
 import { emitMarkdown } from "../src/emit/markdown.js";
+import { validate } from "../src/validate/index.js";
+import { LABEL_CONTAINS_COLON } from "../src/validate/codes.js";
 
 let passed = 0;
 let failed = 0;
@@ -61,6 +63,7 @@ const RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
 const PROJ_IRI   = "urn:uuid:00000000-0000-0000-0000-000000000001";
 const TERM_IRI   = "urn:uuid:00000000-0000-0000-0000-000000000010";
+const TERM_IRI_2 = "urn:uuid:00000000-0000-0000-0000-000000000011";
 const INST_A_IRI = "urn:uuid:00000000-0000-0000-0000-000000000020";
 const INST_B_IRI = "urn:uuid:00000000-0000-0000-0000-000000000021";
 const PRED_IRI   = "urn:uuid:00000000-0000-0000-0000-000000000030";
@@ -110,6 +113,45 @@ const MINIMAL_PROJECT: Record<string, unknown> = {
     "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
   }],
   "ecm:ontologies": [], "ecm:layouts": [], "ecm:snapshots": [], "ecm:serializations": [],
+};
+
+// Fixture: multi-type instance (tests ADR-011 round-trip format with >1 rdf:type)
+const MULTI_TYPE_PROJECT: Record<string, unknown> = {
+  id: PROJ_IRI,
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
+  "ecm:specVersion": "0.4",
+  "ecm:name": "Multi-Type Test",
+  "ecm:createdAt": "2026-05-20T00:00:00Z",
+  "ecm:updatedAt": "2026-05-20T00:00:00Z",
+  "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
+  "ecm:terms": [
+    {
+      id: TERM_IRI, type: "owl:Class", "rdfs:label": "TestTerm",
+      "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+    },
+    {
+      id: TERM_IRI_2, type: "owl:Class", "rdfs:label": "SecondTerm",
+      "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+    },
+  ],
+  "ecm:instances": [{
+    id: INST_A_IRI, type: "ecm:Instance", "rdfs:label": "Alice",
+    "ecm:classIris": [TERM_IRI, TERM_IRI_2],
+    "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+  }],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:ontologies": [], "ecm:layouts": [], "ecm:snapshots": [], "ecm:serializations": [],
+};
+
+// Fixture: instance with colon in rdfs:label (tests LABEL_CONTAINS_COLON, ADR-011)
+const COLON_LABEL_PROJECT: Record<string, unknown> = {
+  ...MINIMAL_PROJECT,
+  "ecm:instances": [{
+    id: INST_A_IRI, type: "ecm:Instance", "rdfs:label": "Alice:BadLabel",
+    "ecm:classIris": [TERM_IRI],
+    "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+  }],
 };
 
 // ---------------------------------------------------------------------------
@@ -332,9 +374,9 @@ try {
   mermaidOut = emitMermaid(MINIMAL_PROJECT);
   ok(typeof mermaidOut === "string" && mermaidOut.length > 0,
     "emitMermaid must return a non-empty string");
-  ok(mermaidOut.startsWith("flowchart"),
-    "emitMermaid output must start with 'flowchart'");
-  pass("emitMermaid returns Mermaid flowchart string (AC4, FR-C006)");
+  ok(mermaidOut.startsWith("graph"),
+    "emitMermaid output must start with 'graph' (ADR-011)");
+  pass("emitMermaid returns Mermaid graph string (AC4, FR-C006, ADR-011)");
 } catch (e) { fail("emitMermaid basic call (AC4, FR-C006)", e); }
 
 try {
@@ -401,6 +443,71 @@ try {
   );
   pass("emitMarkdown idempotent: two calls produce byte-identical Markdown (AC5, FR-C007)");
 } catch (e) { fail("emitMarkdown idempotency (AC5, FR-C007)", e); }
+
+// ---------------------------------------------------------------------------
+// AC4-roundtrip: Mermaid round-trip format (ADR-011, FR-C006)
+// ---------------------------------------------------------------------------
+console.log("\nAC4-roundtrip: Mermaid round-trip format (ADR-011)");
+
+try {
+  const rtOut = emitMermaid(MINIMAL_PROJECT);
+  ok(rtOut.startsWith("graph TD"),
+    "emitMermaid must start with 'graph TD' (ADR-011)");
+  ok(rtOut.includes("Alice:"),
+    "emitMermaid node label must include 'Alice:' (label:type separator, ADR-011)");
+  ok(rtOut.includes("<br>"),
+    "emitMermaid node label must include '<br>' line breaks (ADR-011)");
+  ok(rtOut.includes(" -- \""),
+    "emitMermaid edge must use ' -- \"' format (ADR-011)");
+  pass("emitMermaid: graph TD, label:type separator, <br> line breaks, -- edge format (ADR-011)");
+} catch (e) { fail("emitMermaid round-trip format (ADR-011)", e); }
+
+try {
+  const multiOut = emitMermaid(MULTI_TYPE_PROJECT);
+  ok(multiOut.includes(TERM_IRI),
+    "emitMermaid must include first type IRI in multi-type node label (ADR-011)");
+  ok(multiOut.includes(TERM_IRI_2),
+    "emitMermaid must include second type IRI in multi-type node label (ADR-011)");
+  pass("emitMermaid: multi-type instance includes all rdf:type IRIs in node label (ADR-011)");
+} catch (e) { fail("emitMermaid multi-type node label (ADR-011)", e); }
+
+// ---------------------------------------------------------------------------
+// AC5-fence: Markdown Mermaid code fence (ADR-011)
+// ---------------------------------------------------------------------------
+console.log("\nAC5-fence: Markdown Mermaid code fence (ADR-011)");
+
+try {
+  ok(markdownOut.includes("```mermaid"),
+    "emitMarkdown output must contain a ```mermaid code fence (ADR-011)");
+  ok(markdownOut.includes("graph TD"),
+    "emitMarkdown embedded Mermaid must contain 'graph TD' (ADR-011)");
+  pass("emitMarkdown: Mermaid diagram embedded with ```mermaid code fence (ADR-011)");
+} catch (e) { fail("emitMarkdown Mermaid code fence (ADR-011)", e); }
+
+// ---------------------------------------------------------------------------
+// LABEL_CONTAINS_COLON: validator finding for colon in instance rdfs:label (ADR-011)
+// ---------------------------------------------------------------------------
+console.log("\nLABEL_CONTAINS_COLON: validator (ADR-011)");
+
+try {
+  const colonReport = validate(COLON_LABEL_PROJECT);
+  const colonFindings = colonReport["ecm:findings"].filter(
+    (f) => f["ecm:code"] === LABEL_CONTAINS_COLON,
+  );
+  ok(colonFindings.length >= 1,
+    "validate must emit LABEL_CONTAINS_COLON when instance rdfs:label contains ':'");
+  pass("LABEL_CONTAINS_COLON emitted for colon-in-label instance (ADR-011)");
+} catch (e) { fail("LABEL_CONTAINS_COLON validator finding (ADR-011)", e); }
+
+try {
+  const cleanReport = validate(MINIMAL_PROJECT);
+  const colonFindings = cleanReport["ecm:findings"].filter(
+    (f) => f["ecm:code"] === LABEL_CONTAINS_COLON,
+  );
+  ok(colonFindings.length === 0,
+    "validate must NOT emit LABEL_CONTAINS_COLON when no instance label contains ':'");
+  pass("LABEL_CONTAINS_COLON not emitted for clean instance labels (ADR-011)");
+} catch (e) { fail("LABEL_CONTAINS_COLON clean project (ADR-011)", e); }
 
 // ---------------------------------------------------------------------------
 // Summary

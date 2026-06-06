@@ -23,6 +23,7 @@
  */
 
 import { narrateProject } from "./triple-narration.js";
+import { emitMermaid } from "./mermaid.js";
 
 /**
  * Emits a Markdown document from a VMP project document.
@@ -124,6 +125,14 @@ export function emitMarkdown(project: Record<string, unknown>): string {
     }
     lines.push("");
   }
+
+  // Diagram section (ADR-011; Mermaid ABox diagram embedded with code fences)
+  lines.push("## Diagram");
+  lines.push("");
+  lines.push("```mermaid");
+  lines.push(emitMermaid(project).trimEnd());
+  lines.push("```");
+  lines.push("");
 
   // Relations section (FR-C008 narration)
   const narrations = narrateProject(project);

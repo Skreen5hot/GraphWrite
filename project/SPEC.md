@@ -1302,6 +1302,7 @@ Three severities: **error**, **warning**, **info**.
 | `DANGLING_LITERAL_SUBJECT_REF` | A literal assertion's subject references no known instance. |
 | `DANGLING_LITERAL_PREDICATE_REF` | A literal assertion's predicate references no known datatype property. |
 | `CANONICAL_RESERVED_NAME_COLLISION` | A project-created term has an IRI matching the canonical reserved-name list (see §5.7.1). Emitted when a term with `ecm:source: ecm:project-created` has `id` matching any IRI in the §5.7.1 list. |
+| `LABEL_CONTAINS_COLON` | An instance `rdfs:label` contains a literal colon `:`, which collides with the label:type separator reserved by the Mermaid emit format per ADR-011. Blocks export. |
 
 ### 17.3 Warnings
 

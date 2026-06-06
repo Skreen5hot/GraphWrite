@@ -16,6 +16,7 @@ import {
   NORMALIZED_ON_SAVE,
   CANONICAL_RESERVED_NAME_COLLISION,
   RANGE_CLASS_ON_DATATYPE_PROPERTY,
+  LABEL_CONTAINS_COLON,
 } from "./codes.js";
 import { RESERVED_CANONICAL_IRIS } from "./reserved-names.js";
 
@@ -255,6 +256,45 @@ export function validate(project: Record<string, unknown>): ValidationReport {
               " an XSD datatype IRI (http://www.w3.org/2001/XMLSchema#...) or" +
               " OWL DataRange (ADR-009, SPEC section 17.2).",
             dtId,
+          ),
+        );
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // LABEL_CONTAINS_COLON (ADR-011, section 17.2)
+  // Fires when any ecm:Instance rdfs:label contains a literal colon.
+  // Colons are reserved as the label:type separator in the Mermaid ABox
+  // emit format; an instance label with a colon blocks export.
+  // -------------------------------------------------------------------------
+  const rawInstances = project["ecm:instances"];
+  if (Array.isArray(rawInstances)) {
+    for (const inst of rawInstances as unknown[]) {
+      if (typeof inst !== "object" || inst === null) continue;
+      const instance = inst as Record<string, unknown>;
+      const rawLabel = instance["rdfs:label"];
+      const labelText =
+        typeof rawLabel === "string"
+          ? rawLabel
+          : typeof rawLabel === "object" &&
+            rawLabel !== null &&
+            typeof (rawLabel as Record<string, unknown>)["text"] === "string"
+          ? ((rawLabel as Record<string, unknown>)["text"] as string)
+          : null;
+      if (labelText !== null && labelText.includes(":")) {
+        const instId =
+          typeof instance["id"] === "string"
+            ? (instance["id"] as string)
+            : projectId;
+        findings.push(
+          makeError(
+            LABEL_CONTAINS_COLON,
+            `Instance "${instId}" has rdfs:label "${labelText}" containing a` +
+              " literal colon `:`.' Colons are reserved for the label:type" +
+              " separator in the Mermaid emit format (ADR-011, SPEC section 17.2)." +
+              " Rename the label to remove the colon before exporting.",
+            instId,
           ),
         );
       }

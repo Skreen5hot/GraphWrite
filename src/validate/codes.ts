@@ -7,7 +7,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// section 17.2 Hard Errors (17 codes)
+// section 17.2 Hard Errors (18 codes)
 // ---------------------------------------------------------------------------
 
 export const MISSING_PROJECT_ID              = "MISSING_PROJECT_ID";
@@ -28,6 +28,7 @@ export const DANGLING_LITERAL_SUBJECT_REF    = "DANGLING_LITERAL_SUBJECT_REF";
 export const DANGLING_LITERAL_PREDICATE_REF  = "DANGLING_LITERAL_PREDICATE_REF";
 export const CANONICAL_RESERVED_NAME_COLLISION = "CANONICAL_RESERVED_NAME_COLLISION";
 export const RANGE_CLASS_ON_DATATYPE_PROPERTY  = "RANGE_CLASS_ON_DATATYPE_PROPERTY";
+export const LABEL_CONTAINS_COLON              = "LABEL_CONTAINS_COLON";
 
 // ---------------------------------------------------------------------------
 // section 17.3 Warnings (7 codes)

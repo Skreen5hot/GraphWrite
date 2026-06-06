@@ -1,20 +1,20 @@
 ﻿/**
- * Mermaid Emitter (FR-C006)
+ * Mermaid Emitter (FR-C006, ADR-011)
  *
- * SPEC refs: section 6.3, FR-C006.
+ * SPEC refs: FR-C006, ADR-011.
  *
- * emitMermaid(project): renders the project graph as a Mermaid flowchart.
+ * emitMermaid(project): renders the project ABox as a Mermaid graph.
  *   Instances are nodes; object-property relations are directed edges.
  *   One node per instance IRI (plus any relation-referenced IRIs not in
  *   ecm:instances); predicate label on each edge.
  *
  * Operates on the raw VMP project document (not the semantic projection):
- * SPEC section 6.3 states Mermaid uses a simpler view of instances and
- * relations only; no TBox content is needed.
+ * ABox-only view -- instances and relations only; no TBox content.
  *
- * Node IDs: sequential (N0, N1, ...) in ecm:instances array order, then any
- * relation-referenced IRIs not already declared. Labels from rdfs:label
- * (string or {text,lang} object); fall back to the raw IRI string.
+ * Round-trip format (ADR-011):
+ *   Node IDs: sequential (N0, N1, ...) in lexicographic IRI order for
+ *   deterministic output. Node labels: "label:type-local<br>typeIRI..."
+ *   Edge labels: "predicate-label<br>predicateIRI"
  *
  * Pure function: no I/O, no Date.now(), no Math.random().
  * Layer boundary: MUST NOT import from src/adapters/ or src/composition/.
@@ -39,23 +39,43 @@ function escapeMermaidLabel(s: string): string {
   return s.replace(/"/g, "&quot;");
 }
 
+/**
+ * Extract the local name from an IRI (ADR-011 round-trip label format):
+ * - fragment after '#'  (e.g. http://www.w3.org/2002/07/owl#Class -> "Class")
+ * - last path segment   (e.g. https://example.org/Person -> "Person")
+ * - last colon segment  (e.g. urn:uuid:xxx-yyy -> "xxx-yyy")
+ */
+function localName(iri: string): string {
+  const hash = iri.lastIndexOf("#");
+  if (hash >= 0) return iri.slice(hash + 1);
+  const slash = iri.lastIndexOf("/");
+  if (slash >= 0) return iri.slice(slash + 1);
+  const colon = iri.lastIndexOf(":");
+  if (colon >= 0) return iri.slice(colon + 1);
+  return iri;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
- * Emits a Mermaid flowchart (FR-C006) from a VMP project document.
+ * Emits a Mermaid graph (FR-C006, ADR-011) from a VMP project document.
  *
  * Renders ecm:instances as labeled nodes and ecm:relations as directed edges.
- * Predicate labels are resolved from ecm:terms rdfs:label; fall back to the
- * relation rdfs:label, then to the raw predicate IRI string.
+ * Node format (ADR-011): N<i>["label:type-local<br>typeIRI1[<br>typeIRI2...]"]
+ * Edge format (ADR-011): N<i> -- "predicate-label<br>predicateIRI" --> N<j>
+ *
+ * Node ordering is lexicographic by IRI for deterministic output.
+ * Embedded quotes in labels are escaped as &quot;.
  *
  * @param project - Parsed VMP project document (canonical or raw form).
- * @returns Mermaid flowchart string terminated with a trailing newline.
+ * @returns Mermaid graph string terminated with a trailing newline.
  */
 export function emitMermaid(project: Record<string, unknown>): string {
-  // Build label maps from instances and terms
+  // Build label and classIris maps from instances
   const instanceLabel = new Map<string, string>();
+  const instanceClassIris = new Map<string, string[]>();
   const termLabel = new Map<string, string>();
 
   const instances = project["ecm:instances"];
@@ -67,6 +87,13 @@ export function emitMermaid(project: Record<string, unknown>): string {
       if (typeof id !== "string") continue;
       const label = resolveLabel(inst["rdfs:label"]) || id;
       instanceLabel.set(id, label);
+      const classIris: string[] = [];
+      if (Array.isArray(inst["ecm:classIris"])) {
+        for (const c of inst["ecm:classIris"] as unknown[]) {
+          if (typeof c === "string") classIris.push(c);
+        }
+      }
+      instanceClassIris.set(id, classIris);
     }
   }
 
@@ -82,15 +109,11 @@ export function emitMermaid(project: Record<string, unknown>): string {
     }
   }
 
-  // Assign sequential Mermaid-safe node IDs (N0, N1, ...) in instance-array order
-  const nodeId = new Map<string, string>();
-  let nodeIndex = 0;
-  for (const iri of instanceLabel.keys()) {
-    nodeId.set(iri, `N${nodeIndex++}`);
-  }
+  // Collect all known IRIs; start with declared instances
+  const allIris = new Set<string>(instanceLabel.keys());
 
-  // Collect edges; also register any relation-referenced IRIs not in instanceLabel
-  const edges: Array<{ from: string; to: string; label: string }> = [];
+  // Collect edges and register any relation-referenced IRIs not already declared
+  const edges: Array<{ from: string; to: string; label: string; predicateIri: string }> = [];
 
   const relations = project["ecm:relations"];
   if (Array.isArray(relations)) {
@@ -107,37 +130,58 @@ export function emitMermaid(project: Record<string, unknown>): string {
       ) continue;
 
       // Register subject/object nodes if not already declared from ecm:instances
-      if (!nodeId.has(sIri)) {
-        nodeId.set(sIri, `N${nodeIndex++}`);
+      if (!allIris.has(sIri)) {
+        allIris.add(sIri);
         instanceLabel.set(sIri, sIri);
+        instanceClassIris.set(sIri, []);
       }
-      if (!nodeId.has(oIri)) {
-        nodeId.set(oIri, `N${nodeIndex++}`);
+      if (!allIris.has(oIri)) {
+        allIris.add(oIri);
         instanceLabel.set(oIri, oIri);
+        instanceClassIris.set(oIri, []);
       }
 
       const predicateLabel =
         termLabel.get(pIri) ??
         (typeof rel["rdfs:label"] === "string" ? rel["rdfs:label"] : pIri);
 
-      edges.push({ from: sIri, to: oIri, label: predicateLabel });
+      edges.push({ from: sIri, to: oIri, label: predicateLabel, predicateIri: pIri });
     }
   }
 
-  const lines: string[] = [];
-  lines.push("flowchart LR");
-
-  // Emit node declarations
-  for (const [iri, nid] of nodeId.entries()) {
-    const label = instanceLabel.get(iri) ?? iri;
-    lines.push(`  ${nid}["${escapeMermaidLabel(label)}"]`);
+  // Assign sequential node IDs in lexicographic IRI order (deterministic, ADR-011)
+  const sortedIris = [...allIris].sort();
+  const nodeId = new Map<string, string>();
+  let nodeIndex = 0;
+  for (const iri of sortedIris) {
+    nodeId.set(iri, `N${nodeIndex++}`);
   }
 
-  // Emit edge declarations
+  const lines: string[] = [];
+  lines.push("graph TD");
+
+  // Emit node declarations with round-trip label format (ADR-011)
+  for (const iri of sortedIris) {
+    const nid = nodeId.get(iri)!;
+    const label = instanceLabel.get(iri) ?? iri;
+    const classIris = instanceClassIris.get(iri) ?? [];
+    let nodeLabel: string;
+    if (classIris.length === 0) {
+      nodeLabel = escapeMermaidLabel(label);
+    } else {
+      const typeLocal = localName(classIris[0]);
+      const typeLines = classIris.map((c) => `<br>${c}`).join("");
+      nodeLabel = `${escapeMermaidLabel(label)}:${typeLocal}${typeLines}`;
+    }
+    lines.push(`  ${nid}["${nodeLabel}"]`);
+  }
+
+  // Emit edge declarations with round-trip label format (ADR-011)
   for (const edge of edges) {
     const fromId = nodeId.get(edge.from)!;
     const toId = nodeId.get(edge.to)!;
-    lines.push(`  ${fromId} -->|"${escapeMermaidLabel(edge.label)}"| ${toId}`);
+    const edgeLabel = `${escapeMermaidLabel(edge.label)}<br>${edge.predicateIri}`;
+    lines.push(`  ${fromId} -- "${edgeLabel}" --> ${toId}`);
   }
 
   return lines.join("\n") + "\n";
