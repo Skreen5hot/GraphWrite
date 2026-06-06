@@ -1,0 +1,137 @@
+{
+  "@context": {
+    "cco": "https://www.commoncoreontologies.org/",
+    "ecm": "https://edgecanonical.org/ns/modeler#",
+    "ecm:classIris": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "ecm:instances": {
+      "@container": "@set"
+    },
+    "ecm:isSerializationOf": {
+      "@type": "@id"
+    },
+    "ecm:layouts": {
+      "@container": "@set"
+    },
+    "ecm:literalAssertions": {
+      "@container": "@set"
+    },
+    "ecm:objectIri": {
+      "@type": "@id"
+    },
+    "ecm:ontologies": {
+      "@container": "@set"
+    },
+    "ecm:predicateIri": {
+      "@type": "@id"
+    },
+    "ecm:relations": {
+      "@container": "@set"
+    },
+    "ecm:serializations": {
+      "@container": "@set"
+    },
+    "ecm:snapshots": {
+      "@container": "@set"
+    },
+    "ecm:subjectIri": {
+      "@type": "@id"
+    },
+    "ecm:terms": {
+      "@container": "@set"
+    },
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "iao:isAbout": {
+      "@container": "@set",
+      "@id": "obo:IAO_0000136",
+      "@type": "@id"
+    },
+    "id": "@id",
+    "lang": "@language",
+    "obo": "http://purl.obolibrary.org/obo/",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "rdfs:range": {
+      "@type": "@id"
+    },
+    "rdfs:subClassOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "rdfs:subPropertyOf": {
+      "@container": "@set",
+      "@type": "@id"
+    },
+    "schema": "https://schema.org/",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "text": "@value",
+    "type": "@type",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  },
+  "@graph": [
+    {
+      "id": "ecm:OntologyDesignPattern",
+      "rdfs:comment": "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology.",
+      "rdfs:label": "Ontology Design Pattern",
+      "rdfs:subClassOf": [
+        "cco:ont00000958"
+      ],
+      "type": [
+        "owl:Class"
+      ]
+    },
+    {
+      "id": "ecm:Project",
+      "rdfs:label": "Visual Modeler Project",
+      "rdfs:subClassOf": [
+        "ecm:OntologyDesignPattern"
+      ],
+      "type": [
+        "owl:Class"
+      ]
+    },
+    {
+      "id": "ecm:Serialization",
+      "rdfs:comment": "An Information Content Entity that represents a project according to the syntax of some serialization format.",
+      "rdfs:label": "Project Serialization",
+      "rdfs:subClassOf": [
+        "cco:ont00000958"
+      ],
+      "type": [
+        "owl:Class"
+      ]
+    },
+    {
+      "id": "ecm:UnspecifiedSubjectMatter",
+      "rdfs:comment": "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence as the object of obo:IAO_0000136 produces a MISSING_REALIST_ANCHOR validation finding.",
+      "rdfs:label": "Unspecified Subject Matter",
+      "type": [
+        "owl:Class"
+      ]
+    },
+    {
+      "id": "ecm:isSerializationOf",
+      "rdfs:domain": "ecm:Serialization",
+      "rdfs:label": "is serialization of",
+      "rdfs:range": "ecm:OntologyDesignPattern",
+      "skos:definition": "s is serialization of p iff s is an Information Content Entity that represents p according to the syntax of some serialization format.",
+      "type": [
+        "owl:ObjectProperty"
+      ]
+    },
+    {
+      "ecm:name": "Minimal v0.4 Project",
+      "iao:isAbout": [
+        "https://example.org/subjects/CustomerOrders"
+      ],
+      "id": "urn:uuid:00000000-0000-0000-0000-000000000010",
+      "type": [
+        "ecm:OntologyDesignPattern",
+        "ecm:Project"
+      ]
+    }
+  ]
+}

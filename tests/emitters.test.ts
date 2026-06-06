@@ -28,6 +28,9 @@ import { Parser } from "n3";
 import { emitTurtle }   from "../src/emit/turtle.js";
 import { emitNTriples } from "../src/emit/n-triples.js";
 import { narrateTriple, narrateProject } from "../src/emit/triple-narration.js";
+import { emitJsonLd }   from "../src/emit/json-ld.js";
+import { emitMermaid }  from "../src/emit/mermaid.js";
+import { emitMarkdown } from "../src/emit/markdown.js";
 
 let passed = 0;
 let failed = 0;
@@ -283,13 +286,121 @@ try {
 } catch (e) { fail("narrateProject idempotency (AC6)", e); }
 
 // ---------------------------------------------------------------------------
-// AC4 + AC5 stubs (Chain 3 adds emitMermaid and emitMarkdown)
+// FR-C005: Semantic JSON-LD emitter
 // ---------------------------------------------------------------------------
-console.log("\nAC4: Mermaid structural (STUB -- Chain 3)");
-pass("Mermaid structural check (AC4 stub; emitMermaid added in Chain 3, FR-C006)");
+console.log("\nFR-C005: Semantic JSON-LD emitter");
 
-console.log("\nAC5: Markdown substring (STUB -- Chain 3)");
-pass("Markdown substring checks (AC5 stub; emitMarkdown added in Chain 3, FR-C007)");
+let jsonLdOut = "";
+try {
+  jsonLdOut = emitJsonLd(MINIMAL_PROJECT);
+  ok(typeof jsonLdOut === "string" && jsonLdOut.length > 0,
+    "emitJsonLd must return a non-empty string");
+  pass("emitJsonLd returns non-empty string (FR-C005)");
+} catch (e) { fail("emitJsonLd basic call (FR-C005)", e); }
+
+try {
+  const parsed = JSON.parse(jsonLdOut) as Record<string, unknown>;
+  ok("@context" in parsed, "emitJsonLd output must have @context key");
+  ok("@graph" in parsed, "emitJsonLd output must have @graph key");
+  ok(Array.isArray(parsed["@graph"]), "emitJsonLd @graph must be an array");
+  pass("emitJsonLd output is valid JSON-LD with @context and @graph (FR-C005)");
+} catch (e) { fail("emitJsonLd JSON-LD structure check (FR-C005)", e); }
+
+try {
+  ok(
+    jsonLdOut.includes(PROJ_IRI),
+    "emitJsonLd output must contain the project IRI (round-trip check, FR-C005)",
+  );
+  pass("emitJsonLd round-trip: project IRI present in JSON-LD output (FR-C005)");
+} catch (e) { fail("emitJsonLd round-trip IRI check (FR-C005)", e); }
+
+try {
+  strictEqual(
+    emitJsonLd(MINIMAL_PROJECT), emitJsonLd(MINIMAL_PROJECT),
+    "emitJsonLd must return byte-identical output on two calls with identical input",
+  );
+  pass("emitJsonLd idempotent: two calls produce byte-identical JSON-LD (FR-C005)");
+} catch (e) { fail("emitJsonLd idempotency (FR-C005)", e); }
+
+// ---------------------------------------------------------------------------
+// AC4: Mermaid structural (FR-C006)
+// ---------------------------------------------------------------------------
+console.log("\nAC4: Mermaid structural (FR-C006)");
+
+let mermaidOut = "";
+try {
+  mermaidOut = emitMermaid(MINIMAL_PROJECT);
+  ok(typeof mermaidOut === "string" && mermaidOut.length > 0,
+    "emitMermaid must return a non-empty string");
+  ok(mermaidOut.startsWith("flowchart"),
+    "emitMermaid output must start with 'flowchart'");
+  pass("emitMermaid returns Mermaid flowchart string (AC4, FR-C006)");
+} catch (e) { fail("emitMermaid basic call (AC4, FR-C006)", e); }
+
+try {
+  ok(mermaidOut.includes("Alice"),
+    "emitMermaid output must contain instance label 'Alice'");
+  ok(mermaidOut.includes("Bob"),
+    "emitMermaid output must contain instance label 'Bob'");
+  pass("emitMermaid: instance labels Alice and Bob present as nodes (AC4, FR-C006)");
+} catch (e) { fail("emitMermaid instance nodes (AC4, FR-C006)", e); }
+
+try {
+  ok(
+    mermaidOut.includes("-->"),
+    "emitMermaid output must contain at least one directed edge ('-->')",
+  );
+  pass("emitMermaid: directed edge present for the fixture relation (AC4, FR-C006)");
+} catch (e) { fail("emitMermaid edge check (AC4, FR-C006)", e); }
+
+try {
+  strictEqual(
+    emitMermaid(MINIMAL_PROJECT), emitMermaid(MINIMAL_PROJECT),
+    "emitMermaid must return byte-identical output on two calls with identical input",
+  );
+  pass("emitMermaid idempotent: two calls produce byte-identical Mermaid (AC4, FR-C006)");
+} catch (e) { fail("emitMermaid idempotency (AC4, FR-C006)", e); }
+
+// ---------------------------------------------------------------------------
+// AC5: Markdown content assertions (FR-C007 / FR-E006)
+// ---------------------------------------------------------------------------
+console.log("\nAC5: Markdown content assertions (FR-C007 / FR-E006)");
+
+let markdownOut = "";
+try {
+  markdownOut = emitMarkdown(MINIMAL_PROJECT);
+  ok(typeof markdownOut === "string" && markdownOut.length > 0,
+    "emitMarkdown must return a non-empty string");
+  pass("emitMarkdown returns non-empty string (AC5, FR-C007)");
+} catch (e) { fail("emitMarkdown basic call (AC5, FR-C007)", e); }
+
+try {
+  ok(markdownOut.includes("Emitter Test Project"),
+    "emitMarkdown output must contain the project name as a heading (ecm:name)");
+  pass("emitMarkdown: project name 'Emitter Test Project' present in output (AC5)");
+} catch (e) { fail("emitMarkdown project name heading (AC5)", e); }
+
+try {
+  ok(markdownOut.includes("TestTerm"),
+    "emitMarkdown output must contain term label 'TestTerm'");
+  pass("emitMarkdown: term label 'TestTerm' present in output (AC5, FR-C007)");
+} catch (e) { fail("emitMarkdown term label (AC5, FR-C007)", e); }
+
+try {
+  ok(markdownOut.includes("Alice"),
+    "emitMarkdown output must contain instance label 'Alice'");
+  ok(markdownOut.includes("Bob"),
+    "emitMarkdown output must contain instance label 'Bob'");
+  pass("emitMarkdown: instance labels 'Alice' and 'Bob' present in output (AC5, FR-C007)");
+} catch (e) { fail("emitMarkdown instance labels (AC5, FR-C007)", e); }
+
+try {
+  strictEqual(
+    emitMarkdown(MINIMAL_PROJECT), emitMarkdown(MINIMAL_PROJECT),
+    "emitMarkdown must return byte-identical output on two calls with identical input",
+  );
+  pass("emitMarkdown idempotent: two calls produce byte-identical Markdown (AC5, FR-C007)");
+} catch (e) { fail("emitMarkdown idempotency (AC5, FR-C007)", e); }
 
 // ---------------------------------------------------------------------------
 // Summary

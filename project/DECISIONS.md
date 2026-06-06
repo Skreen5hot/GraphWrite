@@ -164,3 +164,37 @@
 - The Turtle emitter must emit `rdfs:range <xsd-IRI>` for `owl:DatatypeProperty` terms that carry a non-null `rdfs:range` field (Chain R4-4: `src/emit/turtle.ts`)
 - `src/projection/index.ts` must add `rdfs:range` to `SEMANTIC_PREDICATE_ALLOWLIST` (Chain R4-4)
 - `rdfs:domain` and `rdfs:range` on `owl:ObjectProperty` and `owl:AnnotationProperty` remain deferred to a future version
+
+---
+
+## ADR-010: Resolve OED-313 â€” Conformance Fixture Set Enumeration
+
+**Date:** 2026-06-06
+
+**Decision:** Close OED-313 by enumerating the agreed Phase 1 and Phase 4 conformance fixture sets, correcting the SPEC Â§21.3 canonical subdirectory name from `canonical-v0.3/` to `canonical-v0.4/`, and releasing the joint Phase 1 and Phase 4 exit gate dependency.
+
+**Context:** ADR-005 created OED-313 as a joint Phase 1 and Phase 4 exit gate, with the agreed fixture list deferred pending explicit enumeration. Reconnaissance (2026-06-06) confirmed that `test/fixtures/` contains exactly three on-disk fixture files: `canonical-v0.4/minimal.jsonld`, `malformed/missing-realist-anchor.jsonld`, and `malformed/invalid-spec-version.jsonld`. The subdirectories `legacy-v0.2/` and `ontologies/` are absent; `test/golden/` does not exist. SPEC Â§21.3 names the canonical subdirectory `canonical-v0.3/`, but the codebase targets v0.4 and the on-disk directory is `canonical-v0.4/` â€” this ADR corrects that mismatch. The Phase 1 and Phase 4 fixture partitioning derives directly from ROADMAP.md scope commitments: Phase 1 owns canonical JSON-LD, validation-report, and all emitter format goldens; Phase 4 exclusively owns `manifest.jsonld` and ZIP layout goldens. Per-code malformed fixture completion for all Â§17.2 codes is tracked separately via ft-097-test-validator-2 and is not a prerequisite for OED-313 close.
+
+**Phase 1 conformance fixture set (`test/fixtures/`):**
+
+- `canonical-v0.4/minimal.jsonld` â€” minimal canonical v0.4 project (exists); golden set: `project.jsonld`, `graph.ttl`, `graph.nt`, `graph.jsonld`, `default.mmd`, `model-summary.md`
+- `test/golden/project-tbox.ttl` â€” TBox Turtle golden derived from `src/tbox/project-tbox.ttl`
+- `legacy-v0.2/<fixture>.jsonld` â€” one v0.2 project file for migration testing, plus a committed `expected-v0.4.jsonld` migration output alongside it
+- `malformed/missing-realist-anchor.jsonld` â€” exists; triggers `MISSING_REALIST_ANCHOR`
+- `malformed/invalid-spec-version.jsonld` â€” exists; triggers `INVALID_SPEC_VERSION`
+
+`ontologies/` fixtures are deferred to Phase 3; ontology-import testing is not Phase 1 scope. UUID convention for all committed fixtures: all-zeros URN with sequential ten-digit suffix (e.g., `urn:uuid:00000000-0000-0000-0000-000000000010`).
+
+**Phase 4 fixture additions:**
+
+- `manifest.jsonld` golden for the `canonical-v0.4/minimal.jsonld` project package (new in Phase 4)
+- ZIP package layout verification fixture (new in Phase 4)
+- Any Phase 1 emitter goldens whose canonical shape changes due to Phase 4 TBox-in-packaging requirements MUST be updated in the same PR per Â§21.1
+
+**Consequences:**
+- OED-313 is closed; Phase 1 and Phase 4 may proceed to exit-gate close once their respective fixture golden files are committed and CI byte-comparison checks pass
+- SPEC Â§21.3 is amended: `canonical-v0.3/` corrected to `canonical-v0.4/`; `ontologies/` subdirectory requirement noted as deferred to Phase 3
+- The two existing malformed fixtures retain the pre-ADR-007 type array form `["ecm:Project", "iao:OntologyDesignPattern"]`; neither fixture's validation error depends on type-array ordering, so updating to the ADR-007 canonical form is deferred as a follow-up cleanup task
+- Per-code malformed fixture completion for the remaining Â§17.2 codes beyond the two existing fixtures is not gated on OED-313; delivery tracked via ft-097-test-validator-2
+- Phase 1 exit gate (OED-313 component): complete when the five fixture items above exist with passing CI byte-comparison checks
+- Phase 4 exit gate (OED-313 component): complete when the two Phase 4 addition items above exist with passing CI checks

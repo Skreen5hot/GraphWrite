@@ -1514,12 +1514,13 @@ This section is normative for v0.3 "engineering-ready" status.
 
 ### 21.3 Test Fixtures
 
-Committed under `test/fixtures/`:
+Committed under `test/fixtures/` (Phase 1 fixture set per ADR-010):
 
 - `legacy-v0.2/` — v0.2 project files for migration testing.
-- `canonical-v0.3/` — minimal, small, and medium v0.3 project files.
-- `ontologies/` — small Turtle fixtures, including one with subclass hierarchy, one with datatype properties, one with blank nodes, one over the warning threshold.
+- `canonical-v0.4/` — minimal, small, and medium v0.4 project files.
 - `malformed/` — fixtures that must produce specific validation errors.
+
+`ontologies/` fixtures are deferred to Phase 3; ontology-import testing is not Phase 1 scope.
 
 ### 21.4 Determinism Verification
 

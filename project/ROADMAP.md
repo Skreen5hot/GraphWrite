@@ -63,7 +63,7 @@ These bind every phase. A phase that drops one of these is not done.
 - **OED-303 (Validation report retention) — Phase 1 exit gate.** OED-303 MUST be resolved before Phase 1 closes; it is a Phase 1 exit gate (not Phase 3-only). Phase 1 golden files MUST capture an empty `ecm:validationReports` array as a documented temporary assumption until OED-303 resolves. If OED-303 resolves to latest-only, Phase 1 goldens remain valid. If it resolves to one-per-save, the empty-array assumption must be revisited and Phase 1 goldens updated per the golden-file governance cross-cutting commitment. See Phase 3 for the full OED-303 entry.
 - **OED-306 (Conformance fixture set).** The exact set of canonical-v0.4 fixtures (§21.3) must be agreed and this decision closed — tracked in the Barcode audit trail by this identifier — before Phase 1 golden files are committed. See OED-313, which elevates the fixture-set requirement to a joint Phase 1 and Phase 4 exit gate.
 - **OED-307 (CLI stub strategy for Phase 3/4 commands) — Resolved.** `import-ontology` (Phase 3) and `export --format zip` (Phase 4) are registered as stubs in Phase 1, returning exit code 2 with an explicit "not yet implemented" message; full implementations are Phase 3 and Phase 4 deliverables respectively.
-- **OED-313 (Conformance fixture set) — Phase 1 and Phase 4 joint exit gate.** The agreed conformance fixture set (§21.3) governs Phase 1 golden files and Phase 4 conformance goldens for packaging and manifest artifacts. Neither Phase 1 nor Phase 4 may declare done while OED-313 is open. Opened at kickoff; extends OED-306 with explicit Phase 4 co-ownership.
+- **OED-313 (Conformance fixture set) — Resolved (ADR-010).** The agreed conformance fixture set (§21.3) is enumerated in ADR-010: Phase 1 covers `canonical-v0.4/`, `legacy-v0.2/`, `malformed/`, and TBox golden; Phase 4 adds `manifest.jsonld` golden and ZIP layout verification. Phase 1 and Phase 4 may proceed to exit-gate close once their respective fixture golden files are committed and CI byte-comparison checks pass.
 
 ---
 
@@ -152,7 +152,7 @@ These bind every phase. A phase that drops one of these is not done.
 
 **Decisions Deferred:**
 - **OED-304 (ZIP manifest signing).** Is the SHA-256 manifest hash sufficient for v0.4, or are detached signatures required? Resolve before public release; spec defers to a later version.
-- **OED-313 (Conformance fixture set) — Phase 1 and Phase 4 joint exit gate.** The agreed conformance fixture set governs which artifacts Phase 4 conformance goldens must cover (packaging layout, `manifest.jsonld`). Phase 4 MUST NOT declare done while OED-313 is open. See Phase 1 Decisions Deferred for the full OED-313 entry.
+- **OED-313 (Conformance fixture set) — Resolved (ADR-010).** Phase 4 conformance goldens cover `manifest.jsonld` golden and ZIP package layout verification fixture. See Phase 1 Decisions Deferred (now resolved) for the full OED-313 entry and Phase 1 fixture enumeration.
 
 ---
 
@@ -225,10 +225,10 @@ The six phases are presented in logical execution order. Not all phase transitio
 
 | Phase | Depends On | Parallelism Note |
 |---|---|---|
-| Phase 1: Core JSON-LD Engine | — | No phase predecessors. Exit gates: OED-303 and OED-313 MUST close before Phase 1 declares done. |
+| Phase 1: Core JSON-LD Engine | — | No phase predecessors. Exit gates: OED-303 MUST close before Phase 1 declares done; OED-313 closed (ADR-010). |
 | Phase 2: Browser UI Foundation | Phase 1 complete | — |
 | Phase 3: Ontology Import and Term Management | Phase 2 complete; OED-303 closed | — |
-| Phase 4: Export and Packaging | Phase 1 complete, Phase 2 complete; OED-313 closed | **Independent of Phase 3.** Phase 4 contains no import-dependent features and may begin as soon as Phase 2 is complete. OED-313 is a joint exit gate with Phase 1. |
+| Phase 4: Export and Packaging | Phase 1 complete, Phase 2 complete; OED-313 closed (ADR-010) | **Independent of Phase 3.** Phase 4 contains no import-dependent features and may begin as soon as Phase 2 is complete. OED-313 joint exit gate with Phase 1 is closed (ADR-010). |
 | Phase 5: Local Persistence Adapters | Phase 2 complete; OED-302, OED-308, OED-309, OED-310, OED-311 closed | **Independent of Phase 3 and Phase 4** for core adapter scope. Persistence adapters wrap the canonical document and do not require export-format flows or ontology import. |
 | Phase 6: Onboarding Content, Semantic Linting, and v0.4 DoD Verification | All prior phases complete; OED-312 closed; second-implementation decision made | — |
 

@@ -10,6 +10,10 @@ import { validate, type ValidationReport } from "../validate/index.js";
 import { STARTER_TERMS, injectStarterTerms } from "../validate/starter-terms.js";
 import { serializeVmp } from "../kernel/canonicalize.js";
 import { emitTurtle } from "../emit/turtle.js";
+import { emitNTriples } from "../emit/n-triples.js";
+import { emitJsonLd } from "../emit/json-ld.js";
+import { emitMarkdown } from "../emit/markdown.js";
+import { emitMermaid } from "../emit/mermaid.js";
 import { ImportOntologyDialog } from "./ImportOntologyDialog.js";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog.js";
 import { NewProjectDialog } from "./NewProjectDialog.js";
@@ -233,6 +237,65 @@ export function App() {
     URL.revokeObjectURL(url);
   }
 
+  // FR-U024: Save as N-Triples -- semantic projection -> Blob -> browser download
+  function handleSaveNTriples() {
+    if (project === null) return;
+    const text = emitNTriples(project);
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "graph.nt";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // FR-U024: Save as Semantic JSON-LD -- semantic projection -> Blob -> browser download
+  function handleSaveSemanticJsonLd() {
+    if (project === null) return;
+    const text = emitJsonLd(project);
+    const blob = new Blob([text], { type: "application/ld+json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "graph.jsonld";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // FR-E006: Save as Markdown summary -- readable projection -> Blob -> browser download
+  function handleSaveMarkdown() {
+    if (project === null) return;
+    const text = emitMarkdown(project);
+    const blob = new Blob([text], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "model-summary.md";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // FR-U021/FR-U022: Copy Mermaid diagram to clipboard
+  async function handleCopyMermaid(): Promise<void> {
+    if (project === null) return;
+    const text = emitMermaid(project);
+    await navigator.clipboard.writeText(text);
+  }
+
+  // FR-U021/FR-U022: Save as Mermaid -- flowchart -> Blob -> browser download
+  function handleSaveMermaid() {
+    if (project === null) return;
+    const text = emitMermaid(project);
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "default.mmd";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   // FR-U028: Acknowledge a warning or info finding per SPEC section 17.5.
   // OED-303 interaction: ecm:acknowledged state is written to ecm:validationReports
   // on the project document per IMPLEMENTATION_PLAN.md section 2.10.
@@ -300,6 +363,56 @@ export function App() {
             title="Download project as Turtle (RDF)"
           >
             Download Turtle
+          </button>
+          <button
+            className="gw-btn"
+            data-testid="gw-btn-save-ntriples"
+            onClick={handleSaveNTriples}
+            disabled={project === null}
+            title="Download project as N-Triples (RDF)"
+            aria-label="Download project as N-Triples"
+          >
+            Download N-Triples
+          </button>
+          <button
+            className="gw-btn"
+            data-testid="gw-btn-save-semantic-jsonld"
+            onClick={handleSaveSemanticJsonLd}
+            disabled={project === null}
+            title="Download project as Semantic JSON-LD"
+            aria-label="Download project as Semantic JSON-LD"
+          >
+            Download Semantic JSON-LD
+          </button>
+          <button
+            className="gw-btn"
+            data-testid="gw-btn-save-markdown"
+            onClick={handleSaveMarkdown}
+            disabled={project === null}
+            title="Download project as Markdown summary"
+            aria-label="Download project as Markdown summary"
+          >
+            Download Markdown
+          </button>
+          <button
+            className="gw-btn"
+            data-testid="gw-btn-copy-mermaid"
+            onClick={() => { void handleCopyMermaid(); }}
+            disabled={project === null}
+            title="Copy Mermaid diagram to clipboard"
+            aria-label="Copy Mermaid diagram to clipboard"
+          >
+            Copy Mermaid
+          </button>
+          <button
+            className="gw-btn"
+            data-testid="gw-btn-save-mermaid"
+            onClick={handleSaveMermaid}
+            disabled={project === null}
+            title="Download project as Mermaid diagram (.mmd)"
+            aria-label="Download project as Mermaid diagram"
+          >
+            Download Mermaid
           </button>
           <button
             className="gw-btn"

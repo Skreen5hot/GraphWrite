@@ -26,12 +26,17 @@ import { resolve, relative, isAbsolute, basename } from "node:path";
 import { stableStringify } from "../kernel/canonicalize.js";
 import { validate } from "../validate/index.js";
 import { INVALID_SPEC_VERSION } from "../validate/codes.js";
+import { checkExportGate } from "../validate/export-gate.js";
 import { migrate } from "../migrate/index.js";
 import { refactorIri } from "../refactor/index.js";
 import { emitTurtle } from "../emit/turtle.js";
 import { emitNTriples } from "../emit/n-triples.js";
 import { emitMarkdown } from "../emit/markdown.js";
+import { emitJsonLd } from "../emit/json-ld.js";
+import { emitMermaid } from "../emit/mermaid.js";
 import { importOntology } from "../import/index.js";
+import { packageZip } from "../adapters/zip.js";
+import type { ArtifactInput } from "../manifest/index.js";
 
 // ---------------------------------------------------------------------------
 // Path containment (SPEC section 12.2)
@@ -120,6 +125,31 @@ async function writeOutput(
 }
 
 // ---------------------------------------------------------------------------
+// Binary output helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Write binary content to a file path or stdout. Exits 2 on write error.
+ * Used for ZIP export (SPEC section 19; FR-E007).
+ * Unlike writeOutput, does NOT append a trailing newline (binary-safe).
+ */
+async function writeBinaryOutput(
+  data: Buffer,
+  outPath: string | undefined,
+): Promise<void> {
+  if (outPath !== undefined) {
+    try {
+      await writeFile(outPath, data);
+    } catch {
+      process.stderr.write(`File I/O error: cannot write to "${outPath}"\n`);
+      process.exit(2);
+    }
+  } else {
+    process.stdout.write(data);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Command: validate
 // ---------------------------------------------------------------------------
 
@@ -157,11 +187,35 @@ async function cmdExport(
   format: string | undefined,
   outPath: string | undefined,
   allowOutside: boolean,
+  clock?: string,
 ): Promise<void> {
-  // Phase 1 stub: zip packaging implemented in Phase 4 (IMPLEMENTATION_PLAN section 4.4).
+  // ZIP export: package all serializations per SPEC section 19
+  // (FR-E007; IMPLEMENTATION_PLAN section 4.4; Phase 4).
   if (format === "zip") {
-    process.stderr.write("not yet implemented; available in Phase 4\n");
-    process.exit(2);
+    const resolved = safeResolve(filePath, allowOutside);
+    const doc = await readJsonFile(resolved);
+    const gateResult = checkExportGate(doc);
+    if (!gateResult.ok) {
+      const codes = gateResult.blockingFindings.join(", ");
+      process.stderr.write(
+        `export: blocked by ${codes}. Declare a real iao:isAbout IRI` +
+          " to enable export (SPEC section 17.2 / 17.4).\n",
+      );
+      process.exit(1);
+    }
+    const generatedAt = clock ?? new Date().toISOString();
+    const zipArtifacts: ArtifactInput[] = [
+      { filename: "graph.ttl",        contentBytes: emitTurtle(doc),   format: "text/turtle",           generatedAt },
+      { filename: "graph.nt",         contentBytes: emitNTriples(doc), format: "application/n-triples", generatedAt },
+      { filename: "graph.jsonld",     contentBytes: emitJsonLd(doc),   format: "application/ld+json",   generatedAt },
+      { filename: "default.mmd",      contentBytes: emitMermaid(doc),  format: "text/x-mermaid",        generatedAt },
+      { filename: "model-summary.md", contentBytes: emitMarkdown(doc), format: "text/markdown",         generatedAt },
+    ];
+    const zipBuffer = packageZip(doc, zipArtifacts, { generatedAt });
+    const resolvedOut =
+      outPath !== undefined ? safeResolve(outPath, allowOutside) : undefined;
+    await writeBinaryOutput(zipBuffer, resolvedOut);
+    process.exit(0);
   }
 
   if (format === undefined || format === "") {
@@ -171,6 +225,15 @@ async function cmdExport(
 
   const resolved = safeResolve(filePath, allowOutside);
   const doc = await readJsonFile(resolved);
+  const gateResult = checkExportGate(doc);
+  if (!gateResult.ok) {
+    const codes = gateResult.blockingFindings.join(", ");
+    process.stderr.write(
+      `export: blocked by ${codes}. Declare a real iao:isAbout IRI` +
+        " to enable export (SPEC section 17.2 / 17.4).\n",
+    );
+    process.exit(1);
+  }
 
   let content: string;
   switch (format) {
@@ -184,21 +247,15 @@ async function cmdExport(
       content = emitMarkdown(doc);
       break;
     case "json-ld":
-      // Deferred to Chain 2 (IMPLEMENTATION_PLAN section 1.11 scope split).
-      process.stderr.write("not yet implemented; available in Phase 2\n");
-      process.exit(2);
+      content = emitJsonLd(doc);
       break;
     case "mermaid":
-      // Deferred to Chain 2 (IMPLEMENTATION_PLAN section 1.11 scope split).
-      process.stderr.write(
-        "not yet implemented; available in a follow-up chain\n",
-      );
-      process.exit(2);
+      content = emitMermaid(doc);
       break;
     default:
       process.stderr.write(
         `export: unknown format "${format}".` +
-          " Supported in Phase 1: turtle, n-triples, markdown\n",
+          " Supported: turtle, n-triples, markdown, json-ld, mermaid\n",
       );
       process.exit(2);
   }
@@ -386,7 +443,7 @@ async function main(): Promise<void> {
         process.stderr.write("export: <file> argument required\n");
         process.exit(3);
       }
-      await cmdExport(filePath, values.format, values.out, allowOutside);
+      await cmdExport(filePath, values.format, values.out, allowOutside, values.clock);
       break;
     }
 

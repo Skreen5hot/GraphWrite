@@ -1,0 +1,14 @@
+{
+  "description": "Phase 4 ADR-010 ZIP layout golden. File-list equality check (AC1). Non-manifest entry content verified via runtime-pinned byte equality in the test (AC2). manifest.jsonld excluded from AC2 due to UUID non-determinism (SPEC §9.2).",
+  "fixture": "test/fixtures/canonical-v0.4/minimal.jsonld",
+  "files": [
+    "contexts/project-context.jsonld",
+    "manifest.jsonld",
+    "serializations/default.mmd",
+    "serializations/graph.jsonld",
+    "serializations/graph.nt",
+    "serializations/graph.ttl",
+    "serializations/model-summary.md",
+    "tbox/project-tbox.ttl"
+  ]
+}

@@ -10,9 +10,11 @@
  *   AC3: validate v0.5 file exits 4.
  *   AC4: export --format turtle exits 0; stdout contains Turtle @prefix declarations.
  *   AC5: path traversal (../../etc/passwd) exits 2 without file access.
- *   AC6: export --format zip exits 2; stderr contains "not yet implemented; available in Phase 4".
+ *   AC6: export --format zip --out exits 0; output file is a valid ZIP with manifest.jsonld and serializations.
  *   AC7: import-ontology exits 2; stderr contains "not yet implemented; available in Phase 3".
  *   AC8: migrate v0.2 document exits 0; stdout contains "ecm:specVersion".
+ *   AC9: export --format json-ld exits 0; stdout is valid JSON-LD with @context.
+ *   AC10: export --format mermaid exits 0; stdout starts with "flowchart".
  *
  * Deferred (pending OED-306 + OED-313):
  *   - Golden-file byte-identical turtle/n-triples export.
@@ -23,7 +25,7 @@
 
 import { strictEqual, ok } from "node:assert";
 import { spawn } from "node:child_process";
-import { writeFile, rm, mkdir } from "node:fs/promises";
+import { readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -79,6 +81,13 @@ const MISSING_ANCHOR: Record<string, unknown> = {
   ...VALID_V04,
   id: "urn:uuid:00000000-0000-0000-0000-000000000002",
   "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
+};
+
+const LEGACY_PLACEHOLDER: Record<string, unknown> = {
+  ...VALID_V04,
+  id: "urn:uuid:00000000-0000-0000-0000-000000000004",
+  "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
+  "ecm:_legacyAnchorPlaceholder": true,
 };
 
 const V05_DOC: Record<string, unknown> = {
@@ -143,6 +152,11 @@ async function setup(): Promise<void> {
   await writeFile(
     join(FIXTURE_DIR, "missing-anchor.jsonld"),
     JSON.stringify(MISSING_ANCHOR, null, 2),
+    "utf-8",
+  );
+  await writeFile(
+    join(FIXTURE_DIR, "legacy-placeholder.jsonld"),
+    JSON.stringify(LEGACY_PLACEHOLDER, null, 2),
     "utf-8",
   );
   await writeFile(
@@ -218,6 +232,44 @@ async function testExportTurtle(): Promise<void> {
   }
 }
 
+async function testExportMissingAnchorBlocked(): Promise<void> {
+  const r = await runCli([
+    "export",
+    join(FIXTURE_DIR, "missing-anchor.jsonld"),
+    "--format",
+    "turtle",
+  ]);
+  try {
+    strictEqual(r.exitCode, 1, `expected exit 1, got ${r.exitCode}`);
+    ok(
+      r.stderr.includes("MISSING_REALIST_ANCHOR"),
+      "expected MISSING_REALIST_ANCHOR in stderr",
+    );
+    pass("AC11: export blocked by MISSING_REALIST_ANCHOR exits 1 with code in stderr");
+  } catch (e) {
+    fail("AC11: export blocked by MISSING_REALIST_ANCHOR must exit 1 with code in stderr", e);
+  }
+}
+
+async function testExportLegacyPlaceholderBlocked(): Promise<void> {
+  const r = await runCli([
+    "export",
+    join(FIXTURE_DIR, "legacy-placeholder.jsonld"),
+    "--format",
+    "turtle",
+  ]);
+  try {
+    strictEqual(r.exitCode, 1, `expected exit 1, got ${r.exitCode}`);
+    ok(
+      r.stderr.includes("LEGACY_REALIST_ANCHOR_PLACEHOLDER"),
+      "expected LEGACY_REALIST_ANCHOR_PLACEHOLDER in stderr",
+    );
+    pass("AC12: export blocked by LEGACY_REALIST_ANCHOR_PLACEHOLDER exits 1 with code in stderr");
+  } catch (e) {
+    fail("AC12: export blocked by LEGACY_REALIST_ANCHOR_PLACEHOLDER must exit 1 with code in stderr", e);
+  }
+}
+
 async function testPathContainment(): Promise<void> {
   // "../../etc/passwd" resolves 2 levels above project root -> outside CWD.
   const r = await runCli(["validate", "../../etc/passwd"]);
@@ -229,22 +281,33 @@ async function testPathContainment(): Promise<void> {
   }
 }
 
-async function testExportZipStub(): Promise<void> {
+async function testExportZip(): Promise<void> {
+  const zipOut = join(FIXTURE_DIR, "test-output.zip");
   const r = await runCli([
     "export",
     join(FIXTURE_DIR, "valid-v0.4.jsonld"),
     "--format",
     "zip",
+    "--out",
+    zipOut,
   ]);
   try {
-    strictEqual(r.exitCode, 2, `expected exit 2, got ${r.exitCode}`);
-    ok(
-      r.stderr.includes("not yet implemented; available in Phase 4"),
-      "expected Phase 4 stub message in stderr",
-    );
-    pass("AC6: export --format zip exits 2 with Phase 4 stub message");
+    strictEqual(r.exitCode, 0, `expected exit 0, got ${r.exitCode}; stderr: ${r.stderr}`);
+    pass("AC6a: export --format zip exits 0");
   } catch (e) {
-    fail("AC6: export --format zip exits 2 with Phase 4 stub message", e);
+    fail("AC6a: export --format zip must exit 0", e);
+    return;
+  }
+  try {
+    const zipBuf = await readFile(zipOut);
+    // ZIP local file header magic: PK\x03\x04
+    strictEqual(zipBuf[0], 0x50, "ZIP byte 0 must be 0x50");
+    strictEqual(zipBuf[1], 0x4b, "ZIP byte 1 must be 0x4b");
+    strictEqual(zipBuf[2], 0x03, "ZIP byte 2 must be 0x03");
+    strictEqual(zipBuf[3], 0x04, "ZIP byte 3 must be 0x04");
+    pass("AC6b: output file starts with ZIP magic PK\\x03\\x04");
+  } catch (e) {
+    fail("AC6b: output file must start with ZIP magic", e);
   }
 }
 
@@ -277,6 +340,42 @@ async function testMigrate(): Promise<void> {
   }
 }
 
+async function testExportJsonLd(): Promise<void> {
+  const r = await runCli([
+    "export",
+    join(FIXTURE_DIR, "valid-v0.4.jsonld"),
+    "--format",
+    "json-ld",
+  ]);
+  try {
+    strictEqual(r.exitCode, 0, `expected exit 0, got ${r.exitCode}`);
+    const parsed = JSON.parse(r.stdout) as Record<string, unknown>;
+    ok("@context" in parsed, "expected @context in JSON-LD output");
+    pass("AC9: export --format json-ld exits 0 with JSON-LD output");
+  } catch (e) {
+    fail("AC9: export --format json-ld exits 0 with JSON-LD output", e);
+  }
+}
+
+async function testExportMermaid(): Promise<void> {
+  const r = await runCli([
+    "export",
+    join(FIXTURE_DIR, "valid-v0.4.jsonld"),
+    "--format",
+    "mermaid",
+  ]);
+  try {
+    strictEqual(r.exitCode, 0, `expected exit 0, got ${r.exitCode}`);
+    ok(
+      r.stdout.startsWith("flowchart"),
+      "expected Mermaid flowchart output starting with 'flowchart'",
+    );
+    pass("AC10: export --format mermaid exits 0 with Mermaid flowchart output");
+  } catch (e) {
+    fail("AC10: export --format mermaid exits 0 with Mermaid flowchart output", e);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -288,10 +387,14 @@ async function main(): Promise<void> {
     await testValidateMissingAnchor();
     await testValidateUnsupportedVersion();
     await testExportTurtle();
+    await testExportMissingAnchorBlocked();
+    await testExportLegacyPlaceholderBlocked();
     await testPathContainment();
-    await testExportZipStub();
+    await testExportZip();
     await testImportOntologyNoArgs();
     await testMigrate();
+    await testExportJsonLd();
+    await testExportMermaid();
   } finally {
     await teardown();
   }
