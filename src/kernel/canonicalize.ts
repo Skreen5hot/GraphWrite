@@ -92,6 +92,7 @@ export const VMP_CONTEXT: Record<string, unknown> = {
   "ecm:objectIri":         { "@type": "@id" },
   "ecm:isSerializationOf": { "@type": "@id" },
   "iao:isAbout":           { "@id": "obo:IAO_0000136", "@type": "@id", "@container": "@set" },
+  "rdfs:domain":           { "@type": "@id" },
   "rdfs:range":            { "@type": "@id" },
   "rdfs:subClassOf":       { "@type": "@id", "@container": "@set" },
   "rdfs:subPropertyOf":    { "@type": "@id", "@container": "@set" },
