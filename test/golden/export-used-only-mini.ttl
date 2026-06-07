@@ -1,18 +1,62 @@
-<https://www.commoncoreontologies.org/ont00001262> a owl:Class ;
-    rdfs:label "Person"@en ;
-    skos:definition "A human being."@en ;
-    rdfs:comment "Generic human individual."@en .
+@prefix ecm:  <https://edgecanonical.org/ns/modeler#> .
+@prefix cco:  <https://www.commoncoreontologies.org/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
-<https://www.commoncoreontologies.org/ont00001984> a owl:ObjectProperty ;
-    rdfs:label "has interest in"@en ;
-    skos:definition "A relation expressing one party's interest in another."@en ;
-    rdfs:domain <https://www.commoncoreontologies.org/ont00001262> ;
-    rdfs:range <https://www.commoncoreontologies.org/ont00001262> .
+# Realist anchoring of the Ontology Design Pattern concept
+ecm:OntologyDesignPattern  a            owl:Class ;
+                           rdfs:label   "Ontology Design Pattern" ;
+                           rdfs:comment "An Information Content Entity that represents a portion of reality that is the subject of one or more data points and is encoded in a repeatable machine-interpretable format using elements from an ontology." ;
+                           rdfs:subClassOf cco:ont00000958 .
 
-<https://example.com/project/0-mama> a <https://www.commoncoreontologies.org/ont00001262> ;
-    rdfs:label "mama"@en .
+# Every project is an Ontology Design Pattern
+ecm:Project                a            owl:Class ;
+                           rdfs:label   "Visual Modeler Project" ;
+                           rdfs:subClassOf ecm:OntologyDesignPattern .
 
-<https://example.com/project/1-baby> a <https://www.commoncoreontologies.org/ont00001262> ;
-    rdfs:label "baby"@en .
+# Serializations are concrete ICEs of a project
+ecm:Serialization          a            owl:Class ;
+                           rdfs:label   "Project Serialization" ;
+                           rdfs:comment "An Information Content Entity that represents a project according to the syntax of some serialization format." ;
+                           rdfs:subClassOf cco:ont00000958 .
 
-<https://example.com/project/0-mama> <https://www.commoncoreontologies.org/ont00001984> <https://example.com/project/1-baby> .
+# Object property linking serializations to their source project
+ecm:isSerializationOf      a            owl:ObjectProperty ;
+                           rdfs:label   "is serialization of" ;
+                           rdfs:domain  ecm:Serialization ;
+                           rdfs:range   ecm:OntologyDesignPattern ;
+                           skos:definition "s is serialization of p iff s is an Information Content Entity that represents p according to the syntax of some serialization format." .
+
+# Placeholder subject class used during onboarding
+ecm:UnspecifiedSubjectMatter a          owl:Class ;
+                             rdfs:label "Unspecified Subject Matter" ;
+                             rdfs:comment "A placeholder subject used when a project has not yet declared what portion of reality it models. Its presence as the object of obo:IAO_0000136 produces a MISSING_REALIST_ANCHOR validation finding." .
+
+@prefix ecm: <https://edgecanonical.org/ns/modeler#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix obo: <http://purl.obolibrary.org/obo/>.
+@prefix cco: <https://www.commoncoreontologies.org/>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix schema: <https://schema.org/>.
+
+<https://example.com/project/0> a ecm:OntologyDesignPattern, ecm:Project;
+    obo:IAO_0000136 ecm:UnspecifiedSubjectMatter.
+<https://example.com/project/0-mama> a cco:ont00001262;
+    rdfs:label "mama".
+<https://example.com/project/1-baby> a cco:ont00001262;
+    rdfs:label "baby".
+cco:ont00001262 a owl:Class;
+    rdfs:label "Person";
+    rdfs:comment "Generic human individual.";
+    skos:definition "A human being.".
+cco:ont00001984 a owl:ObjectProperty;
+    rdfs:label "has interest in";
+    rdfs:domain cco:ont00001262;
+    rdfs:range cco:ont00001262;
+    skos:definition "A relation expressing one party's interest in another.".
+<https://example.com/project/0-mama> cco:ont00001984 <https://example.com/project/1-baby>.
