@@ -1,0 +1,18 @@
+<https://www.commoncoreontologies.org/ont00001262> a owl:Class ;
+    rdfs:label "Person"@en ;
+    skos:definition "A human being."@en ;
+    rdfs:comment "Generic human individual."@en .
+
+<https://www.commoncoreontologies.org/ont00001984> a owl:ObjectProperty ;
+    rdfs:label "has interest in"@en ;
+    skos:definition "A relation expressing one party's interest in another."@en ;
+    rdfs:domain <https://www.commoncoreontologies.org/ont00001262> ;
+    rdfs:range <https://www.commoncoreontologies.org/ont00001262> .
+
+<https://example.com/project/0-mama> a <https://www.commoncoreontologies.org/ont00001262> ;
+    rdfs:label "mama"@en .
+
+<https://example.com/project/1-baby> a <https://www.commoncoreontologies.org/ont00001262> ;
+    rdfs:label "baby"@en .
+
+<https://example.com/project/0-mama> <https://www.commoncoreontologies.org/ont00001984> <https://example.com/project/1-baby> .
