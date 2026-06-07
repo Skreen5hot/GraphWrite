@@ -13,6 +13,10 @@ import { emitTurtle } from "../emit/turtle.js";
 import { emitNTriples } from "../emit/n-triples.js";
 import { emitJsonLd } from "../emit/json-ld.js";
 import { emitMarkdown } from "../emit/markdown.js";
+import {
+  filterProjectByMode,
+  type FilterMode,
+} from "../export/used-only-filter.js";
 import { emitMermaid } from "../emit/mermaid.js";
 import { ImportOntologyDialog } from "./ImportOntologyDialog.js";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog.js";
@@ -224,10 +228,21 @@ export function App() {
     URL.revokeObjectURL(url);
   }
 
+  // ADR-013 sub-task A+B: TBox-pruning filter applies to Turtle / N-Triples /
+  // semantic JSON-LD / Markdown exports per Aaron's scope (Mermaid + ZIP
+  // unchanged). Resolves project['ecm:exportFilterMode'] field; defaults to
+  // 'all' (identity) when absent.
+  function resolveFilterMode(p: Record<string, unknown>): FilterMode {
+    const raw = p["ecm:exportFilterMode"];
+    if (raw === "iris-used" || raw === "closure" || raw === "all") return raw;
+    return "all";
+  }
+
   // FR-U023: Save as Turtle -- semantic projection -> Blob -> browser download
   function handleSaveTurtle() {
     if (project === null) return;
-    const text = emitTurtle(project);
+    const filtered = filterProjectByMode(project, resolveFilterMode(project));
+    const text = emitTurtle(filtered);
     const blob = new Blob([text], { type: "text/turtle" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -240,7 +255,8 @@ export function App() {
   // FR-U024: Save as N-Triples -- semantic projection -> Blob -> browser download
   function handleSaveNTriples() {
     if (project === null) return;
-    const text = emitNTriples(project);
+    const filtered = filterProjectByMode(project, resolveFilterMode(project));
+    const text = emitNTriples(filtered);
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -253,7 +269,8 @@ export function App() {
   // FR-U024: Save as Semantic JSON-LD -- semantic projection -> Blob -> browser download
   function handleSaveSemanticJsonLd() {
     if (project === null) return;
-    const text = emitJsonLd(project);
+    const filtered = filterProjectByMode(project, resolveFilterMode(project));
+    const text = emitJsonLd(filtered);
     const blob = new Blob([text], { type: "application/ld+json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -266,7 +283,8 @@ export function App() {
   // FR-E006: Save as Markdown summary -- readable projection -> Blob -> browser download
   function handleSaveMarkdown() {
     if (project === null) return;
-    const text = emitMarkdown(project);
+    const filtered = filterProjectByMode(project, resolveFilterMode(project));
+    const text = emitMarkdown(filtered);
     const blob = new Blob([text], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
