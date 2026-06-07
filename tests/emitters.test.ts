@@ -66,8 +66,9 @@ const TERM_IRI   = "urn:uuid:00000000-0000-0000-0000-000000000010";
 const TERM_IRI_2 = "urn:uuid:00000000-0000-0000-0000-000000000011";
 const INST_A_IRI = "urn:uuid:00000000-0000-0000-0000-000000000020";
 const INST_B_IRI = "urn:uuid:00000000-0000-0000-0000-000000000021";
-const PRED_IRI   = "urn:uuid:00000000-0000-0000-0000-000000000030";
-const LIT_PRED   = "urn:uuid:00000000-0000-0000-0000-000000000031";
+const PRED_IRI      = "urn:uuid:00000000-0000-0000-0000-000000000030";
+const LIT_PRED      = "urn:uuid:00000000-0000-0000-0000-000000000031";
+const PROP_TERM_IRI = "urn:uuid:00000000-0000-0000-0000-000000000012";
 
 // ---------------------------------------------------------------------------
 // Fixture: minimal VMP project (inline; no file read)
@@ -152,6 +153,36 @@ const COLON_LABEL_PROJECT: Record<string, unknown> = {
     "ecm:classIris": [TERM_IRI],
     "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
   }],
+};
+
+// Fixture: project with skos:definition + rdfs:domain (exercises F16/F17 emitter paths)
+const SKOS_DOMAIN_PROJECT: Record<string, unknown> = {
+  id: PROJ_IRI,
+  type: ["ecm:Project", "ecm:OntologyDesignPattern"],
+  "ecm:specVersion": "0.4",
+  "ecm:name": "Skos Domain Test",
+  "ecm:createdAt": "2026-05-20T00:00:00Z",
+  "ecm:updatedAt": "2026-05-20T00:00:00Z",
+  "iao:isAbout": ["ecm:UnspecifiedSubjectMatter"],
+  "ecm:terms": [
+    {
+      id: TERM_IRI, type: "owl:Class",
+      "rdfs:label": "TestClass",
+      "skos:definition": "A test class definition.",
+      "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+    },
+    {
+      id: PROP_TERM_IRI, type: "owl:ObjectProperty",
+      "rdfs:label": "testRelation",
+      "skos:definition": "A test object property.",
+      "rdfs:domain": [TERM_IRI],
+      "ecm:createdAt": "2026-05-20T00:00:00Z", "ecm:updatedAt": "2026-05-20T00:00:00Z",
+    },
+  ],
+  "ecm:instances": [],
+  "ecm:relations": [],
+  "ecm:literalAssertions": [],
+  "ecm:ontologies": [], "ecm:layouts": [], "ecm:snapshots": [], "ecm:serializations": [],
 };
 
 // ---------------------------------------------------------------------------
@@ -568,6 +599,58 @@ try {
     "validate must NOT emit LABEL_CONTAINS_COLON when no instance label contains ':'");
   pass("LABEL_CONTAINS_COLON not emitted for clean instance labels (ADR-011)");
 } catch (e) { fail("LABEL_CONTAINS_COLON clean project (ADR-011)", e); }
+
+// ---------------------------------------------------------------------------
+// skos:definition + rdfs:domain: emitter coverage (F16/F17 operator rulings)
+// ---------------------------------------------------------------------------
+console.log("\nskos:definition + rdfs:domain: Turtle and N-Triples emitter coverage (F16/F17)");
+
+const SKOS_DEF_IRI = "http://www.w3.org/2004/02/skos/core#definition";
+const RDFS_DOM_IRI = "http://www.w3.org/2000/01/rdf-schema#domain";
+
+try {
+  const sdTurtle = emitTurtle(SKOS_DOMAIN_PROJECT);
+  const sdQuads = (new Parser()).parse(sdTurtle) as RdfQuad[];
+  ok(
+    sdQuads.some(q =>
+      q.subject.value === TERM_IRI &&
+      q.predicate.value === SKOS_DEF_IRI &&
+      q.object.value === "A test class definition."
+    ),
+    "Turtle: skos:definition literal triple present for owl:Class term (F16)",
+  );
+  ok(
+    sdQuads.some(q =>
+      q.subject.value === PROP_TERM_IRI &&
+      q.predicate.value === SKOS_DEF_IRI &&
+      q.object.value === "A test object property."
+    ),
+    "Turtle: skos:definition literal triple present for owl:ObjectProperty term (F16)",
+  );
+  ok(
+    hasTriple(sdQuads, PROP_TERM_IRI, RDFS_DOM_IRI, TERM_IRI),
+    "Turtle: rdfs:domain IRI triple present for owl:ObjectProperty term (F17)",
+  );
+  pass("emitTurtle: skos:definition and rdfs:domain triples present (F16/F17)");
+} catch (e) { fail("emitTurtle skos:definition + rdfs:domain (F16/F17)", e); }
+
+try {
+  const sdNt = emitNTriples(SKOS_DOMAIN_PROJECT);
+  const sdNtQuads = (new Parser({ format: "N-Triples" })).parse(sdNt) as RdfQuad[];
+  ok(
+    sdNtQuads.some(q =>
+      q.subject.value === TERM_IRI &&
+      q.predicate.value === SKOS_DEF_IRI &&
+      q.object.value === "A test class definition."
+    ),
+    "N-Triples: skos:definition literal triple present for owl:Class term (F16)",
+  );
+  ok(
+    hasTriple(sdNtQuads, PROP_TERM_IRI, RDFS_DOM_IRI, TERM_IRI),
+    "N-Triples: rdfs:domain IRI triple present for owl:ObjectProperty term (F17)",
+  );
+  pass("emitNTriples: skos:definition and rdfs:domain triples present (F16/F17)");
+} catch (e) { fail("emitNTriples skos:definition + rdfs:domain (F16/F17)", e); }
 
 // ---------------------------------------------------------------------------
 // Summary

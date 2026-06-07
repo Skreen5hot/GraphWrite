@@ -40,6 +40,7 @@ const PREFIX_MAP: Record<string, string> = {
   cco:    "https://www.commoncoreontologies.org/",
   foaf:   "http://xmlns.com/foaf/0.1/",
   schema: "https://schema.org/",
+  skos:   "http://www.w3.org/2004/02/skos/core#",
 };
 
 /**
@@ -195,7 +196,7 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
 
   // IRI-valued predicates (single IRI or array of IRIs)
   // rdfs:range added per ADR-009: authorized on owl:DatatypeProperty; emits <xsd-IRI> triple.
-  for (const pred of ["rdfs:subClassOf", "rdfs:subPropertyOf", "rdfs:range", "iao:isAbout", "ecm:isSerializationOf"]) {
+  for (const pred of ["rdfs:subClassOf", "rdfs:subPropertyOf", "rdfs:domain", "rdfs:range", "iao:isAbout", "ecm:isSerializationOf"]) {
     const val = node[pred];
     const items: unknown[] = Array.isArray(val) ? val : typeof val === "string" ? [val] : [];
     const predNode = namedNode(expandIri(JSON_KEY_TO_RDF_PRED[pred] ?? pred));
@@ -208,7 +209,7 @@ function nodeToQuads(node: Record<string, unknown>): Quad[] {
 
   // String-literal predicates (rdfs:label handled separately below)
   for (const pred of [
-    "rdfs:comment", "ecm:format", "ecm:filename",
+    "rdfs:comment", "skos:definition", "ecm:format", "ecm:filename",
     "ecm:contentHash", "ecm:generatedAt",
   ]) {
     const val = node[pred];

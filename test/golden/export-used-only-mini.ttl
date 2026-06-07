@@ -40,9 +40,9 @@ ecm:UnspecifiedSubjectMatter a          owl:Class ;
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
 @prefix obo: <http://purl.obolibrary.org/obo/>.
 @prefix cco: <https://www.commoncoreontologies.org/>.
-@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
 @prefix foaf: <http://xmlns.com/foaf/0.1/>.
 @prefix schema: <https://schema.org/>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
 
 <https://example.com/project/0> a ecm:OntologyDesignPattern, ecm:Project;
     obo:IAO_0000136 ecm:UnspecifiedSubjectMatter.
@@ -51,12 +51,12 @@ ecm:UnspecifiedSubjectMatter a          owl:Class ;
 <https://example.com/project/1-baby> a cco:ont00001262;
     rdfs:label "baby".
 cco:ont00001262 a owl:Class;
-    rdfs:label "Person";
     rdfs:comment "Generic human individual.";
-    skos:definition "A human being.".
+    skos:definition "A human being.";
+    rdfs:label "Person".
 cco:ont00001984 a owl:ObjectProperty;
-    rdfs:label "has interest in";
     rdfs:domain cco:ont00001262;
     rdfs:range cco:ont00001262;
-    skos:definition "A relation expressing one party's interest in another.".
+    skos:definition "A relation expressing one party's interest in another.";
+    rdfs:label "has interest in".
 <https://example.com/project/0-mama> cco:ont00001984 <https://example.com/project/1-baby>.
