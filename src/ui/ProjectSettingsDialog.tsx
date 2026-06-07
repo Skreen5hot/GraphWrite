@@ -31,6 +31,13 @@ function extractIsAbout(project: Record<string, unknown>): string[] {
   return [];
 }
 
+/** Extract current ecm:exportFilterMode from the project document, defaulting to 'all'. */
+function extractFilterMode(project: Record<string, unknown>): string {
+  const raw = project["ecm:exportFilterMode"];
+  if (raw === "iris-used" || raw === "closure") return raw;
+  return "all";
+}
+
 export function ProjectSettingsDialog({
   project,
   onSave,
@@ -41,6 +48,9 @@ export function ProjectSettingsDialog({
   );
   const [addInput, setAddInput] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<string>(() =>
+    extractFilterMode(project),
+  );
 
   function handleAdd() {
     const trimmed = addInput.trim();
@@ -73,6 +83,7 @@ export function ProjectSettingsDialog({
     const updated: Record<string, unknown> = {
       ...project,
       "iao:isAbout": isAbout,
+      "ecm:exportFilterMode": filterMode,
     };
     if (hasRealIri) {
       // Clear the migration marker once a real subject IRI is declared so that
@@ -157,6 +168,20 @@ export function ProjectSettingsDialog({
             {addError}
           </p>
         )}
+        <label className="gw-form-label">
+          Export filter mode
+          <select
+            className="gw-form-input"
+            value={filterMode}
+            onChange={(e) => { setFilterMode(e.target.value); }}
+            aria-label="Export filter mode"
+            data-testid="gw-select-export-filter-mode"
+          >
+            <option value="all">All terms (default)</option>
+            <option value="iris-used">Only IRIs used</option>
+            <option value="closure">Closure (subClassOf/subPropertyOf)</option>
+          </select>
+        </label>
         <div className="gw-form-actions">
           <button
             type="button"
